@@ -1,0 +1,28 @@
+.step-panel,
+.diagram-shell {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.step-panel {
+  max-width: var(--step-panel-width);
+  padding: var(--space-lg);
+  width: 100%;
+}
+
+.step-text {
+  margin-top: var(--space-sm);
+}
+
+.diagram-shell {
+  overflow: hidden;
+  padding: var(--space-sm);
+}
+
+.diagram-error {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-xs) 0;
+}

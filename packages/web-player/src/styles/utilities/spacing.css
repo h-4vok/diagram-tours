@@ -1,0 +1,17 @@
+:root {
+  --diagram-min-height: 25rem;
+  --diagram-min-height-lg: 31rem;
+  --page-max-width: 96rem;
+  --radius-card: 1.25rem;
+  --shadow-soft: 0 24px 60px rgb(24 33 43 / 8%);
+  --space-2xs: 0.375rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.25rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 2.5rem;
+  --space-4xl: 3rem;
+  --step-panel-width: 24rem;
+}

@@ -1,0 +1,16 @@
+.player-meta,
+.diagram-stage {
+  width: 100%;
+}
+
+.player-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
