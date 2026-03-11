@@ -12,7 +12,7 @@
     "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build",
     "test": "bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test",
     "smoke": "bun run --cwd packages/web-player smoke",
-    "dev": "bun run --cwd packages/web-player dev",
+    "dev": "bun run ./scripts/dev-web-player.ts",
     "notify:done": "powershell -ExecutionPolicy Bypass -File ./scripts/notify-task-complete.ps1",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",

@@ -1,0 +1,9 @@
+version: 1
+title: Broken Tour
+diagram: ./broken.mmd
+
+steps:
+  - focus:
+      - ghost
+    text: >
+      The {{ghost}} node is missing.

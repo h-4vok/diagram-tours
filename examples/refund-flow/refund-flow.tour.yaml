@@ -1,0 +1,14 @@
+version: 1
+title: Refund Flow
+diagram: ./refund-flow.mmd
+
+steps:
+  - focus:
+      - refund_service
+    text: >
+      The {{refund_service}} receives the request from {{customer}}.
+
+  - focus:
+      - payment_gateway
+    text: >
+      The {{payment_gateway}} authorizes the refund before the {{receipt}} is produced.

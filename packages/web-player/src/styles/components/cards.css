@@ -26,3 +26,9 @@
   margin-top: var(--space-sm);
   padding: var(--space-sm) var(--space-xs) 0;
 }
+
+.docs-nav,
+.step-panel,
+.diagram-shell {
+  backdrop-filter: blur(12px);
+}

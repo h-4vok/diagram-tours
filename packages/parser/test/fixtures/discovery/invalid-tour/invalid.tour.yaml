@@ -1,0 +1,9 @@
+version: 1
+title: Invalid Tour
+diagram: ./invalid.mmd
+
+steps:
+  - focus:
+      - missing_node
+    text: >
+      The {{missing_node}} node is not real.
