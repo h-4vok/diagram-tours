@@ -1,26 +1,14 @@
-<script>
-  const packages = [
-    {
-      name: "core",
-      description: "Shared domain model and future tour engine."
-    },
-    {
-      name: "parser",
-      description: "Mermaid and YAML parsing plus validation."
-    },
-    {
-      name: "web-player",
-      description: "Minimal SvelteKit app shell for future playback UI."
-    }
-  ];
+<script lang="ts">
+  import {
+    pageDescription,
+    pageTitle,
+    workspacePackages
+  } from "../lib/workspace-content";
 </script>
 
 <svelte:head>
-  <title>Diagram Tour</title>
-  <meta
-    name="description"
-    content="Initial SvelteKit scaffold for the Diagram Tour web player."
-  />
+  <title>{pageTitle}</title>
+  <meta name="description" content={pageDescription} />
 </svelte:head>
 
 <div class="page">
@@ -36,7 +24,7 @@
   <section class="panel">
     <h2>Workspace packages</h2>
     <ul>
-      {#each packages as pkg (pkg.name)}
+      {#each workspacePackages as pkg (pkg.name)}
         <li>
           <strong>{pkg.name}</strong>
           <span>{pkg.description}</span>

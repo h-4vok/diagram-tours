@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "bun -e \"console.log('No tests yet for @diagram-tour/parser')\"",
+    "test": "vitest run --config ./vitest.config.ts --coverage",
     "lint": "eslint src/**/*.ts --max-warnings 0"
   },
   "dependencies": {

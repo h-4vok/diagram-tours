@@ -21,3 +21,4 @@ export interface TourAsset {
   source: string;
 }
 
+export const SUPPORTED_TOUR_VERSION = 1;

@@ -115,6 +115,7 @@ We value:
 - contracts first
 - strong guardrails
 - clear tests
+- 100% test coverage
 - separation of responsibilities
 - updated documentation when behavior or contracts change
 
@@ -126,6 +127,7 @@ This project uses:
 - TypeScript
 - strict lint rules
 - TDD workflow
+- enforced 100% coverage thresholds
 
 Before contributing, read:
 

@@ -8,7 +8,7 @@
     "build": "svelte-kit sync && vite build",
     "preview": "vite preview",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "bun -e \"console.log('No tests yet for @diagram-tour/web-player')\"",
+    "test": "svelte-kit sync && vitest run --config ./vitest.config.ts --coverage",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {

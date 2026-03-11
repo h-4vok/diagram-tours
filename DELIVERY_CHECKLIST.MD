@@ -33,6 +33,7 @@ Code must not be delivered if any guardrail is broken:
 
 - lint fails
 - tests fail
+- coverage drops below `100%` for statements, branches, functions, or lines
 - typecheck fails
 - configured complexity rules fail
 - configured function arity rules fail
@@ -68,6 +69,6 @@ Every delivery summary should include:
 - delivered capability
 - user-visible or contract-visible outcome
 - tests added or updated
-- checks run and final status
+- checks run and final status, including coverage
 - documentation updated
 - remaining risks or intentional follow-ups

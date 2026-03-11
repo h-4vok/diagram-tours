@@ -62,6 +62,7 @@ Avoid:
 The repository enforces strong guardrails and they are part of normal development, not optional cleanup.
 
 - lint rules must pass
+- test coverage must remain at `100%` for statements, branches, functions, and lines
 - cyclomatic complexity must remain at or below `3`
 - function arity must remain at or below `3`
 - if more inputs are required, prefer an object parameter

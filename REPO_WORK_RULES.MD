@@ -8,6 +8,8 @@ Primary runtime: Bun.
 
 The project is organized as a Bun workspace monorepo.
 
+Repository-wide guardrails also require `100%` test coverage for statements, branches, functions, and lines.
+
 ## Task Shaping
 
 Work must be defined as a **bounded task**.
