@@ -1,69 +1,84 @@
 # Engineering Playbook
 
-This document defines engineering principles for the Diagram Tour project.
+This document defines the engineering workflow and implementation discipline for the Diagram Tour project.
 
-## Development Philosophy
+## Delivery Mode
 
-The project follows a **design-first and test-first approach**.
+This repository operates in **delivery mode** by default.
 
-Implementation order:
+Delivery mode means Codex is expected to complete a bounded task end to end without artificial pause points between design, tests, implementation, and refactoring.
 
-1. Define contracts
-2. Write tests
-3. Implement behavior
-4. Refactor safely
+The default execution model is:
+
+1. clarify the capability being delivered
+2. define or confirm the contract and boundaries
+3. write or update tests first
+4. implement the minimum behavior
+5. refactor safely
+6. leave the repository green
+7. update documentation when behavior or contracts change
+8. provide a concise delivery summary for review
+
+The owner defines direction, priorities, and desired capabilities. Codex owns the technical path to a working delivery unless a decision is explicitly escalated.
 
 ## TDD Workflow
 
-Every change should follow this process:
+TDD in this repository is an autonomous red-green-refactor cycle completed within a single delivery.
 
-1. Write a test that describes the expected behavior.
-2. Run tests and confirm failure.
-3. Implement minimal code to make tests pass.
-4. Refactor while keeping tests green.
+Every substantive change should follow this sequence:
 
-## Code Design
+1. define the expected behavior through a test or contract check
+2. run the relevant checks and confirm the failing condition
+3. implement the minimum code needed to make the change pass
+4. refactor while preserving green tests
+5. run the required checks before declaring the work complete
+
+This repository does not use a stop-and-wait workflow between tests and implementation. Codex is expected to carry the cycle through to a green state before handing work back for review.
+
+## Engineering Principles
 
 Prefer:
 
-- small functions
-- pure transformations
+- contracts first
+- guardrails first
+- small pure functions
+- guard clauses
+- composable utilities
 - explicit data structures
+- clear tests that describe behavior, not internals
+- refactoring only while preserving a green test suite
 
 Avoid:
 
 - large functions
+- nested conditionals
 - hidden side effects
 - tightly coupled modules
+- mixing parsing, domain logic, and UI logic in the same unit
+- undocumented contract changes
 
-## Architecture Separation
+## Quality Guardrails
 
-The repository separates concerns into layers.
+The repository enforces strong guardrails and they are part of normal development, not optional cleanup.
 
-core
-- domain model
-- tour engine
-- reference resolution
+- lint rules must pass
+- cyclomatic complexity must remain at or below `3`
+- function arity must remain at or below `3`
+- if more inputs are required, prefer an object parameter
+- type checks must pass
+- the final relevant test suite must pass
 
-parser
-- YAML parsing
-- Mermaid parsing
+## Documentation Expectations
 
-web-player
-- UI rendering
+When behavior, contracts, or developer workflow changes, update the relevant documentation in the same delivery.
 
-## Documentation
+Examples include:
 
-If behavior changes:
+- update product contract docs when the tour format changes
+- update examples when they better explain the delivered capability
+- update README when contributor-facing expectations change
+- update delivery or engineering docs when the operating model changes
 
-- update diagrams
-- update examples
-- update README if necessary
+## Decision Records
 
-## Decisions
-
-Important architecture decisions should be recorded in:
-
-```
-docs/adr/
-```
+Important architecture decisions should be recorded in `docs/adr/` when that directory is introduced.

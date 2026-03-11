@@ -6,6 +6,8 @@ A tour describes a **guided walkthrough of a Mermaid diagram**.
 
 The format is intentionally minimal for the first version.
 
+Changes to this contract must be accompanied by updated tests and synchronized documentation.
+
 ---
 
 # Goals of v1
@@ -50,7 +52,7 @@ steps:
 
 ## version
 
-```
+```yaml
 version: 1
 ```
 
@@ -64,7 +66,7 @@ Only version `1` is supported in this document.
 
 ## title
 
-```
+```yaml
 title: Payment Flow
 ```
 
@@ -78,7 +80,7 @@ Used for display purposes.
 
 ## diagram
 
-```
+```yaml
 diagram: ./payment-flow.mmd
 ```
 
@@ -100,7 +102,7 @@ The node ID (`api_gateway`) is used by the tour system.
 
 ## steps
 
-```
+```yaml
 steps:
   - ...
 ```
@@ -121,7 +123,7 @@ Branching is not supported.
 
 Each step must contain:
 
-```
+```text
 focus
 text
 ```
@@ -139,7 +141,7 @@ Example:
 
 ## focus
 
-```
+```yaml
 focus:
   - api_gateway
   - validation_service
@@ -157,16 +159,16 @@ Rules:
 
 Valid examples:
 
-```
+```yaml
 focus: []
 ```
 
-```
+```yaml
 focus:
   - api_gateway
 ```
 
-```
+```yaml
 focus:
   - payment_service
   - payment_provider
@@ -176,7 +178,7 @@ focus:
 
 ## text
 
-```
+```yaml
 text: >
   The {{api_gateway}} receives requests from {{client}}.
 ```
@@ -193,13 +195,13 @@ The text may reference diagram nodes using **inline references**.
 
 Inside text, nodes are referenced using the following syntax:
 
-```
+```text
 {{node_id}}
 ```
 
 Example:
 
-```
+```text
 The {{api_gateway}} sends the request to {{validation_service}}.
 ```
 
@@ -211,13 +213,13 @@ The system resolves these references by:
 
 Example transformation:
 
-```
+```text
 The {{api_gateway}} forwards requests.
 ```
 
 becomes:
 
-```
+```text
 The API Gateway forwards requests.
 ```
 
@@ -240,7 +242,7 @@ Errors should be **descriptive and actionable**.
 
 Example error:
 
-```
+```text
 Unknown Mermaid node id "validation" referenced in step 2
 ```
 
@@ -262,7 +264,7 @@ flowchart LR
 
 IDs used by the tour:
 
-```
+```text
 client
 api_gateway
 validation_service

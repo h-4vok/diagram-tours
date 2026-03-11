@@ -2,25 +2,56 @@
 
 Before marking work as complete, verify the following.
 
-## Before Saying "Done"
+## Delivery Mode Completion
+
+Work is not complete until a bounded capability is delivered in a reviewable, green state.
+
+Before saying "done", confirm:
 
 - tests exist for the new behavior
+- tests or contract checks were written before or alongside implementation as part of the TDD cycle
+- the intended failing condition was covered before the final implementation state
 - tests describe behavior clearly
 - implementation matches tests
+- the delivered capability is observable through behavior, contract, or validation
 - no unrelated changes were introduced
 
-## Before Commit
+## Required Checks
 
 Run:
 
-- formatter
 - linter
 - tests
 - typecheck
+- build, when relevant to the touched packages
 
 Ensure all checks pass.
 
-## Before Push / Pull Request
+## Guardrails
+
+Code must not be delivered if any guardrail is broken:
+
+- lint fails
+- tests fail
+- typecheck fails
+- configured complexity rules fail
+- configured function arity rules fail
+- documented contracts are changed without corresponding documentation updates
+
+## Owner Verification Readiness
+
+Codex must leave enough evidence for the owner to verify the work quickly after delivery.
+
+The final handoff should make clear:
+
+- what capability was delivered
+- how the owner can verify it
+- which tests were added or updated
+- which checks were run
+- what documentation changed
+- any residual risks, tradeoffs, or follow-up work
+
+## Before Push or Pull Request
 
 Verify:
 
@@ -28,13 +59,15 @@ Verify:
 - tests are green
 - lint passes
 - no debug code remains
-- documentation updated if behavior changed
+- documentation is updated if behavior or contracts changed
 
-## Merge Gate
+## Final Delivery Summary
 
-Code must not be merged if:
+Every delivery summary should include:
 
-- tests fail
-- lint fails
-- complexity rules fail
-- typecheck fails
+- delivered capability
+- user-visible or contract-visible outcome
+- tests added or updated
+- checks run and final status
+- documentation updated
+- remaining risks or intentional follow-ups

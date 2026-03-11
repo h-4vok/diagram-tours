@@ -62,13 +62,13 @@ Each step contains:
 
 References inside text use:
 
-```
+```text
 {{node_id}}
 ```
 
 Example:
 
-```
+```text
 The {{api_gateway}} forwards the request to {{validation_service}}.
 ```
 
@@ -76,7 +76,7 @@ These references resolve automatically to the **Mermaid label**.
 
 ## Repository Structure
 
-```
+```text
 packages/
   core/        domain model and tour engine
   parser/      YAML + Mermaid parsing
@@ -103,6 +103,20 @@ fixtures/
 - branching tours
 - multi-diagram tours
 - complex animations
+
+## How This Repository Is Developed
+
+Diagram Tour is developed in an AI-assisted workflow with **delivery mode** as the default operating model.
+
+The owner defines product direction and desired capabilities. Codex is expected to carry bounded tasks through design, tests, implementation, refactoring, and final green checks without unnecessary pause points between those steps.
+
+We value:
+
+- contracts first
+- strong guardrails
+- clear tests
+- separation of responsibilities
+- updated documentation when behavior or contracts change
 
 ## Development
 
