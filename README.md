@@ -126,6 +126,7 @@ This project uses:
 - Bun
 - TypeScript
 - strict lint rules
+- Stylelint for modular CSS guardrails
 - TDD workflow
 - enforced 100% coverage thresholds
 

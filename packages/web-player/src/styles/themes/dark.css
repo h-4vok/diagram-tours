@@ -1,0 +1,22 @@
+.theme-root[data-theme="dark"] {
+  --color-accent-muted: #d0ab88;
+  --color-bg-bottom: #0f1218;
+  --color-bg-glow: rgb(122 92 255 / 18%);
+  --color-bg-top: #1a2028;
+  --color-border: rgb(255 255 255 / 10%);
+  --color-button-bg: #f2ece2;
+  --color-button-bg-hover: #fff;
+  --color-button-secondary-bg: #273142;
+  --color-button-secondary-bg-hover: #314058;
+  --color-button-secondary-text: #f3ede4;
+  --color-button-text: #10151d;
+  --color-danger: #ff9f8e;
+  --color-focus-ring: rgb(138 171 255 / 40%);
+  --color-muted: #b7c2ce;
+  --color-node-focus-fill: #253360;
+  --color-node-focus-stroke: #8aa2ff;
+  --color-node-focus-text: #f4f7fb;
+  --color-surface: rgb(19 24 33 / 80%);
+  --color-text: #f4f7fb;
+  --diagram-dim-opacity: 0.18;
+}

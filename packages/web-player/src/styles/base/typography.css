@@ -1,0 +1,48 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+.theme-root {
+  color: var(--color-text);
+}
+
+.eyebrow {
+  color: var(--color-accent-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+
+.lede,
+.step-text {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.lede {
+  color: var(--color-muted);
+  max-width: 42rem;
+}
+
+.step-count {
+  color: var(--color-accent-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.diagram-error {
+  color: var(--color-danger);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}

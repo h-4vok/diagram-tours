@@ -1,0 +1,44 @@
+.diagram {
+  align-items: start;
+  display: flex;
+  justify-content: center;
+  min-height: var(--diagram-min-height);
+  overflow: auto;
+  padding: var(--space-xs);
+}
+
+.diagram svg {
+  display: block;
+  height: auto;
+  max-width: none;
+  width: min(100%, 88rem);
+}
+
+[data-node-id] {
+  opacity: 1;
+}
+
+[data-focus-state="dimmed"] {
+  opacity: var(--diagram-dim-opacity);
+}
+
+[data-focus-state="focused"] {
+  opacity: 1;
+}
+
+[data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
+  fill: var(--color-node-focus-fill);
+  stroke: var(--color-node-focus-stroke);
+  stroke-width: 2px;
+}
+
+[data-focus-state="focused"] text,
+[data-focus-state="focused"] foreignObject {
+  fill: var(--color-node-focus-text);
+}
+
+@media (width >= 900px) {
+  .diagram {
+    min-height: var(--diagram-min-height-lg);
+  }
+}

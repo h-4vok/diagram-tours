@@ -88,6 +88,31 @@ describe("+page.svelte", () => {
     );
     expect(toastErrorMock).toHaveBeenCalledWith("Failed to render Mermaid diagram.");
   });
+
+  it("toggles the theme state without breaking the player flow", async () => {
+    render(Page, {
+      data: {
+        tour: resolvedPaymentFlowTour
+      }
+    });
+
+    const themeRoot = await screen.findByTestId("theme-root");
+    const themeToggle = screen.getByTestId("theme-toggle");
+
+    expect(themeRoot.getAttribute("data-theme")).toBe("light");
+    expect(themeToggle.textContent).toContain("Dark mode");
+
+    await fireEvent.click(themeToggle);
+
+    expect(themeRoot.getAttribute("data-theme")).toBe("dark");
+    expect(themeToggle.textContent).toContain("Light mode");
+
+    await fireEvent.click(screen.getByTestId("next-button"));
+
+    expect(screen.getByTestId("step-text").textContent).toContain(
+      "The Validation Service checks the request"
+    );
+  });
 });
 
 function renderDiagramForTest(input: {

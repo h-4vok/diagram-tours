@@ -1,0 +1,48 @@
+.theme-root {
+  background:
+    radial-gradient(circle at top left, var(--color-bg-glow), transparent 34%),
+    linear-gradient(180deg, var(--color-bg-top) 0%, var(--color-bg-bottom) 100%);
+  min-height: 100vh;
+}
+
+.page {
+  margin: 0 auto;
+  max-width: var(--page-max-width);
+  min-height: 100vh;
+  padding: var(--space-xl) var(--space-md) var(--space-4xl);
+}
+
+.page__header {
+  align-items: start;
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.hero__bar {
+  align-items: center;
+  display: flex;
+  gap: var(--space-md);
+  justify-content: space-between;
+}
+
+.page__content {
+  display: grid;
+  gap: var(--space-xl);
+  margin-top: var(--space-2xl);
+}
+
+@media (width >= 900px) {
+  .page {
+    padding-left: var(--space-xl);
+    padding-right: var(--space-xl);
+  }
+
+  .page__header {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
+  }
+}
