@@ -21,6 +21,10 @@
     "lint": "eslint src/**/*.ts --max-warnings 0"
   },
   "dependencies": {
-    "@diagram-tour/core": "workspace:*"
+    "@diagram-tour/core": "workspace:*",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2"
   }
 }

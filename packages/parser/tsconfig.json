@@ -3,6 +3,9 @@
   "compilerOptions": {
     "noEmit": true,
     "baseUrl": ".",
+    "types": [
+      "node"
+    ],
     "paths": {
       "@diagram-tour/core": [
         "../core/src/index.ts"
