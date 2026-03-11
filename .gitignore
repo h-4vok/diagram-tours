@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+dist/
+coverage/
+.idea/
+.vscode/
+.turbo/
+.svelte-kit/
+packages/web-player/build/
+packages/web-player/.vercel/
+*.tsbuildinfo
+

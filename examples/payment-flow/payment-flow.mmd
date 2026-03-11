@@ -1,0 +1,6 @@
+flowchart LR
+  client[Client] --> api_gateway[API Gateway]
+  api_gateway --> validation_service[Validation Service]
+  validation_service --> payment_service[Payment Service]
+  payment_service --> payment_provider[Payment Provider]
+  payment_provider --> response[Response]

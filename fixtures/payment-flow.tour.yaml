@@ -1,0 +1,25 @@
+version: 1
+title: Payment Flow
+diagram: ./payment-flow.mmd
+
+steps:
+  - focus:
+      - api_gateway
+    text: >
+      The {{api_gateway}} is the public entry point for incoming requests from {{client}}.
+
+  - focus:
+      - validation_service
+    text: >
+      The {{validation_service}} checks the request before it moves to {{payment_service}}.
+
+  - focus:
+      - payment_service
+      - payment_provider
+    text: >
+      The {{payment_service}} coordinates the transaction with {{payment_provider}}.
+
+  - focus:
+      - response
+    text: >
+      Finally, the system returns the result in {{response}}.

@@ -1,0 +1,24 @@
+{
+  "name": "@diagram-tour/web-player",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "svelte-kit sync && vite build",
+    "preview": "vite preview",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "bun -e \"console.log('No tests yet for @diagram-tour/web-player')\"",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@diagram-tour/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "6.1.1",
+    "@sveltejs/kit": "2.53.4",
+    "svelte": "5.53.10",
+    "svelte-check": "4.4.5",
+    "vite": "7.3.1"
+  }
+}

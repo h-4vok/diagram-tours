@@ -1,0 +1,23 @@
+{
+  "name": "@diagram-tour/core",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun -e \"console.log('No tests yet for @diagram-tour/core')\"",
+    "lint": "eslint src/**/*.ts --max-warnings 0"
+  }
+}
