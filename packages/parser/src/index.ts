@@ -3,11 +3,9 @@ import { dirname, resolve } from "node:path";
 
 import {
   SUPPORTED_TOUR_VERSION,
-  type DiagramAsset,
   type DiagramTour,
   type MermaidNode,
   type ResolvedDiagramTour,
-  type TourAsset,
   type TourStep
 } from "@diagram-tour/core";
 import { parse as parseYaml } from "yaml";
@@ -17,14 +15,6 @@ const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
 
 type NodeIndex = Map<string, MermaidNode>;
 type ReferenceKind = "focus" | "text";
-
-export interface MermaidParseResult {
-  asset: DiagramAsset;
-}
-
-export interface TourParseResult {
-  asset: TourAsset;
-}
 
 export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagramTour> {
   const absoluteTourPath = resolve(tourPath);
@@ -50,28 +40,6 @@ export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagra
       })
     )
   };
-}
-
-export function parseMermaid(source: string, path = "diagram.mmd"): MermaidParseResult {
-  return {
-    asset: {
-      path,
-      source
-    }
-  };
-}
-
-export function parseTourYaml(source: string, path = "tour.yaml"): TourParseResult {
-  return {
-    asset: {
-      path,
-      source
-    }
-  };
-}
-
-export function validateTourShape(tour: DiagramTour): DiagramTour {
-  return tour;
 }
 
 async function readTextFile(path: string): Promise<string> {
@@ -136,22 +104,19 @@ function resolveTourStep(input: {
   stepIndex: number;
   nodeIndex: NodeIndex;
 }) {
-  validateFocusNodes(input);
-
   return {
     index: input.stepIndex,
-    focusNodeIds: input.step.focus,
-    rawText: input.step.text,
+    focus: resolveFocusNodes(input),
     text: resolveTextReferences(input)
   };
 }
 
-function validateFocusNodes(input: {
+function resolveFocusNodes(input: {
   step: TourStep;
   stepIndex: number;
   nodeIndex: NodeIndex;
-}): void {
-  for (const nodeId of input.step.focus) {
+}): MermaidNode[] {
+  return input.step.focus.map((nodeId) =>
     resolveNode({
       id: nodeId,
       nodeIndex: input.nodeIndex,
@@ -160,8 +125,8 @@ function validateFocusNodes(input: {
         stepIndex: input.stepIndex,
         kind: "focus"
       })
-    });
-  }
+    })
+  );
 }
 
 function resolveTextReferences(input: {

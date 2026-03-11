@@ -3,14 +3,18 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [sveltekit()],
+  resolve: {
+    conditions: ["browser"]
+  },
   test: {
-    environment: "node",
+    environment: "jsdom",
     include: ["test/**/*.test.ts"],
+    setupFiles: ["./test/setup.ts"],
     coverage: {
       all: true,
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["src/lib/**/*.ts"],
+      include: ["src/lib/**/*.ts", "src/routes/**/*.ts"],
       exclude: ["src/app.d.ts"],
       thresholds: {
         statements: 100,
