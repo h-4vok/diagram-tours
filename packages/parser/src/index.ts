@@ -1,17 +1,22 @@
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, readdir, stat } from "node:fs/promises";
+import { basename, dirname, relative, resolve } from "node:path";
 
 import {
   SUPPORTED_TOUR_VERSION,
   type DiagramTour,
   type MermaidNode,
   type ResolvedDiagramTour,
+  type ResolvedDiagramTourCollection,
+  type ResolvedDiagramTourCollectionEntry,
+  type SkippedResolvedDiagramTour,
   type TourStep
 } from "@diagram-tour/core";
 import { parse as parseYaml } from "yaml";
 
 const MERMAID_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
+const TOUR_FILE_SUFFIX = ".tour.yaml";
+const NO_VALID_TOURS_MESSAGE = "No valid tours were discovered.";
 
 type NodeIndex = Map<string, MermaidNode>;
 type ReferenceKind = "focus" | "text";
@@ -40,6 +45,100 @@ export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagra
       })
     )
   };
+}
+
+export async function loadResolvedTourCollection(
+  sourceTarget: string
+): Promise<ResolvedDiagramTourCollection> {
+  const absoluteTarget = resolve(sourceTarget);
+  const targetStats = await stat(absoluteTarget);
+
+  if (targetStats.isFile()) {
+    return createSingleTourCollection(absoluteTarget);
+  }
+
+  return createDiscoveredTourCollection(absoluteTarget);
+}
+
+async function createSingleTourCollection(
+  absoluteTourPath: string
+): Promise<ResolvedDiagramTourCollection> {
+  const entry = await createCollectionEntry({
+    absoluteTourPath,
+    sourceRoot: dirname(absoluteTourPath)
+  });
+
+  return {
+    entries: [entry],
+    skipped: []
+  };
+}
+
+async function createDiscoveredTourCollection(
+  sourceRoot: string
+): Promise<ResolvedDiagramTourCollection> {
+  const tourPaths = await collectTourPaths(sourceRoot);
+  const entries: ResolvedDiagramTourCollectionEntry[] = [];
+  const skipped: SkippedResolvedDiagramTour[] = [];
+
+  for (const absoluteTourPath of tourPaths) {
+    try {
+      entries.push(
+        await createCollectionEntry({
+          absoluteTourPath,
+          sourceRoot
+        })
+      );
+    } catch (error) {
+      skipped.push({
+        sourcePath: normalizePath(relative(sourceRoot, absoluteTourPath)),
+        error: (error as Error).message
+      });
+    }
+  }
+
+  invariant(entries.length > 0, NO_VALID_TOURS_MESSAGE);
+
+  return {
+    entries,
+    skipped
+  };
+}
+
+async function createCollectionEntry(input: {
+  absoluteTourPath: string;
+  sourceRoot: string;
+}): Promise<ResolvedDiagramTourCollectionEntry> {
+  const sourcePath = normalizePath(relative(input.sourceRoot, input.absoluteTourPath));
+  const tour = await loadResolvedTour(input.absoluteTourPath);
+
+  return {
+    slug: createSlug(sourcePath),
+    sourcePath,
+    title: tour.title,
+    tour
+  };
+}
+
+async function collectTourPaths(sourceRoot: string): Promise<string[]> {
+  const entries = await readdir(sourceRoot, { withFileTypes: true });
+  const nestedPaths = await Promise.all(
+    entries.map((entry) =>
+      entry.isDirectory()
+        ? collectTourPaths(resolve(sourceRoot, entry.name))
+        : collectTourFilePath(sourceRoot, entry.name)
+    )
+  );
+
+  return nestedPaths.flat().sort();
+}
+
+function collectTourFilePath(sourceRoot: string, name: string): string[] {
+  if (!name.endsWith(TOUR_FILE_SUFFIX)) {
+    return [];
+  }
+
+  return [resolve(sourceRoot, name)];
 }
 
 async function readTextFile(path: string): Promise<string> {
@@ -165,6 +264,18 @@ function createUnknownNodeMessage(input: {
   kind: ReferenceKind;
 }): string {
   return `Unknown Mermaid node id "${input.nodeId}" referenced in ${input.kind} for step ${input.stepIndex}`;
+}
+
+function createSlug(sourcePath: string): string {
+  const normalizedPath = normalizePath(sourcePath);
+  const fileStem = basename(normalizedPath, TOUR_FILE_SUFFIX);
+  const directoryPath = normalizePath(dirname(normalizedPath));
+
+  if (directoryPath === "." || basename(directoryPath) !== fileStem) {
+    return normalizedPath.replace(TOUR_FILE_SUFFIX, "");
+  }
+
+  return directoryPath;
 }
 
 function asNonEmptyString(value: unknown, message: string): string {

@@ -1,16 +1,31 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { loadResolvedTour } from "../src/index";
+import { loadResolvedTour, loadResolvedTourCollection } from "../src/index";
+
+const FIXTURE_TOUR_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../fixtures/payment-flow.tour.yaml"
+);
+const DISCOVERY_FIXTURE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "./fixtures/discovery");
+const INVALID_ONLY_FIXTURE_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "./fixtures/invalid-only"
+);
+const EXAMPLES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../examples");
+const ORIGINAL_CWD = process.cwd();
+
+afterEach(() => {
+  process.chdir(ORIGINAL_CWD);
+});
 
 describe("@diagram-tour/parser", () => {
   it("loads a valid linear tour into a resolved player-ready model", async () => {
-    const result = await loadResolvedTour(
-      join(process.cwd(), "..", "..", "fixtures", "payment-flow.tour.yaml")
-    );
+    const result = await loadResolvedTour(FIXTURE_TOUR_PATH);
 
     expect(result).toEqual({
       version: 1,
@@ -150,13 +165,9 @@ describe("@diagram-tour/parser", () => {
   it("fails when the tour has no steps", async () => {
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
-      yaml: [
-        "version: 1",
-        "title: No Steps",
-        "diagram: ./diagram.mmd",
-        "",
-        "steps: []"
-      ].join("\n")
+      yaml: ["version: 1", "title: No Steps", "diagram: ./diagram.mmd", "", "steps: []"].join(
+        "\n"
+      )
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
@@ -204,6 +215,67 @@ describe("@diagram-tour/parser", () => {
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
       'Unknown Mermaid node id "missing_node" referenced in text for step 1'
     );
+  });
+
+  it("builds a one-tour collection from a single file target", async () => {
+    const collection = await loadResolvedTourCollection(FIXTURE_TOUR_PATH);
+
+    expect(collection.entries).toHaveLength(1);
+    expect(collection.entries[0]).toMatchObject({
+      slug: "payment-flow",
+      sourcePath: "payment-flow.tour.yaml",
+      title: "Payment Flow"
+    });
+    expect(collection.skipped).toHaveLength(0);
+  });
+
+  it("discovers matching .tour.yaml files from a directory target", async () => {
+    const collection = await loadResolvedTourCollection(DISCOVERY_FIXTURE_ROOT);
+
+    expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "alpha-tour/alpha",
+      "nested/beta-tour/beta"
+    ]);
+    expect(collection.skipped).toEqual([
+      {
+        sourcePath: "invalid-tour/invalid.tour.yaml",
+        error: 'Unknown Mermaid node id "missing_node" referenced in focus for step 1'
+      }
+    ]);
+  });
+
+  it("treats dot as the current working directory discovery root", async () => {
+    process.chdir(DISCOVERY_FIXTURE_ROOT);
+
+    const collection = await loadResolvedTourCollection(".");
+
+    expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "alpha-tour/alpha",
+      "nested/beta-tour/beta"
+    ]);
+  });
+
+  it("fails when a single-file target is invalid", async () => {
+    const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
+
+    await expect(loadResolvedTourCollection(invalidFilePath)).rejects.toThrow(
+      'Unknown Mermaid node id "missing_node" referenced in focus for step 1'
+    );
+  });
+
+  it("fails when discovery finds no valid tours", async () => {
+    await expect(loadResolvedTourCollection(INVALID_ONLY_FIXTURE_ROOT)).rejects.toThrow(
+      "No valid tours were discovered."
+    );
+  });
+
+  it("uses the parent directory name as the slug when the file stem matches that directory", async () => {
+    const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
+
+    expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "payment-flow",
+      "refund-flow"
+    ]);
   });
 });
 

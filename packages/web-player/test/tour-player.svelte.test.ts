@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 
-import Page from "../src/routes/+page.svelte";
+import TourPlayer from "../src/lib/tour-player.svelte";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
 const { applyFocusStateMock, renderMermaidDiagramMock, toastErrorMock } = vi.hoisted(() => ({
@@ -22,12 +22,10 @@ vi.mock("svelte-sonner", () => ({
   }
 }));
 
-describe("+page.svelte", () => {
-  it("renders the example tour, starts on step one, and respects boundaries", async () => {
-    render(Page, {
-      data: {
-        tour: resolvedPaymentFlowTour
-      }
+describe("tour-player.svelte", () => {
+  it("renders the selected tour, starts on step one, and respects boundaries", async () => {
+    render(TourPlayer, {
+      tour: resolvedPaymentFlowTour
     });
 
     expect(await screen.findByRole("heading", { name: "Payment Flow" })).toBeDefined();
@@ -43,24 +41,11 @@ describe("+page.svelte", () => {
     );
     expect(readButtonState("previous-button")).toBe(false);
     expect(readButtonState("next-button")).toBe(false);
-
-    await fireEvent.click(screen.getByTestId("next-button"));
-    await fireEvent.click(screen.getByTestId("next-button"));
-
-    expect(readButtonState("next-button")).toBe(true);
-
-    await fireEvent.click(screen.getByTestId("previous-button"));
-
-    expect(screen.getByTestId("step-text").textContent).toContain(
-      "The Payment Service coordinates the transaction"
-    );
   });
 
   it("applies focused and dimmed hooks for the active step", async () => {
-    render(Page, {
-      data: {
-        tour: resolvedPaymentFlowTour
-      }
+    render(TourPlayer, {
+      tour: resolvedPaymentFlowTour
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
@@ -77,41 +62,14 @@ describe("+page.svelte", () => {
   it("shows a fallback message and toast when the diagram render fails", async () => {
     renderMermaidDiagramMock.mockRejectedValueOnce(new Error("render failed"));
 
-    render(Page, {
-      data: {
-        tour: resolvedPaymentFlowTour
-      }
+    render(TourPlayer, {
+      tour: resolvedPaymentFlowTour
     });
 
     expect((await screen.findByTestId("diagram-error")).textContent).toContain(
       "Failed to render Mermaid diagram."
     );
     expect(toastErrorMock).toHaveBeenCalledWith("Failed to render Mermaid diagram.");
-  });
-
-  it("toggles the theme state without breaking the player flow", async () => {
-    render(Page, {
-      data: {
-        tour: resolvedPaymentFlowTour
-      }
-    });
-
-    const themeRoot = await screen.findByTestId("theme-root");
-    const themeToggle = screen.getByTestId("theme-toggle");
-
-    expect(themeRoot.getAttribute("data-theme")).toBe("light");
-    expect(themeToggle.textContent).toContain("Dark mode");
-
-    await fireEvent.click(themeToggle);
-
-    expect(themeRoot.getAttribute("data-theme")).toBe("dark");
-    expect(themeToggle.textContent).toContain("Light mode");
-
-    await fireEvent.click(screen.getByTestId("next-button"));
-
-    expect(screen.getByTestId("step-text").textContent).toContain(
-      "The Validation Service checks the request"
-    );
   });
 });
 

@@ -1,0 +1,9 @@
+version: 1
+title: Alpha Tour
+diagram: ./alpha.mmd
+
+steps:
+  - focus:
+      - approve
+    text: >
+      The {{approve}} node moves the flow toward {{done}}.

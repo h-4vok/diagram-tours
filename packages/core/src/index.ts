@@ -35,4 +35,21 @@ export interface ResolvedDiagramTour {
   steps: ResolvedTourStep[];
 }
 
+export interface ResolvedDiagramTourCollectionEntry {
+  slug: string;
+  sourcePath: string;
+  title: string;
+  tour: ResolvedDiagramTour;
+}
+
+export interface SkippedResolvedDiagramTour {
+  sourcePath: string;
+  error: string;
+}
+
+export interface ResolvedDiagramTourCollection {
+  entries: ResolvedDiagramTourCollectionEntry[];
+  skipped: SkippedResolvedDiagramTour[];
+}
+
 export const SUPPORTED_TOUR_VERSION = 1;

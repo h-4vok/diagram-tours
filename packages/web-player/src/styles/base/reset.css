@@ -6,6 +6,7 @@
 
 html {
   color-scheme: light;
+  scrollbar-gutter: stable;
 }
 
 body {

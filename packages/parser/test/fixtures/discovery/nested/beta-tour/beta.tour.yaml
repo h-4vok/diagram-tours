@@ -1,0 +1,9 @@
+version: 1
+title: Beta Tour
+diagram: ./beta.mmd
+
+steps:
+  - focus:
+      - review
+    text: >
+      The {{review}} node checks the draft before {{publish}}.
