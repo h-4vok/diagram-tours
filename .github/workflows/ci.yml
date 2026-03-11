@@ -31,5 +31,11 @@ jobs:
       - name: Test with coverage
         run: bun run test
 
+      - name: Install Playwright browser
+        run: bunx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: bun run smoke
+
       - name: Build
         run: bun run build

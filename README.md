@@ -135,3 +135,17 @@ Before contributing, read:
 - ENGINEERING_PLAYBOOK.md
 - REPO_WORK_RULES.md
 - DELIVERY_CHECKLIST.md
+
+## Commands
+
+- `bun run lint`
+- `bun run typecheck`
+- `bun run test`
+- `bun run smoke`
+- `bun run build`
+
+If you are running smoke tests locally for the first time, install the browser once:
+
+```bash
+bunx playwright install chromium
+```

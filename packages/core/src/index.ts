@@ -11,16 +11,6 @@ export interface DiagramTour {
   steps: TourStep[];
 }
 
-export interface DiagramAsset {
-  path: string;
-  source: string;
-}
-
-export interface TourAsset {
-  path: string;
-  source: string;
-}
-
 export interface MermaidNode {
   id: string;
   label: string;
@@ -34,8 +24,7 @@ export interface ResolvedDiagram {
 
 export interface ResolvedTourStep {
   index: number;
-  focusNodeIds: string[];
-  rawText: string;
+  focus: MermaidNode[];
   text: string;
 }
 

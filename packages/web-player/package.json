@@ -9,14 +9,21 @@
     "preview": "vite preview",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "svelte-kit sync && vitest run --config ./vitest.config.ts --coverage",
+    "smoke": "playwright test --config ./playwright.config.ts",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
-    "@diagram-tour/core": "workspace:*"
+    "@diagram-tour/core": "workspace:*",
+    "@diagram-tour/parser": "workspace:*",
+    "mermaid": "^11.12.0",
+    "svelte-sonner": "^0.3.28"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.2",
     "@sveltejs/adapter-auto": "6.1.1",
     "@sveltejs/kit": "2.53.4",
+    "@testing-library/svelte": "^5.2.8",
+    "jsdom": "^26.1.0",
     "svelte": "5.53.10",
     "svelte-check": "4.4.5",
     "vite": "7.3.1"

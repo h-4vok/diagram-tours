@@ -4,15 +4,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  loadResolvedTour,
-  parseMermaid,
-  parseTourYaml,
-  validateTourShape
-} from "../src/index";
+import { loadResolvedTour } from "../src/index";
 
 describe("@diagram-tour/parser", () => {
-  it("loads a resolved linear tour from the payment flow fixture", async () => {
+  it("loads a valid linear tour into a resolved player-ready model", async () => {
     const result = await loadResolvedTour(
       join(process.cwd(), "..", "..", "fixtures", "payment-flow.tour.yaml")
     );
@@ -42,68 +37,131 @@ describe("@diagram-tour/parser", () => {
       steps: [
         {
           index: 1,
-          focusNodeIds: ["api_gateway"],
-          text: "The API Gateway is the public entry point for incoming requests from Client.\n",
-          rawText: "The {{api_gateway}} is the public entry point for incoming requests from {{client}}.\n"
+          focus: [{ id: "api_gateway", label: "API Gateway" }],
+          text: "The API Gateway is the public entry point for incoming requests from Client.\n"
         },
         {
           index: 2,
-          focusNodeIds: ["validation_service"],
-          text: "The Validation Service checks the request before it moves to Payment Service.\n",
-          rawText: "The {{validation_service}} checks the request before it moves to {{payment_service}}.\n"
+          focus: [{ id: "validation_service", label: "Validation Service" }],
+          text: "The Validation Service checks the request before it moves to Payment Service.\n"
         },
         {
           index: 3,
-          focusNodeIds: ["payment_service", "payment_provider"],
-          text: "The Payment Service coordinates the transaction with Payment Provider.\n",
-          rawText: "The {{payment_service}} coordinates the transaction with {{payment_provider}}.\n"
+          focus: [
+            { id: "payment_service", label: "Payment Service" },
+            { id: "payment_provider", label: "Payment Provider" }
+          ],
+          text: "The Payment Service coordinates the transaction with Payment Provider.\n"
         },
         {
           index: 4,
-          focusNodeIds: ["response"],
-          text: "Finally, the system returns the result in Response.\n",
-          rawText: "Finally, the system returns the result in {{response}}.\n"
+          focus: [{ id: "response", label: "Response" }],
+          text: "Finally, the system returns the result in Response.\n"
         }
       ]
     });
   });
 
-  it("parses mermaid source into a diagram asset", () => {
-    const result = parseMermaid("flowchart LR", "fixtures/diagram.mmd");
-
-    expect(result).toEqual({
-      asset: {
-        path: "fixtures/diagram.mmd",
-        source: "flowchart LR"
-      }
+  it("accepts a step with empty focus when the text references valid nodes", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Empty Focus",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The {{api_gateway}} exists."
+      ].join("\n")
     });
-  });
 
-  it("parses tour yaml into a tour asset", () => {
-    const result = parseTourYaml("version: 1", "fixtures/tour.yaml");
-
-    expect(result).toEqual({
-      asset: {
-        path: "fixtures/tour.yaml",
-        source: "version: 1"
-      }
-    });
-  });
-
-  it("returns the provided tour unchanged during validation", () => {
-    const tour = {
+    await expect(loadResolvedTour(tourPath)).resolves.toEqual({
       version: 1,
-      title: "Payment Flow",
-      diagram: "./payment-flow.mmd",
+      title: "Empty Focus",
+      diagram: {
+        path: "./diagram.mmd",
+        source: "flowchart LR\n  api_gateway[API Gateway]",
+        nodes: [{ id: "api_gateway", label: "API Gateway" }]
+      },
       steps: [
         {
-          focus: ["api_gateway"],
-          text: "Gateway step"
+          index: 1,
+          focus: [],
+          text: "The API Gateway exists.\n"
         }
       ]
-    };
+    });
+  });
 
-    expect(validateTourShape(tour)).toBe(tour);
+  it("fails when the tour version is unsupported", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 2",
+        "title: Unsupported Version",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The {{api_gateway}} exists."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow('Unsupported tour version "2"');
+  });
+
+  it("fails when the tour title is missing", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The {{api_gateway}} exists."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow("Tour title is required");
+  });
+
+  it("fails when the tour diagram path is missing", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Missing Diagram",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The {{api_gateway}} exists."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow("Tour diagram path is required");
+  });
+
+  it("fails when the tour has no steps", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: No Steps",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps: []"
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      "Tour steps must be a non-empty array"
+    );
   });
 
   it("fails when a focus node does not exist in the mermaid diagram", async () => {

@@ -1,0 +1,99 @@
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  applyFocusState,
+  createRenderableDiagramSource,
+  getMermaidErrorMessage,
+  renderMermaidDiagram
+} from "../src/lib/mermaid-diagram";
+import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
+
+const { mermaidRender } = vi.hoisted(() => ({
+  mermaidRender: vi.fn(async () => ({
+    svg: [
+      "<svg>",
+      '<g class="diagram_tour_node_api_gateway"></g>',
+      '<g class="diagram_tour_node_validation_service"></g>',
+      '<g class="diagram_tour_node_payment_service"></g>',
+      "</svg>"
+    ].join("")
+  }))
+}));
+
+vi.mock("mermaid", () => ({
+  default: {
+    initialize: vi.fn(),
+    render: mermaidRender
+  }
+}));
+
+describe("mermaid diagram helpers", () => {
+  it("adds app-owned node classes to the Mermaid source", () => {
+    const source = createRenderableDiagramSource(resolvedPaymentFlowTour.diagram);
+
+    expect(source).toContain("class api_gateway diagram_tour_node_api_gateway;");
+    expect(source).toContain(
+      "class validation_service diagram_tour_node_validation_service;"
+    );
+  });
+
+  it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: resolvedPaymentFlowTour.diagram
+    });
+
+    expect(mermaidRender).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[data-node-id="api_gateway"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-label="API Gateway"]')).not.toBeNull();
+  });
+
+  it("throws a clear error when Mermaid rendering fails", async () => {
+    mermaidRender.mockRejectedValueOnce(new Error("parse failure"));
+
+    await expect(
+      renderMermaidDiagram({
+        container: document.createElement("div"),
+        diagram: resolvedPaymentFlowTour.diagram
+      })
+    ).rejects.toThrow(getMermaidErrorMessage());
+  });
+
+  it("marks focused and dimmed nodes, and clears state when focus is empty", () => {
+    const container = document.createElement("div");
+
+    container.innerHTML = [
+      "<div></div>",
+      '<div data-node-id="api_gateway"></div>',
+      '<div data-node-id="validation_service"></div>'
+    ].join("");
+
+    applyFocusState({
+      container,
+      focusedNodeIds: ["api_gateway"]
+    });
+
+    expect(readFocusState(container, "api_gateway")).toBe("focused");
+    expect(readFocusState(container, "validation_service")).toBe("dimmed");
+
+    applyFocusState({
+      container,
+      focusedNodeIds: []
+    });
+
+    expect(hasFocusState(container, "api_gateway")).toBe(false);
+    expect(hasFocusState(container, "validation_service")).toBe(false);
+  });
+});
+
+function readFocusState(container: HTMLElement, nodeId: string): string | null {
+  return container
+    .querySelector(`[data-node-id="${nodeId}"]`)
+    ?.getAttribute("data-focus-state") ?? null;
+}
+
+function hasFocusState(container: HTMLElement, nodeId: string): boolean {
+  return container.querySelector(`[data-node-id="${nodeId}"]`)?.hasAttribute("data-focus-state") ?? false;
+}

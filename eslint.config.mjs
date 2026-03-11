@@ -38,6 +38,8 @@ export default defineConfig([
     ignores: [
       "**/dist/**",
       "**/coverage/**",
+      "**/test-results/**",
+      "**/playwright-report/**",
       "**/.svelte-kit/**",
       "**/build/**",
       "**/node_modules/**",
@@ -86,4 +88,3 @@ export default defineConfig([
     }
   }
 ]);
-
