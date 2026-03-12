@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getSourceTarget } from "../src/lib/source-target";
+import { describeSourceTarget, getSourceTarget } from "../src/lib/source-target";
 
 const ORIGINAL_TARGET = process.env.DIAGRAM_TOUR_SOURCE_TARGET;
 
@@ -27,5 +27,15 @@ describe("source-target", () => {
     delete process.env.DIAGRAM_TOUR_SOURCE_TARGET;
 
     expect(getSourceTarget()).toBe(resolve(process.cwd(), "../../examples"));
+  });
+
+  it("describes single-file preview targets explicitly", () => {
+    const target = resolve(process.cwd(), "../../examples/payment-flow/payment-flow.tour.yaml");
+
+    expect(describeSourceTarget(target)).toEqual({
+      kind: "file",
+      label: "payment-flow.tour.yaml",
+      path: target
+    });
   });
 });

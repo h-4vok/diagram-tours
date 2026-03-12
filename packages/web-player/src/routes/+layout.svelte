@@ -5,8 +5,12 @@
   import { Toaster } from "svelte-sonner";
   import { DEFAULT_THEME, getThemeToggleLabel, toggleTheme } from "$lib/theme";
   import type { ResolvedDiagramTourCollection } from "@diagram-tour/core";
+  import type { SourceTargetInfo } from "$lib/source-target";
 
-  export let data: { collection: ResolvedDiagramTourCollection };
+  export let data: {
+    collection: ResolvedDiagramTourCollection;
+    sourceTarget: SourceTargetInfo;
+  };
 
   let theme = DEFAULT_THEME;
 
@@ -40,6 +44,13 @@
         <div class="docs-nav__header">
           <p class="docs-nav__title">All Tours</p>
         </div>
+
+        {#if data.sourceTarget.kind === "file"}
+          <div class="docs-nav__notice" data-testid="preview-target-notice">
+            <span class="docs-nav-notice-mark" aria-hidden="true">></span>
+            <p>Previewing {data.sourceTarget.label}</p>
+          </div>
+        {/if}
 
         {#if data.collection.skipped.length > 0}
           <div class="docs-nav__notice" data-testid="skipped-tours-notice">
