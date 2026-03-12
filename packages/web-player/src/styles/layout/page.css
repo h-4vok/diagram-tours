@@ -1,5 +1,6 @@
 .theme-root {
   background:
+    radial-gradient(circle at 82% 18%, var(--color-bg-accent-glow, transparent) 0%, transparent 28%),
     radial-gradient(circle at top, var(--color-bg-glow) 0%, transparent 42%),
     linear-gradient(180deg, var(--color-bg-top) 0%, var(--color-bg-bottom) 100%);
   min-height: 100vh;

@@ -1,5 +1,6 @@
 .theme-root[data-theme="dark"] {
   --color-accent-muted: #d0ab88;
+  --color-bg-accent-glow: rgb(56 189 248 / 8%);
   --color-bg-bottom: #0f1218;
   --color-bg-glow: rgb(122 92 255 / 18%);
   --color-bg-top: #1a2028;
@@ -32,4 +33,5 @@
   --color-surface: rgb(19 24 33 / 80%);
   --color-text: #f4f7fb;
   --diagram-dim-opacity: 0.14;
+  --shadow-soft: 0 28px 70px rgb(0 0 0 / 28%);
 }

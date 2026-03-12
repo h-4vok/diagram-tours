@@ -1,23 +1,24 @@
 .theme-root[data-theme="light"] {
   --color-accent: #6366f1;
   --color-accent-muted: #6366f1;
-  --color-bg-bottom: #f3f4f8;
-  --color-bg-glow: rgb(255 255 255 / 92%);
+  --color-bg-accent-glow: rgb(99 102 241 / 12%);
+  --color-bg-bottom: #edf1f8;
+  --color-bg-glow: rgb(255 255 255 / 82%);
   --color-bg-main: #f6f7fb;
   --color-bg-soft: #f1f3f8;
   --color-bg-surface: #fff;
-  --color-bg-top: #f6f7fb;
-  --color-border: #e4e7ef;
+  --color-bg-top: #f8f9fd;
+  --color-border: rgb(212 218 232 / 78%);
   --color-button-bg: #1f2937;
   --color-button-bg-hover: #111827;
-  --color-button-secondary-bg: #eef1f8;
-  --color-button-secondary-bg-hover: #e6eaf5;
+  --color-button-secondary-bg: rgb(238 242 251 / 92%);
+  --color-button-secondary-bg-hover: rgb(230 235 247 / 96%);
   --color-button-secondary-text: #1f2937;
   --color-button-text: #f9fafb;
   --color-danger: #b45309;
-  --color-edge-label-bg: rgb(255 255 255 / 96%);
-  --color-edge-label-border: rgb(228 231 239 / 96%);
-  --color-edge-label-shadow: rgb(15 23 42 / 8%);
+  --color-edge-label-bg: rgb(255 255 255 / 90%);
+  --color-edge-label-border: rgb(219 224 236 / 90%);
+  --color-edge-label-shadow: rgb(15 23 42 / 6%);
   --color-edge-label-text: #1f2937;
   --edge-label-font-size: 11px;
   --edge-label-font-weight: 600;
@@ -32,8 +33,9 @@
   --color-node-focus-stroke: #6366f1;
   --color-node-focus-text: #1f2937;
   --color-connector-context-opacity: 0.92;
-  --color-connector-context-surface: rgb(255 255 255 / 82%);
-  --color-surface: rgb(255 255 255 / 88%);
+  --color-connector-context-surface: rgb(255 255 255 / 76%);
+  --color-surface: rgb(255 255 255 / 74%);
   --color-text: #1f2937;
   --diagram-dim-opacity: 0.18;
+  --shadow-soft: 0 28px 70px rgb(148 163 184 / 16%);
 }
