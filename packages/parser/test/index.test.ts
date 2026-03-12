@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { loadResolvedTour, loadResolvedTourCollection } from "../src/index";
 
@@ -129,7 +129,9 @@ describe("@diagram-tour/parser", () => {
       ].join("\n")
     });
 
-    await expect(loadResolvedTour(tourPath)).rejects.toThrow('Unsupported tour version "2"');
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": unsupported tour version "2"`
+    );
   });
 
   it("fails when the tour title is missing", async () => {
@@ -146,7 +148,9 @@ describe("@diagram-tour/parser", () => {
       ].join("\n")
     });
 
-    await expect(loadResolvedTour(tourPath)).rejects.toThrow("Tour title is required");
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": title is required`
+    );
   });
 
   it("fails when the tour diagram path is missing", async () => {
@@ -163,7 +167,9 @@ describe("@diagram-tour/parser", () => {
       ].join("\n")
     });
 
-    await expect(loadResolvedTour(tourPath)).rejects.toThrow("Tour diagram path is required");
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": diagram path is required`
+    );
   });
 
   it("fails when the tour has no steps", async () => {
@@ -175,7 +181,7 @@ describe("@diagram-tour/parser", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      "Tour steps must be a non-empty array"
+      `Tour "${normalizePath(tourPath)}": steps must be a non-empty array`
     );
   });
 
@@ -196,7 +202,7 @@ describe("@diagram-tour/parser", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      'Unknown Mermaid node id "missing_node" referenced in focus for step 1'
+      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node id "missing_node"`
     );
   });
 
@@ -217,7 +223,27 @@ describe("@diagram-tour/parser", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      'Unknown Mermaid node id "missing_node" referenced in text for step 1'
+      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node id "missing_node"`
+    );
+  });
+
+  it("wraps underlying file-system errors with tour context", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Missing Diagram File",
+        "diagram: ./missing-diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The API Gateway exists."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": ENOENT: no such file or directory`
     );
   });
 
@@ -243,7 +269,7 @@ describe("@diagram-tour/parser", () => {
     expect(collection.skipped).toEqual([
       {
         sourcePath: "invalid-tour/invalid.tour.yaml",
-        error: 'Unknown Mermaid node id "missing_node" referenced in focus for step 1'
+        error: `Tour "${normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml"))}": step 1 focus references unknown Mermaid node id "missing_node"`
       }
     ]);
   });
@@ -263,13 +289,13 @@ describe("@diagram-tour/parser", () => {
     const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
 
     await expect(loadResolvedTourCollection(invalidFilePath)).rejects.toThrow(
-      'Unknown Mermaid node id "missing_node" referenced in focus for step 1'
+      `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node id "missing_node"`
     );
   });
 
   it("fails when discovery finds no valid tours", async () => {
     await expect(loadResolvedTourCollection(INVALID_ONLY_FIXTURE_ROOT)).rejects.toThrow(
-      "No valid tours were discovered."
+      `No valid tours were discovered in source target "${normalizePath(INVALID_ONLY_FIXTURE_ROOT)}".`
     );
   });
 
@@ -286,6 +312,28 @@ describe("@diagram-tour/parser", () => {
       "support-decision-tree"
     ]);
   });
+
+  it("wraps unexpected non-error throws with tour context", async () => {
+    vi.resetModules();
+    vi.doMock("yaml", () => ({
+      parse() {
+        throw "bad yaml";
+      }
+    }));
+
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: "version: 1"
+    });
+    const parser = await import("../src/index");
+
+    await expect(parser.loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": failed unexpectedly`
+    );
+
+    vi.doUnmock("yaml");
+    vi.resetModules();
+  });
 });
 
 async function createTempTour(input: { mermaid: string; yaml: string }): Promise<string> {
@@ -297,4 +345,8 @@ async function createTempTour(input: { mermaid: string; yaml: string }): Promise
   await writeFile(tourPath, input.yaml);
 
   return tourPath;
+}
+
+function normalizePath(path: string): string {
+  return path.replaceAll("\\", "/");
 }

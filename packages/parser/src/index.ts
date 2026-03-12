@@ -16,35 +16,43 @@ import { parse as parseYaml } from "yaml";
 const MERMAID_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
 const TOUR_FILE_SUFFIX = ".tour.yaml";
-const NO_VALID_TOURS_MESSAGE = "No valid tours were discovered.";
+const NO_VALID_TOURS_MESSAGE = "No valid tours were discovered";
 
 type NodeIndex = Map<string, MermaidNode>;
 type ReferenceKind = "focus" | "text";
 
 export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagramTour> {
   const absoluteTourPath = resolve(tourPath);
-  const tourSource = await readTextFile(absoluteTourPath);
-  const rawTour = parseTourDocument(tourSource);
-  const absoluteDiagramPath = resolve(dirname(absoluteTourPath), rawTour.diagram);
-  const diagramSource = await readTextFile(absoluteDiagramPath);
-  const nodeIndex = createNodeIndex(diagramSource);
+  const context = createTourContext(absoluteTourPath);
 
-  return {
-    version: rawTour.version,
-    title: rawTour.title,
-    diagram: {
-      path: normalizePath(rawTour.diagram),
-      source: diagramSource,
-      nodes: Array.from(nodeIndex.values())
-    },
-    steps: rawTour.steps.map((step, index) =>
-      resolveTourStep({
-        step,
-        stepIndex: index + 1,
-        nodeIndex
-      })
-    )
-  };
+  return runWithContext(context, async () => {
+    const tourSource = await readTextFile(absoluteTourPath);
+    const rawTour = parseTourDocument({
+      source: tourSource,
+      context
+    });
+    const absoluteDiagramPath = resolve(dirname(absoluteTourPath), rawTour.diagram);
+    const diagramSource = await readTextFile(absoluteDiagramPath);
+    const nodeIndex = createNodeIndex(diagramSource);
+
+    return {
+      version: rawTour.version,
+      title: rawTour.title,
+      diagram: {
+        path: normalizePath(rawTour.diagram),
+        source: diagramSource,
+        nodes: Array.from(nodeIndex.values())
+      },
+      steps: rawTour.steps.map((step, index) =>
+        resolveTourStep({
+          step,
+          stepIndex: index + 1,
+          nodeIndex,
+          context
+        })
+      )
+    };
+  });
 }
 
 export async function loadResolvedTourCollection(
@@ -97,7 +105,10 @@ async function createDiscoveredTourCollection(
     }
   }
 
-  invariant(entries.length > 0, NO_VALID_TOURS_MESSAGE);
+  invariant(
+    entries.length > 0,
+    `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(sourceRoot)}".`
+  );
 
   return {
     entries,
@@ -147,42 +158,83 @@ async function readTextFile(path: string): Promise<string> {
   return normalizeNewlines(source);
 }
 
-function parseTourDocument(source: string): DiagramTour {
-  return toDiagramTour(parseYaml(source));
+function parseTourDocument(input: { source: string; context: TourContext }): DiagramTour {
+  return toDiagramTour({
+    value: parseYaml(input.source),
+    context: input.context
+  });
 }
 
-function toDiagramTour(value: unknown): DiagramTour {
-  invariant(isRecord(value), "Tour document must be an object");
+interface TourContext {
+  sourcePath: string;
+}
 
-  const version = value.version;
-  const title = asNonEmptyString(value.title, "Tour title is required");
-  const diagram = asNonEmptyString(value.diagram, "Tour diagram path is required");
-  const steps = asNonEmptyArray(value.steps, "Tour steps must be a non-empty array");
+function createTourContext(sourcePath: string): TourContext {
+  return {
+    sourcePath: normalizePath(sourcePath)
+  };
+}
+
+function toDiagramTour(input: { value: unknown; context: TourContext }): DiagramTour {
+  invariant(isRecord(input.value), createTourMessage(input.context, "document must be an object"));
+
+  const version = input.value.version;
+  const title = asNonEmptyString(
+    input.value.title,
+    createTourMessage(input.context, "title is required")
+  );
+  const diagram = asNonEmptyString(
+    input.value.diagram,
+    createTourMessage(input.context, "diagram path is required")
+  );
+  const steps = asNonEmptyArray(
+    input.value.steps,
+    createTourMessage(input.context, "steps must be a non-empty array")
+  );
 
   invariant(
     version === SUPPORTED_TOUR_VERSION,
-    `Unsupported tour version "${String(version)}"`
+    createTourMessage(input.context, `unsupported tour version "${String(version)}"`)
   );
 
   return {
     version: SUPPORTED_TOUR_VERSION,
     title,
     diagram,
-    steps: steps.map(toTourStep)
+    steps: steps.map((step, index) =>
+      toTourStep({
+        value: step,
+        stepIndex: index + 1,
+        context: input.context
+      })
+    )
   };
 }
 
-function toTourStep(value: unknown): TourStep {
-  invariant(isRecord(value), "Tour step must be an object");
+function toTourStep(input: {
+  value: unknown;
+  stepIndex: number;
+  context: TourContext;
+}): TourStep {
+  invariant(isRecord(input.value), createStepMessage(input, "must be an object"));
 
   return {
-    focus: asArray(value.focus, "Step focus must be an array").map(toFocusNodeId),
-    text: asNonEmptyString(value.text, "Step text is required")
+    focus: asArray(
+      input.value.focus,
+      createStepFieldMessage(input, "focus", "must be an array")
+    ).map((value) => toFocusNodeId(value, input)),
+    text: asNonEmptyString(input.value.text, createStepFieldMessage(input, "text", "is required"))
   };
 }
 
-function toFocusNodeId(value: unknown): string {
-  return asNonEmptyString(value, "Focus node ids must be non-empty strings");
+function toFocusNodeId(
+  value: unknown,
+  input: { stepIndex: number; context: TourContext }
+): string {
+  return asNonEmptyString(
+    value,
+    createStepFieldMessage(input, "focus", "must contain only non-empty node ids")
+  );
 }
 
 function createNodeIndex(source: string): NodeIndex {
@@ -202,6 +254,7 @@ function resolveTourStep(input: {
   step: TourStep;
   stepIndex: number;
   nodeIndex: NodeIndex;
+  context: TourContext;
 }) {
   return {
     index: input.stepIndex,
@@ -214,6 +267,7 @@ function resolveFocusNodes(input: {
   step: TourStep;
   stepIndex: number;
   nodeIndex: NodeIndex;
+  context: TourContext;
 }): MermaidNode[] {
   return input.step.focus.map((nodeId) =>
     resolveNode({
@@ -222,7 +276,8 @@ function resolveFocusNodes(input: {
       message: createUnknownNodeMessage({
         nodeId,
         stepIndex: input.stepIndex,
-        kind: "focus"
+        kind: "focus",
+        context: input.context
       })
     })
   );
@@ -232,6 +287,7 @@ function resolveTextReferences(input: {
   step: TourStep;
   stepIndex: number;
   nodeIndex: NodeIndex;
+  context: TourContext;
 }): string {
   return input.step.text.replaceAll(NODE_REFERENCE_PATTERN, (_match, nodeId: string) =>
     resolveNode({
@@ -240,7 +296,8 @@ function resolveTextReferences(input: {
       message: createUnknownNodeMessage({
         nodeId,
         stepIndex: input.stepIndex,
-        kind: "text"
+        kind: "text",
+        context: input.context
       })
     }).label
   );
@@ -262,8 +319,13 @@ function createUnknownNodeMessage(input: {
   nodeId: string;
   stepIndex: number;
   kind: ReferenceKind;
+  context: TourContext;
 }): string {
-  return `Unknown Mermaid node id "${input.nodeId}" referenced in ${input.kind} for step ${input.stepIndex}`;
+  return createStepFieldMessage(
+    input,
+    input.kind,
+    `references unknown Mermaid node id "${input.nodeId}"`
+  );
 }
 
 function createSlug(sourcePath: string): string {
@@ -306,6 +368,48 @@ function invariant(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function createTourMessage(context: TourContext, message: string): string {
+  return `Tour "${context.sourcePath}": ${message}`;
+}
+
+function createStepMessage(
+  input: { stepIndex: number; context: TourContext },
+  message: string
+): string {
+  return createTourMessage(input.context, `step ${input.stepIndex} ${message}`);
+}
+
+function createStepFieldMessage(
+  input: { stepIndex: number; context: TourContext },
+  field: ReferenceKind | "focus" | "text",
+  message: string
+): string {
+  return createTourMessage(input.context, `step ${input.stepIndex} ${field} ${message}`);
+}
+
+async function runWithContext<T>(
+  context: TourContext,
+  action: () => Promise<T>
+): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    throw ensureContextualError(error, context);
+  }
+}
+
+function ensureContextualError(error: unknown, context: TourContext): Error {
+  if (!(error instanceof Error)) {
+    return new Error(createTourMessage(context, "failed unexpectedly"));
+  }
+
+  if (error.message.startsWith(`Tour "${context.sourcePath}"`)) {
+    return error;
+  }
+
+  return new Error(createTourMessage(context, error.message));
 }
 
 function normalizePath(path: string): string {
