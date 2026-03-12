@@ -30,14 +30,14 @@ describe("tour-player.svelte", () => {
 
     expect(await screen.findByRole("heading", { name: "Payment Flow" })).toBeDefined();
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "The API Gateway is the public entry point"
+      "public edge of the checkout system"
     );
     expect(readButtonState("previous-button")).toBe(true);
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "The Validation Service checks the request"
+      "protects the payment path"
     );
     expect(readButtonState("previous-button")).toBe(false);
     expect(readButtonState("next-button")).toBe(false);
@@ -70,6 +70,23 @@ describe("tour-player.svelte", () => {
       "Failed to render Mermaid diagram."
     );
     expect(toastErrorMock).toHaveBeenCalledWith("Failed to render Mermaid diagram.");
+  });
+
+  it("places the step card above the diagram", async () => {
+    const { container } = render(TourPlayer, {
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+
+    const stepPanel = container.querySelector(".step-panel");
+    const diagramStage = container.querySelector(".diagram-stage");
+
+    expect(stepPanel).not.toBeNull();
+    expect(diagramStage).not.toBeNull();
+    expect(stepPanel?.compareDocumentPosition(diagramStage as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
   });
 });
 

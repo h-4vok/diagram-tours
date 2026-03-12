@@ -14,6 +14,49 @@
   width: min(100%, 88rem);
 }
 
+/* stylelint-disable selector-class-pattern */
+.diagram .edgeLabel rect,
+.diagram .labelBkg {
+  backdrop-filter: blur(2px);
+  fill: var(--color-edge-label-bg);
+  stroke: var(--color-edge-label-border);
+  stroke-width: 1px;
+}
+
+.diagram .edgeLabel :is(text, span, p, div, tspan) {
+  color: var(--color-edge-label-text);
+  fill: var(--color-edge-label-text);
+}
+
+.diagram .edgeLabel .label {
+  background: transparent;
+}
+
+.diagram .edgeLabel div {
+  background: var(--color-edge-label-bg);
+  border: 1px solid var(--color-edge-label-border);
+  border-radius: var(--edge-label-radius);
+  box-shadow: 0 1px 4px var(--color-edge-label-shadow);
+  color: var(--color-edge-label-text);
+  display: inline-flex;
+  font-size: var(--edge-label-font-size);
+  font-weight: var(--edge-label-font-weight);
+  line-height: 1.2;
+  margin: 0;
+  padding: var(--edge-label-padding-y) var(--edge-label-padding-x);
+  white-space: nowrap;
+}
+
+.diagram .edgeLabel :is(p, span) {
+  background: transparent;
+  background-color: transparent;
+  border: 0;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+/* stylelint-enable selector-class-pattern */
+
 [data-node-id] {
   opacity: 1;
 }
@@ -37,7 +80,17 @@
   fill: var(--color-node-focus-text);
 }
 
+/* stylelint-disable selector-class-pattern */
+.diagram .edgeLabel foreignObject {
+  overflow: visible;
+}
+/* stylelint-enable selector-class-pattern */
+
 @media (width >= 900px) {
+  .diagram-shell {
+    min-height: calc(var(--diagram-min-height-lg) + (2 * var(--space-md)));
+  }
+
   .diagram {
     min-height: var(--diagram-min-height-lg);
   }

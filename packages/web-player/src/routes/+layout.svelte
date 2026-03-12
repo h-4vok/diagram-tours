@@ -23,42 +23,53 @@
   <Toaster richColors position="top-right" />
 
   <div class="page page--docs">
-    <aside class="docs-nav" data-testid="tour-navigation">
-      <div class="docs-nav__header">
-        <p class="eyebrow">diagram-tour</p>
-        <button
-          type="button"
-          class="button button--secondary theme-toggle"
-          data-testid="theme-toggle"
-          onclick={handleThemeToggle}
-        >
-          {getThemeToggleLabel(theme)}
-        </button>
-      </div>
+    <header class="docs-topbar">
+      <p class="docs-topbar__label">Diagram Tours</p>
+      <button
+        type="button"
+        class="button button--secondary theme-toggle"
+        data-testid="theme-toggle"
+        onclick={handleThemeToggle}
+      >
+        {getThemeToggleLabel(theme)}
+      </button>
+    </header>
 
-      {#if data.collection.skipped.length > 0}
-        <p class="docs-nav__notice" data-testid="skipped-tours-notice">
-          Skipped {data.collection.skipped.length} invalid
-          {data.collection.skipped.length === 1 ? " tour." : " tours."}
-        </p>
-      {/if}
+    <div class="docs-shell">
+      <aside class="docs-nav" data-testid="tour-navigation">
+        <div class="docs-nav__header">
+          <p class="docs-nav__title">All Tours</p>
+        </div>
 
-      <nav class="tour-list">
-        {#each data.collection.entries as entry (entry.slug)}
-          <a
-            href={resolve(`/${entry.slug}`)}
-            class:tour-link--active={isActiveTour(entry.slug)}
-            class="tour-link"
-            data-testid="tour-nav-link"
-          >
-            {entry.title}
-          </a>
-        {/each}
-      </nav>
-    </aside>
+        {#if data.collection.skipped.length > 0}
+          <div class="docs-nav__notice" data-testid="skipped-tours-notice">
+            <span class="docs-nav-notice-mark" aria-hidden="true">!</span>
+            <p>
+              {data.collection.skipped.length}
+              {data.collection.skipped.length === 1
+                ? " tour was skipped due to validation errors."
+                : " tours were skipped due to validation errors."}
+            </p>
+          </div>
+        {/if}
 
-    <main class="docs-main">
-      <slot />
-    </main>
+        <nav class="tour-list">
+          {#each data.collection.entries as entry (entry.slug)}
+            <a
+              href={resolve(`/${entry.slug}`)}
+              class:tour-link--active={isActiveTour(entry.slug)}
+              class="tour-link"
+              data-testid="tour-nav-link"
+            >
+              {entry.title}
+            </a>
+          {/each}
+        </nav>
+      </aside>
+
+      <main class="docs-main">
+        <slot />
+      </main>
+    </div>
   </div>
 </div>

@@ -1,0 +1,22 @@
+version: 1
+title: Release Pipeline
+diagram: ./release-pipeline.mmd
+
+steps:
+  - focus:
+      - plan
+      - build
+    text: >
+      {{plan}} defines what is actually going out and why. Once that scope is stable, {{build}} turns the chosen revision into a versioned artifact that the rest of the release process can inspect and promote.
+
+  - focus:
+      - qa
+      - docs
+    text: >
+      {{qa}} and {{docs}} are parallel quality gates with different audiences. QA protects runtime behavior, while documentation makes sure support, operators, and customers can understand what changed before the release is exposed.
+
+  - focus:
+      - go
+      - monitor
+    text: >
+      {{go}} is the point of controlled exposure, not the end of the job. {{monitor}} matters just as much because many release failures only become visible once real traffic and production dependencies are involved.

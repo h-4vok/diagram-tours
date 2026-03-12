@@ -5,13 +5,14 @@ import Layout from "../src/routes/+layout.svelte";
 import { resolvedTourCollection, singleTourCollection } from "./fixtures/tour-collection";
 
 describe("+layout.svelte", () => {
-  it("always renders navigation, even for a single-tour collection", async () => {
+  it("renders the top bar and navigation, even for a single-tour collection", async () => {
     render(Layout, {
       data: {
         collection: singleTourCollection
       }
     });
 
+    expect(await screen.findByText("Diagram Tours")).toBeDefined();
     expect(await screen.findByTestId("tour-navigation")).toBeDefined();
     expect(screen.getAllByTestId("tour-nav-link")).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Payment Flow" }).getAttribute("href")).toBe(
@@ -50,7 +51,7 @@ describe("+layout.svelte", () => {
     });
 
     expect((await screen.findByTestId("skipped-tours-notice")).textContent?.replace(/\s+/g, " ")).toContain(
-      "Skipped 1 invalid tour."
+      "1 tour was skipped due to validation errors."
     );
   });
 });

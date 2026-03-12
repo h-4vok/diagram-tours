@@ -53,12 +53,14 @@ describe("@diagram-tour/parser", () => {
         {
           index: 1,
           focus: [{ id: "api_gateway", label: "API Gateway" }],
-          text: "The API Gateway is the public entry point for incoming requests from Client.\n"
+          text:
+            "The API Gateway is the public edge of the checkout system. It receives untrusted traffic from Client and normalizes the request before any payment work begins.\n"
         },
         {
           index: 2,
           focus: [{ id: "validation_service", label: "Validation Service" }],
-          text: "The Validation Service checks the request before it moves to Payment Service.\n"
+          text:
+            "The Validation Service protects the payment path by rejecting malformed amounts, expired intents, and requests that do not match business rules before they reach Payment Service.\n"
         },
         {
           index: 3,
@@ -66,12 +68,14 @@ describe("@diagram-tour/parser", () => {
             { id: "payment_service", label: "Payment Service" },
             { id: "payment_provider", label: "Payment Provider" }
           ],
-          text: "The Payment Service coordinates the transaction with Payment Provider.\n"
+          text:
+            "The Payment Service owns the merchant-side transaction state while Payment Provider talks to the banking network. This split lets the product keep internal business logic separate from external settlement concerns.\n"
         },
         {
           index: 4,
           focus: [{ id: "response", label: "Response" }],
-          text: "Finally, the system returns the result in Response.\n"
+          text:
+            "Once the provider result is known, the platform turns it into a stable Response that the client can render without needing to understand provider-specific outcomes.\n"
         }
       ]
     });
@@ -273,8 +277,13 @@ describe("@diagram-tour/parser", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "decision-flow",
+      "incident-response",
+      "parallel-onboarding",
       "payment-flow",
-      "refund-flow"
+      "refund-flow",
+      "release-pipeline",
+      "support-decision-tree"
     ]);
   });
 });

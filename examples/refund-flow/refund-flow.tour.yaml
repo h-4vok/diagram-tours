@@ -6,9 +6,9 @@ steps:
   - focus:
       - refund_service
     text: >
-      The {{refund_service}} receives the request from {{customer}}.
+      The {{refund_service}} is where customer support or self-service tools ask to reverse a payment. It records the refund intent and makes sure the request is tied to a real purchase from {{customer}}.
 
   - focus:
       - payment_gateway
     text: >
-      The {{payment_gateway}} authorizes the refund before the {{receipt}} is produced.
+      The {{payment_gateway}} executes the money movement with the processor. Only after that external confirmation arrives should the system issue the {{receipt}} and tell the customer the refund is really underway.

@@ -1,0 +1,10 @@
+flowchart TD
+  alert[Alert Received] --> triage[Triage Incident]
+  triage --> severity[Severity Decision]
+  severity -->|High| commander[Assign Incident Commander]
+  severity -->|Medium| patch[Deploy Patch]
+  severity -->|Low| backlog[Schedule Fix]
+  commander --> comms[Send Status Update]
+  patch --> comms
+  backlog --> comms
+  comms --> close[Close Incident]

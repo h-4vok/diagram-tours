@@ -51,39 +51,36 @@
 </script>
 
 <header class="hero">
-  <p class="eyebrow">diagram-tour</p>
   <h1>{tour.title}</h1>
   <p class="lede">A minimal linear player for the resolved diagram tour collection.</p>
 </header>
 
 <section class="page__content">
-  <section class="player-meta">
-    <aside class="step-panel">
-      <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
-      <p data-testid="step-text" class="step-text">{state.step.text}</p>
+  <aside class="step-panel">
+    <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
+    <p data-testid="step-text" class="step-text">{state.step.text}</p>
 
-      <div class="controls">
-        <button
-          type="button"
-          class="button button--secondary"
-          onclick={goPrevious}
-          disabled={!state.canGoPrevious}
-          data-testid="previous-button"
-        >
-          Previous
-        </button>
-        <button
-          type="button"
-          class="button"
-          onclick={goNext}
-          disabled={!state.canGoNext}
-          data-testid="next-button"
-        >
-          Next
-        </button>
-      </div>
-    </aside>
-  </section>
+    <div class="controls">
+      <button
+        type="button"
+        class="button button--secondary"
+        onclick={goPrevious}
+        disabled={!state.canGoPrevious}
+        data-testid="previous-button"
+      >
+        Previous
+      </button>
+      <button
+        type="button"
+        class="button"
+        onclick={goNext}
+        disabled={!state.canGoNext}
+        data-testid="next-button"
+      >
+        Next
+      </button>
+    </div>
+  </aside>
 
   <section class="diagram-stage">
     <div class="diagram-shell">

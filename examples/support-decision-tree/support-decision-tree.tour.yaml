@@ -1,0 +1,22 @@
+version: 1
+title: Support Decision Tree
+diagram: ./support-decision-tree.mmd
+
+steps:
+  - focus:
+      - intake
+      - area
+    text: >
+      {{intake}} captures enough structure about the incoming issue to avoid free-form chaos. {{area}} then translates that initial description into a routing decision so the ticket reaches a team that can actually act on it.
+
+  - focus:
+      - billing
+      - product
+      - security
+    text: >
+      Routing to {{billing}}, {{product}}, or {{security}} is not just categorization. Each branch implies a different response playbook, a different owner, and a different expectation for urgency and evidence.
+
+  - focus:
+      - resolution
+    text: >
+      {{resolution}} is the shared endpoint that keeps the experience coherent for the customer. Even though the work behind the scenes differs by branch, the system should still converge on one clearly communicated outcome.
