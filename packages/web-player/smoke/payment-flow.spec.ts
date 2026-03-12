@@ -3,20 +3,21 @@ import { expect, test } from "@playwright/test";
 test("renders the docs shell and navigates between discovered examples", async ({
   page
 }) => {
-  await page.goto("/");
+  await page.goto("/decision-flow?step=3");
 
   await expect(page.getByText("Diagram Tours")).toBeVisible();
   await expect(page.getByTestId("tour-navigation")).toBeVisible();
-  await expect(page).toHaveURL(/\/decision-flow$/);
+  await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
   await expect(page.getByRole("heading", { name: "Decision Flow" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Payment Flow" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Refund Flow" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Release Pipeline" })).toBeVisible();
   await expect(page.getByTestId("step-text")).toContainText(
-    "represents a case entering the queue"
+    "human or audited service"
   );
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
-  await expect(page.locator('[data-testid="diagram-container"] [data-node-id="request"]')).toHaveCount(1);
+  await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
+  await expect(page.locator('[data-testid="diagram-container"] [data-node-id="review"]')).toHaveCount(1);
 
   await page.getByRole("link", { name: "Refund Flow" }).click();
 

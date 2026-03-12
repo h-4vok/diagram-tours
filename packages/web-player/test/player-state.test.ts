@@ -5,7 +5,7 @@ import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
 describe("createTourPlayer", () => {
   it("starts on the first step", () => {
-    const player = createTourPlayer(resolvedPaymentFlowTour);
+    const player = createTourPlayer(resolvedPaymentFlowTour, 0);
 
     expect(player.getState()).toEqual({
       stepIndex: 0,
@@ -17,14 +17,14 @@ describe("createTourPlayer", () => {
   });
 
   it("moves to the next and previous step within bounds", () => {
-    const player = createTourPlayer(resolvedPaymentFlowTour);
+    const player = createTourPlayer(resolvedPaymentFlowTour, 0);
 
     expect(player.goNext().step.index).toBe(2);
     expect(player.goPrevious().step.index).toBe(1);
   });
 
   it("does not move before the first step or after the last step", () => {
-    const player = createTourPlayer(resolvedPaymentFlowTour);
+    const player = createTourPlayer(resolvedPaymentFlowTour, 0);
 
     expect(player.goPrevious().step.index).toBe(1);
     player.goNext();

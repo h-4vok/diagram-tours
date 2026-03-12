@@ -5,6 +5,7 @@
   import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
   export let data: {
+    initialStepIndex: number;
     selectedSlug: string;
     tour: ResolvedDiagramTour;
   };
@@ -18,6 +19,10 @@
   />
 </svelte:head>
 
-{#key data.selectedSlug}
-  <TourPlayer tour={data.tour} />
+{#key `${data.selectedSlug}:${data.initialStepIndex}`}
+  <TourPlayer
+    initialStepIndex={data.initialStepIndex}
+    selectedSlug={data.selectedSlug}
+    tour={data.tour}
+  />
 {/key}

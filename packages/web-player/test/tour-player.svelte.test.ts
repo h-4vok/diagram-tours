@@ -4,10 +4,20 @@ import { describe, expect, it, vi } from "vitest";
 import TourPlayer from "../src/lib/tour-player.svelte";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { applyFocusStateMock, renderMermaidDiagramMock, toastErrorMock } = vi.hoisted(() => ({
+const {
+  applyFocusStateMock,
+  gotoMock,
+  renderMermaidDiagramMock,
+  toastErrorMock
+} = vi.hoisted(() => ({
   applyFocusStateMock: vi.fn(applyFocusStateForTest),
+  gotoMock: vi.fn(() => Promise.resolve()),
   renderMermaidDiagramMock: vi.fn(renderDiagramForTest),
   toastErrorMock: vi.fn()
+}));
+
+vi.mock("$app/navigation", () => ({
+  goto: gotoMock
 }));
 
 vi.mock("../src/lib/mermaid-diagram", () => ({
@@ -25,6 +35,8 @@ vi.mock("svelte-sonner", () => ({
 describe("tour-player.svelte", () => {
   it("renders the selected tour, starts on step one, and respects boundaries", async () => {
     render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour
     });
 
@@ -45,6 +57,8 @@ describe("tour-player.svelte", () => {
 
   it("applies focused and dimmed hooks for the active step", async () => {
     render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour
     });
 
@@ -63,6 +77,8 @@ describe("tour-player.svelte", () => {
     renderMermaidDiagramMock.mockRejectedValueOnce(new Error("render failed"));
 
     render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour
     });
 
@@ -74,6 +90,8 @@ describe("tour-player.svelte", () => {
 
   it("places the step card above the diagram", async () => {
     const { container } = render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour
     });
 
@@ -87,6 +105,34 @@ describe("tour-player.svelte", () => {
     expect(stepPanel?.compareDocumentPosition(diagramStage as Node)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
+  });
+
+  it("starts from the deep-linked step and updates the URL when navigating", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 2,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    expect((await screen.findByTestId("step-text")).textContent).toContain(
+      "merchant-side transaction state"
+    );
+
+    await fireEvent.click(screen.getByTestId("next-button"));
+
+    expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
+      invalidateAll: false,
+      keepFocus: true,
+      noScroll: true
+    });
+
+    await fireEvent.click(screen.getByTestId("previous-button"));
+
+    expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
+      invalidateAll: false,
+      keepFocus: true,
+      noScroll: true
+    });
   });
 });
 

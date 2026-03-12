@@ -14,8 +14,11 @@ export interface TourPlayer {
   goNext: () => TourPlayerState;
 }
 
-export function createTourPlayer(tour: ResolvedDiagramTour): TourPlayer {
-  let stepIndex = 0;
+export function createTourPlayer(
+  tour: ResolvedDiagramTour,
+  initialStepIndex: number
+): TourPlayer {
+  let stepIndex = clampStepIndex(initialStepIndex, tour.steps.length);
 
   return {
     getState: () => createState(tour, stepIndex),
