@@ -13,9 +13,10 @@
 }
 
 .step-panel {
+  align-self: start;
   display: grid;
-  grid-template-rows: auto minmax(5.5rem, auto) auto;
-  max-width: 32rem;
+  grid-template-rows: auto minmax(5.5rem, 9.5rem) auto;
+  max-width: 42rem;
   padding: var(--space-lg);
   width: 100%;
 }
@@ -23,10 +24,13 @@
 .step-text {
   margin-top: var(--space-sm);
   min-height: 5.5rem;
+  max-height: 9.5rem;
+  overflow: auto;
+  padding-right: var(--space-xs);
 }
 
 .diagram-shell {
-  min-height: calc(var(--diagram-min-height) + (2 * var(--space-md)));
+  min-height: clamp(24rem, 56vh, calc(var(--diagram-min-height-lg) + (2 * var(--space-md))));
   overflow: hidden;
   padding: var(--space-md);
 }

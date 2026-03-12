@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test("renders the docs shell and navigates between discovered examples", async ({
   page
@@ -80,3 +80,35 @@ test("keeps connector labels readable as secondary context in a branching diagra
       .count()
   ).toBeGreaterThan(0);
 });
+
+test("keeps the diagram usable when the selected step text is long", async ({ page }) => {
+  await page.goto("/incident-response?step=4");
+
+  await expectDiagramVisible(page);
+
+  const stepTextBox = await page.getByTestId("step-text").boundingBox();
+  const diagramBox = await page.getByTestId("diagram-container").boundingBox();
+
+  assertLayoutBox(stepTextBox);
+  assertLayoutBox(diagramBox);
+  expect(diagramBox.height).toBeGreaterThan(300);
+  expect(diagramBox.y).toBeGreaterThan(stepTextBox.y);
+});
+
+async function expectDiagramVisible(page: Page): Promise<void> {
+  await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
+}
+
+function assertLayoutBox(input: {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+} | null): asserts input is {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+} {
+  expect(input).not.toBeNull();
+}

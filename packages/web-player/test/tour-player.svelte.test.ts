@@ -141,6 +141,28 @@ describe("tour-player.svelte", () => {
       noScroll: true
     });
   });
+
+  it("keeps controls and the diagram visible when the step text is long", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: {
+        ...resolvedPaymentFlowTour,
+        steps: [
+          {
+            ...resolvedPaymentFlowTour.steps[0],
+            text: `${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text}`
+          },
+          ...resolvedPaymentFlowTour.steps.slice(1)
+        ]
+      }
+    });
+
+    expect(await screen.findByTestId("step-text")).toBeDefined();
+    expect(screen.getByTestId("previous-button")).toBeDefined();
+    expect(screen.getByTestId("next-button")).toBeDefined();
+    expect(screen.getByTestId("diagram-container")).toBeDefined();
+  });
 });
 
 function renderDiagramForTest(input: {

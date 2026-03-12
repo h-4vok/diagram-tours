@@ -61,6 +61,8 @@
 .docs-nav {
   display: grid;
   gap: var(--space-lg);
+  max-height: calc(100vh - (2 * var(--space-xl)));
+  overflow: auto;
   position: sticky;
   top: var(--space-xl);
 }

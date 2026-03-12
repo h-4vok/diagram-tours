@@ -2,7 +2,7 @@
   align-items: start;
   display: flex;
   justify-content: center;
-  min-height: var(--diagram-min-height);
+  min-height: clamp(var(--diagram-min-height), 50vh, var(--diagram-min-height-lg));
   overflow: auto;
   padding: var(--space-xs);
 }
