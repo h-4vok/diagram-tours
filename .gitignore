@@ -9,4 +9,4 @@ coverage/
 packages/web-player/build/
 packages/web-player/.vercel/
 *.tsbuildinfo
-
+packages/web-player/test-results/
