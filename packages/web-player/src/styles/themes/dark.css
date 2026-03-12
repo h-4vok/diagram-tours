@@ -11,6 +11,15 @@
   --color-button-secondary-text: #f3ede4;
   --color-button-text: #10151d;
   --color-danger: #ff9f8e;
+  --color-edge-label-bg: rgb(16 21 29 / 76%);
+  --color-edge-label-border: rgb(255 255 255 / 6%);
+  --color-edge-label-shadow: rgb(0 0 0 / 18%);
+  --color-edge-label-text: #d6e0eb;
+  --edge-label-font-size: 10.5px;
+  --edge-label-font-weight: 600;
+  --edge-label-padding-x: 5px;
+  --edge-label-padding-y: 1px;
+  --edge-label-radius: 5px;
   --color-focus-ring: rgb(138 171 255 / 40%);
   --color-muted: #b7c2ce;
   --color-node-focus-fill: #253360;

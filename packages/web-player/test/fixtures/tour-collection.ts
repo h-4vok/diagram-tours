@@ -25,12 +25,12 @@ export const resolvedRefundFlowTour: ResolvedDiagramTour = {
     {
       index: 1,
       focus: [{ id: "refund_service", label: "Refund Service" }],
-      text: "The Refund Service receives the customer request."
+      text: "The Refund Service is where customer support or self-service tools ask to reverse a payment. It records the refund intent and makes sure the request is tied to a real purchase from Customer."
     },
     {
       index: 2,
       focus: [{ id: "payment_gateway", label: "Payment Gateway" }],
-      text: "The Payment Gateway authorizes the refund."
+      text: "The Payment Gateway executes the money movement with the processor. Only after that external confirmation arrives should the system issue the Receipt and tell the customer the refund is really underway."
     }
   ]
 };

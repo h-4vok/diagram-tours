@@ -25,9 +25,31 @@ describe("+layout.server", () => {
     const result = (await load({} as never)) as { collection: ResolvedDiagramTourCollection };
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
+      "decision-flow",
+      "incident-response",
+      "parallel-onboarding",
       "payment-flow",
-      "refund-flow"
+      "refund-flow",
+      "release-pipeline",
+      "support-decision-tree"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
+  });
+
+  it("loads the expanded examples set with only valid tours", async () => {
+    process.env.DIAGRAM_TOUR_SOURCE_TARGET = EXAMPLES_ROOT;
+
+    const result = (await load({} as never)) as { collection: ResolvedDiagramTourCollection };
+
+    expect(result.collection.entries.map((entry) => entry.title)).toEqual([
+      "Decision Flow",
+      "Incident Response",
+      "Parallel Onboarding",
+      "Payment Flow",
+      "Refund Flow",
+      "Release Pipeline",
+      "Support Decision Tree"
+    ]);
+    expect(result.collection.skipped).toEqual([]);
   });
 });

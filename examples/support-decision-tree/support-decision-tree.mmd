@@ -1,0 +1,8 @@
+flowchart TD
+  intake[Intake Ticket] --> area[Issue Area Decision]
+  area -->|Billing| billing[Billing Specialist]
+  area -->|Product| product[Product Support]
+  area -->|Security| security[Security Review]
+  billing --> resolution[Resolution]
+  product --> resolution
+  security --> resolution

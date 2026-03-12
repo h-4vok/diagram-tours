@@ -1,34 +1,38 @@
+.docs-nav,
 .step-panel,
 .diagram-shell {
   background: var(--color-surface);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft);
 }
 
+.docs-nav {
+  padding: var(--space-lg);
+}
+
 .step-panel {
-  max-width: var(--step-panel-width);
+  display: grid;
+  grid-template-rows: auto minmax(5.5rem, auto) auto;
+  max-width: 32rem;
   padding: var(--space-lg);
   width: 100%;
 }
 
 .step-text {
   margin-top: var(--space-sm);
+  min-height: 5.5rem;
 }
 
 .diagram-shell {
+  min-height: calc(var(--diagram-min-height) + (2 * var(--space-md)));
   overflow: hidden;
-  padding: var(--space-sm);
+  padding: var(--space-md);
 }
 
 .diagram-error {
   border-top: 1px solid var(--color-border);
   margin-top: var(--space-sm);
   padding: var(--space-sm) var(--space-xs) 0;
-}
-
-.docs-nav,
-.step-panel,
-.diagram-shell {
-  backdrop-filter: blur(12px);
 }
