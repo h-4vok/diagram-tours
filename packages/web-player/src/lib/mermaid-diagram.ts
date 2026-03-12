@@ -1,5 +1,6 @@
 import type Mermaid from "mermaid";
 import type { MermaidNode, ResolvedDiagram } from "@diagram-tour/core";
+import type { FocusGroup } from "$lib/focus-group";
 
 const APP_NODE_CLASS_PREFIX = "diagram_tour_node_";
 const FOCUSED_STATE = "focused";
@@ -31,15 +32,17 @@ export async function renderMermaidDiagram(input: {
 
 export function applyFocusState(input: {
   container: HTMLElement;
-  focusedNodeIds: string[];
+  focusGroup: FocusGroup;
 }): void {
-  const focusedNodeIds = new Set(input.focusedNodeIds);
+  const focusedNodeIds = new Set(input.focusGroup.nodeIds);
   const nodeElements = input.container.querySelectorAll<HTMLElement>("[data-node-id]");
+
+  setFocusGroupMetadata(input.container, input.focusGroup);
 
   nodeElements.forEach((element) => {
     setFocusState({
       element,
-      isEmptyFocus: focusedNodeIds.size === 0,
+      focusGroupMode: input.focusGroup.mode,
       isFocused: focusedNodeIds.has(readNodeId(element))
     });
   });
@@ -91,16 +94,19 @@ function annotateRenderedNodes(container: HTMLElement, nodes: MermaidNode[]): vo
 
 function setFocusState(input: {
   element: HTMLElement;
-  isEmptyFocus: boolean;
+  focusGroupMode: FocusGroup["mode"];
   isFocused: boolean;
 }): void {
-  if (input.isEmptyFocus) {
-    input.element.removeAttribute("data-focus-state");
+  if (input.focusGroupMode === "empty") {
+    clearFocusState(input.element);
 
     return;
   }
 
-  input.element.dataset.focusState = input.isFocused ? FOCUSED_STATE : DIMMED_STATE;
+  applyFocusAttributes(input.element, {
+    focusGroupMode: input.focusGroupMode,
+    isFocused: input.isFocused
+  });
 }
 
 function createClassStatement(nodeId: string): string {
@@ -113,4 +119,43 @@ function createNodeClass(nodeId: string): string {
 
 function readNodeId(element: HTMLElement): string {
   return element.dataset.nodeId as string;
+}
+
+function clearFocusState(element: HTMLElement): void {
+  element.removeAttribute("data-focus-state");
+  element.removeAttribute("data-focus-group");
+}
+
+function applyFocusAttributes(
+  element: HTMLElement,
+  input: {
+    focusGroupMode: FocusGroup["mode"];
+    isFocused: boolean;
+  }
+): void {
+  element.dataset.focusState = readFocusState(input.isFocused);
+  element.dataset.focusGroup = readFocusGroup(input);
+}
+
+function readFocusState(isFocused: boolean): string {
+  return isFocused ? FOCUSED_STATE : DIMMED_STATE;
+}
+
+function readFocusGroup(input: {
+  focusGroupMode: FocusGroup["mode"];
+  isFocused: boolean;
+}): string {
+  return input.isFocused ? input.focusGroupMode : "background";
+}
+
+function setFocusGroupMetadata(container: HTMLElement, focusGroup: FocusGroup): void {
+  if (focusGroup.mode === "empty") {
+    container.removeAttribute("data-focus-group-mode");
+    container.removeAttribute("data-focus-group-size");
+
+    return;
+  }
+
+  container.dataset.focusGroupMode = focusGroup.mode;
+  container.dataset.focusGroupSize = String(focusGroup.size);
 }

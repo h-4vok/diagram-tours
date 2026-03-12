@@ -18,6 +18,10 @@ test("renders the docs shell and navigates between discovered examples", async (
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] [data-node-id="review"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(2);
+  await expect(
+    page.locator('[data-testid="diagram-container"][data-focus-group-mode="group"][data-focus-group-size="2"]')
+  ).toHaveCount(1);
 
   await page.getByRole("link", { name: "Refund Flow" }).click();
 

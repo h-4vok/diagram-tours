@@ -4,6 +4,7 @@ import {
   createViewportInstruction,
   focusDiagramViewport
 } from "../src/lib/diagram-viewport";
+import { createFocusGroup } from "../src/lib/focus-group";
 
 describe("diagram viewport helpers", () => {
   it("computes a bounded pan target for a single focused node", () => {
@@ -30,7 +31,7 @@ describe("diagram viewport helpers", () => {
   });
 
   it("computes a combined pan target for multiple focused nodes", () => {
-    expect(
+    const forwardInstruction =
       createViewportInstruction({
         focusedNodeRects: [
           {
@@ -50,12 +51,34 @@ describe("diagram viewport helpers", () => {
           viewportHeight: 400,
           viewportWidth: 600
         }
-      })
-    ).toEqual({
+      });
+    const reversedInstruction = createViewportInstruction({
+      focusedNodeRects: [
+        {
+          left: 380,
+          top: 260,
+          width: 100,
+          height: 50
+        },
+        {
+          left: 140,
+          top: 180,
+          width: 80,
+          height: 40
+        }
+      ],
+      metrics: {
+        viewportHeight: 400,
+        viewportWidth: 600
+      }
+    });
+
+    expect(forwardInstruction).toEqual({
       mode: "focus",
       offsetX: -10,
       offsetY: -45
     });
+    expect(reversedInstruction).toEqual(forwardInstruction);
   });
 
   it("clamps positive pan offsets when a focused node is too far toward the top-left", () => {
@@ -135,7 +158,7 @@ describe("diagram viewport helpers", () => {
 
     focusDiagramViewport({
       container,
-      focusedNodeIds: ["focus"]
+      focusGroup: createFocusGroup(["focus"])
     });
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
@@ -150,7 +173,7 @@ describe("diagram viewport helpers", () => {
 
     focusDiagramViewport({
       container,
-      focusedNodeIds: ["missing"]
+      focusGroup: createFocusGroup(["missing"])
     });
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
@@ -172,7 +195,7 @@ describe("diagram viewport helpers", () => {
 
     focusDiagramViewport({
       container,
-      focusedNodeIds: ["focus"]
+      focusGroup: createFocusGroup(["focus"])
     });
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
@@ -187,7 +210,7 @@ describe("diagram viewport helpers", () => {
 
     focusDiagramViewport({
       container,
-      focusedNodeIds: []
+      focusGroup: createFocusGroup([])
     });
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("2px");
@@ -198,7 +221,7 @@ describe("diagram viewport helpers", () => {
 
     focusDiagramViewport({
       container,
-      focusedNodeIds: []
+      focusGroup: createFocusGroup([])
     });
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("0px");

@@ -1,3 +1,5 @@
+import type { FocusGroup } from "$lib/focus-group";
+
 const MIN_OFFSET_DELTA = 8;
 const MAX_PAN_RATIO = 0.2;
 const PAN_X_PROPERTY = "--diagram-pan-x";
@@ -37,17 +39,17 @@ export function createViewportInstruction(input: {
 
 export function focusDiagramViewport(input: {
   container: HTMLElement;
-  focusedNodeIds: string[];
+  focusGroup: FocusGroup;
 }): void {
   const previousOffset = readPanOffset(input.container);
-  const focusedNodeRects = readNodeRects(input.container, input.focusedNodeIds);
+  const focusedNodeRects = readNodeRects(input.container, input.focusGroup.nodeIds);
 
   writePanOffset(input.container, {
     offsetX: 0,
     offsetY: 0
   });
 
-  if (shouldPreserveCurrentViewport(input.focusedNodeIds, focusedNodeRects)) {
+  if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
     writePanOffset(input.container, previousOffset);
 
     return;
@@ -94,10 +96,10 @@ function createFocusInstruction(input: {
 }
 
 function shouldPreserveCurrentViewport(
-  focusedNodeIds: string[],
+  focusGroup: FocusGroup,
   focusedNodeRects: DiagramNodeRect[]
 ): boolean {
-  return focusedNodeIds.length > 0 && focusedNodeRects.length === 0;
+  return focusGroup.mode !== "empty" && focusedNodeRects.length === 0;
 }
 
 function applyViewportInstruction(input: {

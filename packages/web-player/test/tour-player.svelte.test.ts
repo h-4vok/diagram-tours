@@ -156,9 +156,9 @@ function renderDiagramForTest(input: {
 
 function applyFocusStateForTest(input: {
   container: HTMLElement;
-  focusedNodeIds: string[];
+  focusGroup: { nodeIds: string[] };
 }): void {
-  const focusedNodeIds = new Set(input.focusedNodeIds);
+  const focusedNodeIds = new Set(input.focusGroup.nodeIds);
 
   input.container.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
     setFocusStateForTest({

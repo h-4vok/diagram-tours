@@ -6,6 +6,7 @@ import {
   getMermaidErrorMessage,
   renderMermaidDiagram
 } from "../src/lib/mermaid-diagram";
+import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
 const { mermaidRender } = vi.hoisted(() => ({
@@ -67,24 +68,30 @@ describe("mermaid diagram helpers", () => {
     container.innerHTML = [
       "<div></div>",
       '<div data-node-id="api_gateway"></div>',
-      '<div data-node-id="validation_service"></div>'
+      '<div data-node-id="validation_service"></div>',
+      '<div data-node-id="payment_service"></div>'
     ].join("");
 
     applyFocusState({
       container,
-      focusedNodeIds: ["api_gateway"]
+      focusGroup: createFocusGroup(["payment_service", "api_gateway", "payment_service"])
     });
 
     expect(readFocusState(container, "api_gateway")).toBe("focused");
     expect(readFocusState(container, "validation_service")).toBe("dimmed");
+    expect(readFocusState(container, "payment_service")).toBe("focused");
+    expect(container.dataset.focusGroupMode).toBe("group");
+    expect(container.dataset.focusGroupSize).toBe("2");
 
     applyFocusState({
       container,
-      focusedNodeIds: []
+      focusGroup: createFocusGroup([])
     });
 
     expect(hasFocusState(container, "api_gateway")).toBe(false);
     expect(hasFocusState(container, "validation_service")).toBe(false);
+    expect(container.hasAttribute("data-focus-group-mode")).toBe(false);
+    expect(container.hasAttribute("data-focus-group-size")).toBe(false);
   });
 });
 
