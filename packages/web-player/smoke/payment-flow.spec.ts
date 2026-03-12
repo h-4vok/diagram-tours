@@ -32,3 +32,31 @@ test("renders the docs shell and navigates between discovered examples", async (
   await expect(page).toHaveURL(/\/decision-flow$/);
   await expect(page.getByRole("heading", { name: "Decision Flow" })).toBeVisible();
 });
+
+test("repositions the viewport toward the focused area in a tall diagram", async ({
+  page
+}) => {
+  await page.goto("/incident-response");
+
+  await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
+
+  const initialPanY = await page
+    .getByTestId("diagram-container")
+    .evaluate((element) =>
+      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
+    );
+
+  await page.getByTestId("next-button").click();
+  await page.getByTestId("next-button").click();
+  await page.getByTestId("next-button").click();
+
+  await expect(page.getByTestId("step-text")).toContainText("communication loop is done");
+
+  const focusedPanY = await page
+    .getByTestId("diagram-container")
+    .evaluate((element) =>
+      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
+    );
+
+  expect(focusedPanY).not.toBe(initialPanY);
+});

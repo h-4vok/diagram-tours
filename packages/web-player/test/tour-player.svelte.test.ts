@@ -6,11 +6,13 @@ import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
 const {
   applyFocusStateMock,
+  focusDiagramViewportMock,
   gotoMock,
   renderMermaidDiagramMock,
   toastErrorMock
 } = vi.hoisted(() => ({
   applyFocusStateMock: vi.fn(applyFocusStateForTest),
+  focusDiagramViewportMock: vi.fn(),
   gotoMock: vi.fn(() => Promise.resolve()),
   renderMermaidDiagramMock: vi.fn(renderDiagramForTest),
   toastErrorMock: vi.fn()
@@ -18,6 +20,10 @@ const {
 
 vi.mock("$app/navigation", () => ({
   goto: gotoMock
+}));
+
+vi.mock("../src/lib/diagram-viewport", () => ({
+  focusDiagramViewport: focusDiagramViewportMock
 }));
 
 vi.mock("../src/lib/mermaid-diagram", () => ({
@@ -71,6 +77,7 @@ describe("tour-player.svelte", () => {
 
     expect(readFocusState(diagramContainer, "validation_service")).toBe("focused");
     expect(readFocusState(diagramContainer, "api_gateway")).toBe("dimmed");
+    expect(focusDiagramViewportMock).toHaveBeenCalled();
   });
 
   it("shows a fallback message and toast when the diagram render fails", async () => {

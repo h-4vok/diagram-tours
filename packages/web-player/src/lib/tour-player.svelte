@@ -11,6 +11,7 @@
     getMermaidErrorMessage,
     renderMermaidDiagram
   } from "$lib/mermaid-diagram";
+  import { focusDiagramViewport } from "$lib/diagram-viewport";
   import { createTourPlayer } from "$lib/player-state";
   import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
@@ -37,6 +38,10 @@
 
   function syncFocusState(): void {
     applyFocusState({
+      container: diagramContainer,
+      focusedNodeIds: state.focusedNodeIds
+    });
+    focusDiagramViewport({
       container: diagramContainer,
       focusedNodeIds: state.focusedNodeIds
     });

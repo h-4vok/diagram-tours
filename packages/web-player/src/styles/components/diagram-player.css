@@ -11,6 +11,8 @@
   display: block;
   height: auto;
   max-width: none;
+  transform: translate(var(--diagram-pan-x, 0), var(--diagram-pan-y, 0));
+  transform-origin: top left;
   width: min(100%, 88rem);
 }
 
