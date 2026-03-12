@@ -28,6 +28,7 @@ export async function renderMermaidDiagram(input: {
 
   input.container.innerHTML = renderResult.svg;
   annotateRenderedNodes(input.container, input.diagram.nodes);
+  annotateConnectorLabels(input.container);
 }
 
 export function applyFocusState(input: {
@@ -38,6 +39,7 @@ export function applyFocusState(input: {
   const nodeElements = input.container.querySelectorAll<HTMLElement>("[data-node-id]");
 
   setFocusGroupMetadata(input.container, input.focusGroup);
+  setConnectorContext(input.container, input.focusGroup);
 
   nodeElements.forEach((element) => {
     setFocusState({
@@ -158,4 +160,24 @@ function setFocusGroupMetadata(container: HTMLElement, focusGroup: FocusGroup): 
 
   container.dataset.focusGroupMode = focusGroup.mode;
   container.dataset.focusGroupSize = String(focusGroup.size);
+}
+
+function annotateConnectorLabels(container: HTMLElement): void {
+  container.querySelectorAll<HTMLElement>(".edgeLabel").forEach((element) => {
+    element.dataset.connectorRole = "label";
+  });
+}
+
+function setConnectorContext(container: HTMLElement, focusGroup: FocusGroup): void {
+  const connectorLabels = container.querySelectorAll<HTMLElement>('[data-connector-role="label"]');
+
+  connectorLabels.forEach((element) => {
+    if (focusGroup.mode === "empty") {
+      element.removeAttribute("data-connector-state");
+
+      return;
+    }
+
+    element.dataset.connectorState = "context";
+  });
 }

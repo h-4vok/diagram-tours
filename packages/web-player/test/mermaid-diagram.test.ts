@@ -16,6 +16,7 @@ const { mermaidRender } = vi.hoisted(() => ({
       '<g class="diagram_tour_node_api_gateway"></g>',
       '<g class="diagram_tour_node_validation_service"></g>',
       '<g class="diagram_tour_node_payment_service"></g>',
+      '<g class="edgeLabel"><foreignObject><div>Yes</div></foreignObject></g>',
       "</svg>"
     ].join("")
   }))
@@ -49,6 +50,7 @@ describe("mermaid diagram helpers", () => {
     expect(mermaidRender).toHaveBeenCalledTimes(1);
     expect(container.querySelector('[data-node-id="api_gateway"]')).not.toBeNull();
     expect(container.querySelector('[data-node-label="API Gateway"]')).not.toBeNull();
+    expect(container.querySelector('[data-connector-role="label"]')).not.toBeNull();
   });
 
   it("throws a clear error when Mermaid rendering fails", async () => {
@@ -69,7 +71,8 @@ describe("mermaid diagram helpers", () => {
       "<div></div>",
       '<div data-node-id="api_gateway"></div>',
       '<div data-node-id="validation_service"></div>',
-      '<div data-node-id="payment_service"></div>'
+      '<div data-node-id="payment_service"></div>',
+      '<div class="edgeLabel" data-connector-role="label"><div>Yes</div></div>'
     ].join("");
 
     applyFocusState({
@@ -82,6 +85,7 @@ describe("mermaid diagram helpers", () => {
     expect(readFocusState(container, "payment_service")).toBe("focused");
     expect(container.dataset.focusGroupMode).toBe("group");
     expect(container.dataset.focusGroupSize).toBe("2");
+    expect(container.querySelector('[data-connector-state="context"]')).not.toBeNull();
 
     applyFocusState({
       container,
@@ -92,6 +96,7 @@ describe("mermaid diagram helpers", () => {
     expect(hasFocusState(container, "validation_service")).toBe(false);
     expect(container.hasAttribute("data-focus-group-mode")).toBe(false);
     expect(container.hasAttribute("data-focus-group-size")).toBe(false);
+    expect(container.querySelector('[data-connector-state="context"]')).toBeNull();
   });
 });
 

@@ -64,3 +64,19 @@ test("repositions the viewport toward the focused area in a tall diagram", async
 
   expect(focusedPanY).not.toBe(initialPanY);
 });
+
+test("keeps connector labels readable as secondary context in a branching diagram", async ({
+  page
+}) => {
+  await page.goto("/incident-response?step=2");
+
+  await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')
+  ).toHaveCount(1);
+  expect(
+    await page
+      .locator('[data-testid="diagram-container"] [data-connector-role="label"][data-connector-state="context"]')
+      .count()
+  ).toBeGreaterThan(0);
+});

@@ -25,11 +25,15 @@
   --edge-label-padding-y: 2px;
   --edge-label-radius: 6px;
   --color-focus-ring: rgb(99 102 241 / 28%);
+  --color-focus-shadow: rgb(99 102 241 / 16%);
   --color-muted: #6b7280;
+  --color-node-dim-filter: 82%;
   --color-node-focus-fill: #eef0ff;
   --color-node-focus-stroke: #6366f1;
   --color-node-focus-text: #1f2937;
+  --color-connector-context-opacity: 0.92;
+  --color-connector-context-surface: rgb(255 255 255 / 82%);
   --color-surface: rgb(255 255 255 / 88%);
   --color-text: #1f2937;
-  --diagram-dim-opacity: 0.22;
+  --diagram-dim-opacity: 0.18;
 }

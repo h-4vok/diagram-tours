@@ -49,6 +49,11 @@
   white-space: nowrap;
 }
 
+.diagram [data-connector-state="context"] div {
+  background: var(--color-connector-context-surface);
+  opacity: var(--color-connector-context-opacity);
+}
+
 .diagram .edgeLabel :is(p, span) {
   background: transparent;
   background-color: transparent;
@@ -64,6 +69,7 @@
 }
 
 [data-focus-state="dimmed"] {
+  filter: saturate(var(--color-node-dim-filter));
   opacity: var(--diagram-dim-opacity);
 }
 
@@ -72,6 +78,7 @@
 }
 
 [data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
+  filter: drop-shadow(0 0 10px var(--color-focus-shadow));
   fill: var(--color-node-focus-fill);
   stroke: var(--color-node-focus-stroke);
   stroke-width: 2px;
