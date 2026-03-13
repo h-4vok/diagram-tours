@@ -24,6 +24,8 @@
   let state = player.getState();
   let diagramContainer: HTMLDivElement;
   let diagramError = "";
+  let hasRenderedDiagram = false;
+  let previousInitialStepIndex = initialStepIndex;
 
   async function goPrevious(): Promise<void> {
     state = player.goPrevious();
@@ -38,6 +40,10 @@
   }
 
   function syncFocusState(): void {
+    if (!hasRenderedDiagram) {
+      return;
+    }
+
     const focusGroup = createFocusGroup(state.focusedNodeIds);
 
     applyFocusState({
@@ -56,12 +62,19 @@
         container: diagramContainer,
         diagram: tour.diagram
       });
+      hasRenderedDiagram = true;
       syncFocusState();
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
       toast.error(diagramError);
     }
   });
+
+  $: if (initialStepIndex !== previousInitialStepIndex) {
+    previousInitialStepIndex = initialStepIndex;
+    state = player.setStepIndex(initialStepIndex);
+    syncFocusState();
+  }
 
   async function navigateToStep(stepIndex: number): Promise<void> {
     await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
@@ -86,7 +99,7 @@
       <button
         type="button"
         class="button button--secondary"
-        onclick={goPrevious}
+        on:click={goPrevious}
         disabled={!state.canGoPrevious}
         data-testid="previous-button"
       >
@@ -95,7 +108,7 @@
       <button
         type="button"
         class="button"
-        onclick={goNext}
+        on:click={goNext}
         disabled={!state.canGoNext}
         data-testid="next-button"
       >

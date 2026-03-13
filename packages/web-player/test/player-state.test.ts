@@ -39,4 +39,17 @@ describe("createTourPlayer", () => {
       focusedNodeIds: ["response"]
     });
   });
+
+  it("syncs directly to a requested step within bounds", () => {
+    const player = createTourPlayer(resolvedPaymentFlowTour, 0);
+
+    expect(player.setStepIndex(2)).toEqual({
+      stepIndex: 2,
+      step: resolvedPaymentFlowTour.steps[2],
+      canGoPrevious: true,
+      canGoNext: true,
+      focusedNodeIds: ["payment_service", "payment_provider"]
+    });
+    expect(player.setStepIndex(99).stepIndex).toBe(3);
+  });
 });

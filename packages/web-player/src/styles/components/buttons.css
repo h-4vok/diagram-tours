@@ -1,12 +1,17 @@
 .button {
+  align-items: center;
   background: var(--color-button-bg);
   border: 1px solid transparent;
   border-radius: 999px;
   color: var(--color-button-text);
   cursor: pointer;
+  display: inline-flex;
   font-weight: 700;
+  justify-content: center;
   min-height: 2.9rem;
   padding: 0.75rem 1.05rem;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .button:disabled {

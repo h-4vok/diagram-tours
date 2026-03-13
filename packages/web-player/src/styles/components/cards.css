@@ -32,7 +32,7 @@
 .diagram-shell {
   min-height: clamp(24rem, 56vh, calc(var(--diagram-min-height-lg) + (2 * var(--space-md))));
   overflow: hidden;
-  padding: var(--space-md);
+  padding: var(--space-sm);
 }
 
 .diagram-error {

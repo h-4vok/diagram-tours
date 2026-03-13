@@ -139,15 +139,65 @@ describe("diagram viewport helpers", () => {
     });
   });
 
+  it("preserves the viewport when focus bounds contain invalid coordinates", () => {
+    expect(
+      createViewportInstruction({
+        focusedNodeRects: [
+          {
+            left: Number.NaN,
+            top: 120,
+            width: 40,
+            height: 40
+          }
+        ],
+        metrics: {
+          viewportHeight: 400,
+          viewportWidth: 600
+        }
+      })
+    ).toEqual({
+      mode: "preserve"
+    });
+  });
+
+  it("clamps extreme focus targets to bounded offsets", () => {
+    expect(
+      createViewportInstruction({
+        focusedNodeRects: [
+          {
+            left: 5000,
+            top: 4000,
+            width: 80,
+            height: 80
+          }
+        ],
+        metrics: {
+          viewportHeight: 400,
+          viewportWidth: 600
+        }
+      })
+    ).toEqual({
+      mode: "focus",
+      offsetX: -120,
+      offsetY: -80
+    });
+  });
+
   it("applies a pan offset when the focus target changes meaningfully", () => {
     const container = createContainer();
 
-    container.innerHTML = '<div data-node-id="focus"></div>';
+    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
     mockRect(container, {
       height: 400,
       left: 0,
       top: 0,
       width: 600
+    });
+    mockRect(container.querySelector("svg") as Element, {
+      height: 720,
+      left: 0,
+      top: 0,
+      width: 920
     });
     mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
       height: 80,
@@ -179,12 +229,18 @@ describe("diagram viewport helpers", () => {
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
     expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-24px");
 
-    container.innerHTML = '<div data-node-id="focus"></div>';
+    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
     mockRect(container, {
       height: 400,
       left: 0,
       top: 0,
       width: 600
+    });
+    mockRect(container.querySelector("svg") as Element, {
+      height: 720,
+      left: 0,
+      top: 0,
+      width: 920
     });
     mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
       height: 0,
@@ -200,6 +256,117 @@ describe("diagram viewport helpers", () => {
 
     expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
     expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-24px");
+  });
+
+  it("does not drift when re-centering the same step repeatedly", () => {
+    const container = createContainer();
+
+    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
+    mockRect(container, {
+      height: 400,
+      left: 0,
+      top: 0,
+      width: 600
+    });
+    mockRect(container.querySelector("svg") as Element, {
+      height: 720,
+      left: 0,
+      top: 0,
+      width: 920
+    });
+    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
+      height: 80,
+      left: 460,
+      top: 300,
+      width: 100
+    });
+
+    focusDiagramViewport({
+      container,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
+    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-80px");
+
+    focusDiagramViewport({
+      container,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
+    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-80px");
+  });
+
+  it("keeps the current viewport when the svg is not ready yet", () => {
+    const container = createContainer();
+
+    container.style.setProperty("--diagram-pan-x", "-30px");
+    container.style.setProperty("--diagram-pan-y", "18px");
+    container.innerHTML = '<div data-node-id="focus"></div>';
+    mockRect(container, {
+      height: 400,
+      left: 0,
+      top: 0,
+      width: 600
+    });
+    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
+      height: 80,
+      left: 460,
+      top: 300,
+      width: 100
+    });
+
+    focusDiagramViewport({
+      container,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-30px");
+    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("18px");
+  });
+
+  it("preserves the current viewport when the svg is ready but the focused node is missing", () => {
+    const container = createContainer();
+
+    container.style.setProperty("--diagram-pan-x", "-30px");
+    container.style.setProperty("--diagram-pan-y", "18px");
+    container.innerHTML = "<svg></svg>";
+    mockRect(container, {
+      height: 400,
+      left: 0,
+      top: 0,
+      width: 600
+    });
+    mockRect(container.querySelector("svg") as Element, {
+      height: 720,
+      left: 0,
+      top: 0,
+      width: 920
+    });
+
+    focusDiagramViewport({
+      container,
+      focusGroup: createFocusGroup(["missing"])
+    });
+
+    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-30px");
+    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("18px");
+  });
+
+  it("falls back to zero when previous pan offsets are invalid css values", () => {
+    const container = createContainer();
+
+    container.style.setProperty("--diagram-pan-x", "banana");
+    container.style.setProperty("--diagram-pan-y", "nope");
+
+    focusDiagramViewport({
+      container,
+      focusGroup: createFocusGroup([])
+    });
+
+    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("0px");
+    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("0px");
   });
 
   it("returns to neutral focus only when the target difference is meaningful", () => {
@@ -240,7 +407,7 @@ function createContainer(): HTMLElement {
   return container;
 }
 
-function mockRect(element: HTMLElement, input: {
+function mockRect(element: Element, input: {
   height: number;
   left: number;
   top: number;

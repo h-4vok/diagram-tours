@@ -1,3 +1,4 @@
+:root[data-theme="light"] .theme-root,
 .theme-root[data-theme="light"] {
   --color-accent: #6366f1;
   --color-accent-muted: #6366f1;

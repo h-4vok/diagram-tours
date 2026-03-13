@@ -4,6 +4,10 @@ const MIN_OFFSET_DELTA = 8;
 const MAX_PAN_RATIO = 0.2;
 const PAN_X_PROPERTY = "--diagram-pan-x";
 const PAN_Y_PROPERTY = "--diagram-pan-y";
+const ZERO_OFFSET = {
+  offsetX: 0,
+  offsetY: 0
+};
 
 export interface DiagramNodeRect {
   left: number;
@@ -42,16 +46,14 @@ export function focusDiagramViewport(input: {
   focusGroup: FocusGroup;
 }): void {
   const previousOffset = readPanOffset(input.container);
-  const focusedNodeRects = readNodeRects(input.container, input.focusGroup.nodeIds);
 
-  writePanOffset(input.container, {
-    offsetX: 0,
-    offsetY: 0
-  });
+  if (shouldPreserveWithoutMeasurement(input)) {
+    return;
+  }
+
+  const focusedNodeRects = measureNodeRects(input.container, input.focusGroup.nodeIds, previousOffset);
 
   if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
-    writePanOffset(input.container, previousOffset);
-
     return;
   }
 
@@ -95,6 +97,13 @@ function createFocusInstruction(input: {
   };
 }
 
+function shouldPreserveWithoutMeasurement(input: {
+  container: HTMLElement;
+  focusGroup: FocusGroup;
+}): boolean {
+  return input.focusGroup.mode !== "empty" && !isRenderableSvgReady(input.container);
+}
+
 function shouldPreserveCurrentViewport(
   focusGroup: FocusGroup,
   focusedNodeRects: DiagramNodeRect[]
@@ -135,6 +144,20 @@ function readNodeRects(container: HTMLElement, focusedNodeIds: string[]): Diagra
     .flatMap((element) => (element === null ? [] : [toNodeRect(containerRect, element)]));
 }
 
+function measureNodeRects(
+  container: HTMLElement,
+  focusedNodeIds: string[],
+  previousOffset: { offsetX: number; offsetY: number }
+): DiagramNodeRect[] {
+  writePanOffset(container, ZERO_OFFSET);
+
+  try {
+    return readNodeRects(container, focusedNodeIds);
+  } finally {
+    writePanOffset(container, previousOffset);
+  }
+}
+
 function toNodeRect(containerRect: DOMRect, element: HTMLElement): DiagramNodeRect {
   const elementRect = element.getBoundingClientRect();
 
@@ -147,11 +170,11 @@ function toNodeRect(containerRect: DOMRect, element: HTMLElement): DiagramNodeRe
 }
 
 function hasStableMetrics(metrics: DiagramViewportMetrics): boolean {
-  return metrics.viewportWidth > 0 && metrics.viewportHeight > 0;
+  return isFinitePositive(metrics.viewportWidth) && isFinitePositive(metrics.viewportHeight);
 }
 
 function hasStableNodeRects(rects: DiagramNodeRect[]): boolean {
-  return rects.every((rect) => rect.width > 0 && rect.height > 0);
+  return rects.every((rect) => isValidRect(rect));
 }
 
 function mergeNodeRects(rects: DiagramNodeRect[]): DiagramNodeRect {
@@ -194,8 +217,9 @@ function readPanOffset(container: HTMLElement): {
 
 function readOffsetValue(container: HTMLElement, propertyName: string): number {
   const value = container.style.getPropertyValue(propertyName);
+  const parsedValue = value.length === 0 ? 0 : Number.parseInt(value, 10);
 
-  return value.length === 0 ? 0 : Number.parseInt(value, 10);
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
 }
 
 function shouldMoveViewport(
@@ -217,4 +241,32 @@ function writePanOffset(
 ): void {
   container.style.setProperty(PAN_X_PROPERTY, `${offset.offsetX}px`);
   container.style.setProperty(PAN_Y_PROPERTY, `${offset.offsetY}px`);
+}
+
+function isRenderableSvgReady(container: HTMLElement): boolean {
+  const svg = container.querySelector<HTMLElement>("svg");
+
+  if (svg === null) {
+    return false;
+  }
+
+  const rect = svg.getBoundingClientRect();
+
+  return isFinitePositive(rect.width) && isFinitePositive(rect.height);
+}
+
+function isFinitePositive(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function isValidRect(rect: DiagramNodeRect): boolean {
+  return hasFiniteOrigin(rect) && hasFiniteSize(rect);
+}
+
+function hasFiniteOrigin(rect: DiagramNodeRect): boolean {
+  return Number.isFinite(rect.left) && Number.isFinite(rect.top);
+}
+
+function hasFiniteSize(rect: DiagramNodeRect): boolean {
+  return isFinitePositive(rect.width) && isFinitePositive(rect.height);
 }

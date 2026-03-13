@@ -3,9 +3,10 @@ import { resolve } from "node:path";
 const args = process.argv.slice(2);
 const sourceTarget = readSourceTarget(args);
 const viteArgs = readViteArgs(args);
+const bunExecutable = process.execPath;
 
 const child = Bun.spawn(
-  ["bun", "run", "--cwd", "packages/web-player", "dev", ...viteArgs],
+  [bunExecutable, "run", "--cwd", "packages/web-player", "dev", ...viteArgs],
   {
     cwd: process.cwd(),
     env: {

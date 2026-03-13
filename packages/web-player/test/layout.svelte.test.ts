@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import Layout from "../src/routes/+layout.svelte";
 import { resolvedTourCollection, singleTourCollection } from "./fixtures/tour-collection";
@@ -11,6 +11,10 @@ const directorySourceTarget = {
 };
 
 describe("+layout.svelte", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("renders the top bar and navigation, even for a single-tour collection", async () => {
     render(Layout, {
       data: {
@@ -41,6 +45,21 @@ describe("+layout.svelte", () => {
     await fireEvent.click(screen.getByTestId("theme-toggle"));
 
     expect(screen.getByTestId("theme-root").getAttribute("data-theme")).toBe("dark");
+    expect(window.localStorage.getItem("diagram-tour-theme")).toBe("dark");
+  });
+
+  it("hydrates the theme from persistent storage", async () => {
+    window.localStorage.setItem("diagram-tour-theme", "dark");
+
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    expect((await screen.findByTestId("theme-root")).getAttribute("data-theme")).toBe("dark");
+    expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
   });
 
   it("surfaces skipped-tour information when discovery skips invalid tours", async () => {

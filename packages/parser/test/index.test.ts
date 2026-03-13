@@ -309,7 +309,8 @@ describe("@diagram-tour/parser", () => {
       "payment-flow",
       "refund-flow",
       "release-pipeline",
-      "support-decision-tree"
+      "support-decision-tree",
+      "viewport-stability"
     ]);
   });
 

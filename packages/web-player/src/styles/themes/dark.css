@@ -1,3 +1,4 @@
+:root[data-theme="dark"] .theme-root,
 .theme-root[data-theme="dark"] {
   --color-accent-muted: #d0ab88;
   --color-bg-accent-glow: rgb(56 189 248 / 8%);

@@ -19,7 +19,7 @@
   />
 </svelte:head>
 
-{#key `${data.selectedSlug}:${data.initialStepIndex}`}
+{#key data.selectedSlug}
   <TourPlayer
     initialStepIndex={data.initialStepIndex}
     selectedSlug={data.selectedSlug}

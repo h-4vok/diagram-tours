@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import TourPlayer from "../src/lib/tour-player.svelte";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
@@ -39,6 +39,10 @@ vi.mock("svelte-sonner", () => ({
 }));
 
 describe("tour-player.svelte", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders the selected tour, starts on step one, and respects boundaries", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
@@ -140,6 +144,31 @@ describe("tour-player.svelte", () => {
       keepFocus: true,
       noScroll: true
     });
+  });
+
+  it("syncs a deep-linked step change without redrawing the Mermaid diagram", async () => {
+    const view = render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    expect((await screen.findByTestId("step-text")).textContent).toContain(
+      "public edge of the checkout system"
+    );
+    expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
+
+    await view.rerender({
+      initialStepIndex: 2,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    expect(screen.getByTestId("step-text").textContent).toContain(
+      "merchant-side transaction state"
+    );
+    expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
+    expect(focusDiagramViewportMock).toHaveBeenCalled();
   });
 
   it("keeps controls and the diagram visible when the step text is long", async () => {
