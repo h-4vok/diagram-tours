@@ -1,31 +1,23 @@
 # Tour Specification v1
 
-This document defines the **version 1 format of a Diagram Tour definition**.
+This document defines version 1 of the Diagram Tour contract.
 
-A tour describes a **guided walkthrough of a Mermaid diagram**.
-
-The format is intentionally minimal for the first version.
+A tour is a guided walkthrough over a Mermaid diagram. Version 1 is intentionally small, linear, and predictable.
 
 Changes to this contract must be accompanied by updated tests and synchronized documentation.
 
----
+## Goals
 
-# Goals of v1
-
-The first version of the specification focuses on:
+Version 1 prioritizes:
 
 - simplicity
 - readability
 - predictable parsing
 - easy authoring
 
-A tour should be easy to write and easy to understand.
+## File Format
 
----
-
-# Tour File Format
-
-Tours are defined using **YAML**.
+Tours are authored as YAML.
 
 Example:
 
@@ -46,87 +38,63 @@ steps:
       The {{validation_service}} verifies the request before processing.
 ```
 
----
+## Root Fields
 
-# Root Fields
+### `version`
 
-## version
+Required.
 
 ```yaml
 version: 1
 ```
 
+Only version `1` is supported.
+
+### `title`
+
 Required.
-
-Defines the specification version.
-
-Only version `1` is supported in this document.
-
----
-
-## title
 
 ```yaml
 title: Payment Flow
 ```
 
+Must be a non-empty string.
+
+### `diagram`
+
 Required.
-
-Human readable name of the tour.
-
-Used for display purposes.
-
----
-
-## diagram
 
 ```yaml
 diagram: ./payment-flow.mmd
 ```
 
-Required.
+Must be a non-empty string path to a Mermaid diagram file.
 
-Path to a Mermaid diagram file.
-
-The diagram must contain nodes with **explicit IDs**.
-
-Example Mermaid node:
+The referenced diagram must contain explicit Mermaid node IDs such as:
 
 ```mermaid
 api_gateway[API Gateway]
 ```
 
-The node ID (`api_gateway`) is used by the tour system.
+### `steps`
 
----
-
-## steps
+Required.
 
 ```yaml
 steps:
   - ...
 ```
 
-Required.
+Must be a non-empty array.
 
-An ordered list of tour steps.
+Tours are linear in version 1. Branching is not supported.
 
-The order defines the progression of the tour.
+## Step Fields
 
-Tours are **linear in version 1**.
+Each step must be an object with:
 
-Branching is not supported.
-
----
-
-# Step Format
-
-Each step must contain:
-
-```text
-focus
-text
-```
+- `focus`
+- `text`
 
 Example:
 
@@ -137,9 +105,9 @@ Example:
     The {{api_gateway}} receives requests from {{client}}.
 ```
 
----
+### `focus`
 
-## focus
+Required.
 
 ```yaml
 focus:
@@ -147,15 +115,12 @@ focus:
   - validation_service
 ```
 
-Required.
-
-Defines which diagram nodes should be emphasized in this step.
-
 Rules:
 
-- Must be an array
-- Can contain zero or more node IDs
-- Each ID must exist in the Mermaid diagram
+- must be an array
+- may contain zero or more node IDs
+- each entry must be a non-empty string
+- each ID must exist in the Mermaid diagram
 
 Valid examples:
 
@@ -174,26 +139,24 @@ focus:
   - payment_provider
 ```
 
----
+`focus: []` is valid and represents a step with no specific node emphasis. A player may use that for an overview, neutral state, or context reset.
 
-## text
+### `text`
+
+Required.
 
 ```yaml
 text: >
   The {{api_gateway}} receives requests from {{client}}.
 ```
 
-Required.
+Must be a non-empty string.
 
-Human readable explanation shown during the step.
+The text may reference diagram nodes through inline references.
 
-The text may reference diagram nodes using **inline references**.
+## Node References
 
----
-
-# Node References
-
-Inside text, nodes are referenced using the following syntax:
+Inside step text, node references use this syntax:
 
 ```text
 {{node_id}}
@@ -205,13 +168,13 @@ Example:
 The {{api_gateway}} sends the request to {{validation_service}}.
 ```
 
-The system resolves these references by:
+Resolution behavior:
 
-1. locating the node ID in the Mermaid diagram
-2. retrieving the node label
-3. replacing the reference with the label
+1. locate the referenced node ID in the Mermaid diagram
+2. read the node label
+3. replace the reference with that label
 
-Example transformation:
+Example:
 
 ```text
 The {{api_gateway}} forwards requests.
@@ -223,38 +186,43 @@ becomes:
 The API Gateway forwards requests.
 ```
 
----
+## Validation Rules
 
-# Validation Rules
+A tour is invalid if any of the following are true:
 
-A tour is considered invalid if:
-
+- the document root is not an object
 - `version` is missing
 - `version` is not `1`
 - `title` is missing
+- `title` is not a non-empty string
 - `diagram` is missing
+- `diagram` is not a non-empty string
 - `steps` is missing
+- `steps` is not an array
 - `steps` is empty
-- `focus` references a node that does not exist
-- `text` references a node that does not exist
+- a step is not an object
+- `focus` is not an array
+- a `focus` entry is empty or not a string
+- a `focus` entry references an unknown Mermaid node ID
+- `text` is missing
+- `text` is not a non-empty string
+- `text` references an unknown Mermaid node ID
 
-Errors should be **descriptive and actionable**.
+Errors should be descriptive and actionable.
 
-Example error:
-
-```text
-Unknown Mermaid node id "validation" referenced in step 2
-```
-
----
-
-# Mermaid Requirements
-
-Version 1 supports **Mermaid flowcharts**.
-
-Nodes must use **explicit IDs**.
+The current parser includes contextual information such as the tour source path and, when relevant, the step number and field.
 
 Example:
+
+```text
+Tour "examples/payment-flow/payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
+```
+
+## Mermaid Requirements
+
+Version 1 supports Mermaid flowcharts.
+
+Nodes must use explicit IDs:
 
 ```mermaid
 flowchart LR
@@ -262,7 +230,7 @@ flowchart LR
   api_gateway --> validation_service[Validation Service]
 ```
 
-IDs used by the tour:
+In this example, the usable IDs are:
 
 ```text
 client
@@ -270,47 +238,43 @@ api_gateway
 validation_service
 ```
 
----
+## Focus Semantics
 
-# Behavior of Focus
+The `focus` field is semantic, not a strict UI instruction.
 
-The `focus` field expresses **semantic focus**, not a specific UI effect.
+The contract says which nodes matter for a step. The player decides how to render that meaning.
 
-The player decides how to render focus.
-
-Typical behavior may include:
+Typical UI behavior may include:
 
 - highlighting focused nodes
-- dimming the rest of the diagram
+- dimming non-focused nodes
 - centering the viewport
+- keeping an overview when focus is empty
 
-However, this is **not mandated by the specification**.
+The specification intentionally does not mandate one rendering strategy.
 
----
-
-# Scope of Version 1
+## Scope of Version 1
 
 Supported:
 
 - Mermaid flowcharts
 - YAML tour files
 - sequential tours
-- node highlighting
+- node highlighting or other player-defined focus rendering
 - inline node references in text
+- empty-focus steps
 
 Not supported:
 
 - branching tours
-- multiple diagrams
+- multiple diagrams in one tour
 - audio narration
-- animations
 - conditional steps
+- player-specific viewport instructions in the tour file
 
----
+## Future Directions
 
-# Future Versions
-
-Possible future features include:
+Potential future features include:
 
 - branching tours
 - audio narration
@@ -319,16 +283,8 @@ Possible future features include:
 - interactive steps
 - plugin extensions
 
-These features are intentionally excluded from version 1.
+These are intentionally excluded from version 1.
 
----
+## Philosophy
 
-# Philosophy
-
-The specification prioritizes:
-
-- simplicity
-- readability
-- minimal authoring overhead
-
-Tours should feel like **writing explanations**, not configuring software.
+Version 1 aims to feel like writing an explanation, not configuring a UI runtime.

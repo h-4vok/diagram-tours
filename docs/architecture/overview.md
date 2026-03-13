@@ -1,10 +1,125 @@
 # Architecture
 
-Diagram Tour is split into a small set of focused packages inside a Bun monorepo.
+Diagram Tour is a Bun monorepo split into a small number of focused packages.
 
-- `core` defines the shared domain model and will grow into the tour engine that coordinates steps, focus targets, and playback state.
-- `parser` reads Mermaid diagram files and tour YAML files, then normalizes and validates them into the core domain types.
-- `web-player` provides the browser UI for loading a tour and running it interactively.
+## Package Responsibilities
 
-Later versions may add optional plugins or integrations for features such as text-to-speech or audio narration, but those are out of scope for the current scaffold.
+- `packages/core` defines the shared domain model used by the rest of the system
+- `packages/parser` loads Mermaid and YAML inputs, validates them, resolves node references, discovers tours, and returns runtime-ready collections
+- `packages/web-player` provides the Svelte application that loads a collection, selects a tour by slug, and renders the interactive tour UI
 
+This split keeps parsing, domain modeling, and presentation concerns separate.
+
+## Current Runtime Shape
+
+The repository currently behaves like a small documentation shell for tours.
+
+At runtime, the system:
+
+1. reads a source target from environment
+2. loads either a directory-backed tour collection or a single tour file
+3. exposes collection metadata through layout load functions
+4. selects a route entry by slug
+5. derives the initial step from the URL query
+6. renders the selected tour in the web player
+
+## Data Flow
+
+The end-to-end flow is:
+
+```text
+DIAGRAM_TOUR_SOURCE_TARGET
+  -> parser source-target resolution
+  -> tour discovery or single-file load
+  -> Mermaid node extraction + YAML validation
+  -> resolved collection entries with slugs
+  -> SvelteKit layout data
+  -> route selection by [...tourSlug]
+  -> step selection by ?step=
+  -> interactive player rendering
+```
+
+## Collection and Preview Modes
+
+The runtime supports two loading modes.
+
+### Collection Mode
+
+If the source target is a directory:
+
+- the parser walks the tree recursively
+- each `*.tour.yaml` file is considered a candidate tour
+- valid tours become collection entries
+- invalid tours are recorded as skipped entries
+
+This mode powers the default examples shell.
+
+### Single-File Preview Mode
+
+If the source target is a file:
+
+- the parser loads exactly one tour
+- the layout returns a one-entry collection
+- the web player behaves like a focused author preview
+
+This makes local authoring faster and keeps the routing model consistent.
+
+## Parser Responsibilities
+
+The parser is responsible for more than syntax conversion.
+
+It also owns:
+
+- contextual validation errors
+- Mermaid node indexing
+- replacement of `{{node_id}}` references with Mermaid labels
+- slug generation from relative paths
+- collection discovery and skipped-entry reporting
+
+The parser returns resolved tours rather than raw YAML documents so downstream packages can work with a normalized contract.
+
+## Web Player Responsibilities
+
+The web player owns:
+
+- route and layout loading
+- docs-shell navigation between tours
+- step navigation and deep links
+- interpretation of semantic focus into viewport and highlight behavior
+- theme selection and persistence
+- guided recovery for missing routes
+
+The player consumes resolved models. It does not parse raw Mermaid or YAML files directly.
+
+## Focus Semantics
+
+`focus` is a semantic content signal, not a fixed rendering instruction.
+
+That means:
+
+- the tour contract specifies what the step is about
+- the player decides how to visualize that focus
+- empty-focus steps are allowed and can represent overview states
+
+This keeps the content model stable even as UI behavior evolves.
+
+## Routing Model
+
+The route slug identifies the selected tour.
+
+The optional `?step=` query parameter identifies the initial step:
+
+- missing or invalid values fall back to step one
+- out-of-range values clamp to the valid range
+
+Unknown slugs return a guided `404` page instead of a blank failure.
+
+## Boundaries
+
+The intended boundaries remain:
+
+- `core` stays free of filesystem, YAML, and UI dependencies
+- `parser` handles input loading and validation without absorbing UI concerns
+- `web-player` renders resolved content without re-implementing parser logic
+
+Later versions may add optional integrations, but the current architecture is intentionally centered on a strong parser boundary and a thin UI layer over resolved data.
