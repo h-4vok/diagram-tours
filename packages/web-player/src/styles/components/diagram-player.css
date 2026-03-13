@@ -1,21 +1,32 @@
 .diagram {
-  align-items: start;
-  display: flex;
-  justify-content: center;
-  min-height: clamp(var(--diagram-min-height), 50vh, var(--diagram-min-height-lg));
+  block-size: clamp(var(--diagram-min-height), 50vh, var(--diagram-min-height-lg));
+  display: block;
+  inline-size: 100%;
+  min-width: 0;
   overflow: auto scroll;
   padding: 0;
+  scroll-behavior: smooth;
   scrollbar-gutter: stable;
+}
+
+.diagram-stage-inner {
+  box-sizing: border-box;
+  display: grid;
+  inline-size: max-content;
+  min-block-size: 100%;
+  min-inline-size: 100%;
+  padding:
+    clamp(16rem, 32vh, 22rem)
+    max(20rem, 45vw);
+  place-items: center;
 }
 
 .diagram svg {
   display: block;
   height: auto;
+  inline-size: max-content;
   max-width: none;
-  transition: transform 400ms ease, opacity 400ms ease;
-  transform: translate(var(--diagram-pan-x, 0), var(--diagram-pan-y, 0));
-  transform-origin: top left;
-  width: min(100%, 88rem);
+  transition: opacity 400ms ease;
 }
 
 /* stylelint-disable selector-class-pattern */
@@ -58,7 +69,7 @@
 
 .diagram .edgeLabel :is(p, span) {
   background: transparent;
-  background-color: transparent;
+  background-color: transparent !important;
   border: 0;
   color: inherit;
   margin: 0;
@@ -155,6 +166,6 @@
   }
 
   .diagram {
-    min-height: var(--diagram-min-height-lg);
+    block-size: var(--diagram-min-height-lg);
   }
 }

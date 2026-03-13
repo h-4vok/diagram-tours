@@ -37,32 +37,21 @@ test("renders the docs shell and navigates between discovered examples", async (
   await expect(page.getByRole("heading", { name: "Decision Flow" })).toBeVisible();
 });
 
-test("repositions the viewport toward the focused area in a tall diagram", async ({
+test("best-effort centers focused areas inside the padded viewport stage", async ({
   page
 }) => {
-  await page.goto("/incident-response");
+  await page.goto("/viewport-centering");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
-
-  const initialPanY = await page
-    .getByTestId("diagram-container")
-    .evaluate((element) =>
-      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
-    );
+  await expectFocusedAreaNearViewportCenter(page, ["build"]);
 
   await page.getByTestId("next-button").click();
+  await expect(page.getByTestId("step-text")).toContainText("Roll Out");
+  await expectFocusedAreaNearViewportCenter(page, ["rollout"]);
+
   await page.getByTestId("next-button").click();
-  await page.getByTestId("next-button").click();
-
-  await expect(page.getByTestId("step-text")).toContainText("communication loop is done");
-
-  const focusedPanY = await page
-    .getByTestId("diagram-container")
-    .evaluate((element) =>
-      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
-    );
-
-  expect(focusedPanY).not.toBe(initialPanY);
+  await expect(page.getByTestId("step-text")).toContainText("Verify in Staging");
+  await expectFocusedAreaNearViewportCenter(page, ["verify", "observe"]);
 });
 
 test("keeps the same Mermaid svg mounted while deep-linked steps change", async ({ page }) => {
@@ -88,6 +77,40 @@ test("keeps the same Mermaid svg mounted while deep-linked steps change", async 
     "data-test-instance-id",
     diagramInstanceId
   );
+});
+
+test("loads and navigates the huge stress-test diagram without destabilizing the player", async ({
+  page
+}) => {
+  await page.goto("/huge-system?step=5");
+
+  await expect(page.getByRole("heading", { name: "Huge System Stress Test" })).toBeVisible();
+  await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="event_bus"]')
+  ).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')
+  ).toHaveCount(4);
+
+  await page.getByTestId("next-button").click();
+
+  await expect(page).toHaveURL(/\/huge-system\?step=6$/);
+  await expect(page.getByTestId("step-text")).toContainText("distant focus");
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="compliance"]')
+  ).toHaveCount(1);
+});
+
+test("starts the huge stress-test tour at a readable first-focus scale", async ({ page }) => {
+  await page.goto("/huge-system");
+
+  await expect(page.getByRole("heading", { name: "Huge System Stress Test" })).toBeVisible();
+  await expect(page).toHaveURL(/\/huge-system$/);
+  await expectDiagramVisible(page);
+  await expectFocusedAreaNearViewportCenter(page, ["edge"]);
+
+  expect(await readNodeAxisSize(page, "edge", "width")).toBeGreaterThan(80);
 });
 
 test("keeps connector labels readable as secondary context in a branching diagram", async ({
@@ -151,34 +174,94 @@ test("shows a guided 404 for unknown tours and offers a single recovery action",
 });
 
 test("keeps empty-focus viewport behavior stable in the dedicated example", async ({ page }) => {
-  await page.goto("/viewport-stability?step=1");
+  await page.goto("/viewport-centering?step=3");
   await expectDiagramVisible(page);
-
-  const focusedPanY = await page
-    .getByTestId("diagram-container")
-    .evaluate((element) =>
-      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
-    );
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/viewport-stability\?step=2$/);
+  await expect(page).toHaveURL(/\/viewport-centering\?step=4$/);
   await expect(
     page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')
   ).toHaveCount(0);
 
-  const neutralPanY = await page
-    .getByTestId("diagram-container")
-    .evaluate((element) =>
-      getComputedStyle(element).getPropertyValue("--diagram-pan-y").trim() || "0px"
-    );
+  await expect.poll(async () =>
+    page.getByTestId("diagram-container").evaluate((element) => element.scrollTop)
+  ).toBe(0);
 
-  expect(neutralPanY).not.toBe(focusedPanY);
-  expect(neutralPanY).toBe("0px");
+  const neutralScrollTop = await page
+    .getByTestId("diagram-container")
+    .evaluate((element) => element.scrollTop);
+
+  expect(neutralScrollTop).toBe(0);
 });
 
 async function expectDiagramVisible(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
+}
+
+async function expectFocusedAreaNearViewportCenter(page: Page, nodeIds: string[]): Promise<void> {
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "x")).toBeLessThan(180);
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "y")).toBeLessThan(220);
+}
+
+function mergeBounds(input: Array<{
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}>): {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+} {
+  const left = Math.min(...input.map((item) => item.x));
+  const top = Math.min(...input.map((item) => item.y));
+  const right = Math.max(...input.map((item) => item.x + item.width));
+  const bottom = Math.max(...input.map((item) => item.y + item.height));
+
+  return {
+    height: bottom - top,
+    width: right - left,
+    x: left,
+    y: top
+  };
+}
+
+async function readCenterDistance(
+  page: Page,
+  nodeIds: string[],
+  axis: "x" | "y"
+): Promise<number> {
+  const diagramBox = await page.getByTestId("diagram-container").boundingBox();
+  const nodeBoxes = await Promise.all(
+    nodeIds.map((nodeId) =>
+      page.locator(`[data-testid="diagram-container"] [data-node-id="${nodeId}"]`).boundingBox()
+    )
+  );
+
+  assertLayoutBox(diagramBox);
+  nodeBoxes.forEach(assertLayoutBox);
+
+  const areaBounds = mergeBounds(nodeBoxes);
+
+  return axis === "x"
+    ? Math.abs(areaBounds.x + areaBounds.width / 2 - (diagramBox.x + diagramBox.width / 2))
+    : Math.abs(areaBounds.y + areaBounds.height / 2 - (diagramBox.y + diagramBox.height / 2));
+}
+
+async function readNodeAxisSize(
+  page: Page,
+  nodeId: string,
+  axis: "height" | "width"
+): Promise<number> {
+  const nodeBox = await page
+    .locator(`[data-testid="diagram-container"] [data-node-id="${nodeId}"]`)
+    .boundingBox();
+
+  assertLayoutBox(nodeBox);
+
+  return nodeBox[axis];
 }
 
 function assertLayoutBox(input: {

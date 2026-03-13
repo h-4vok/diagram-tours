@@ -304,12 +304,14 @@ describe("@diagram-tour/parser", () => {
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
       "decision-flow",
+      "huge-system",
       "incident-response",
       "parallel-onboarding",
       "payment-flow",
       "refund-flow",
       "release-pipeline",
       "support-decision-tree",
+      "viewport-centering",
       "viewport-stability"
     ]);
   });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import TourPlayer from "../src/lib/tour-player.svelte";
@@ -74,14 +74,18 @@ describe("tour-player.svelte", () => {
 
     const diagramContainer = await screen.findByTestId("diagram-container");
 
-    expect(readFocusState(diagramContainer, "api_gateway")).toBe("focused");
-    expect(readFocusState(diagramContainer, "validation_service")).toBe("dimmed");
+    await waitFor(() => {
+      expect(readFocusState(diagramContainer, "api_gateway")).toBe("focused");
+      expect(readFocusState(diagramContainer, "validation_service")).toBe("dimmed");
+    });
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
-    expect(readFocusState(diagramContainer, "validation_service")).toBe("focused");
-    expect(readFocusState(diagramContainer, "api_gateway")).toBe("dimmed");
-    expect(focusDiagramViewportMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(readFocusState(diagramContainer, "validation_service")).toBe("focused");
+      expect(readFocusState(diagramContainer, "api_gateway")).toBe("dimmed");
+      expect(focusDiagramViewportMock).toHaveBeenCalled();
+    });
   });
 
   it("shows a fallback message and toast when the diagram render fails", async () => {
@@ -131,18 +135,22 @@ describe("tour-player.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
-    expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
-      invalidateAll: false,
-      keepFocus: true,
-      noScroll: true
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
     });
 
     await fireEvent.click(screen.getByTestId("previous-button"));
 
-    expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
-      invalidateAll: false,
-      keepFocus: true,
-      noScroll: true
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
     });
   });
 
@@ -168,7 +176,36 @@ describe("tour-player.svelte", () => {
       "merchant-side transaction state"
     );
     expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
-    expect(focusDiagramViewportMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(focusDiagramViewportMock).toHaveBeenCalled();
+    });
+  });
+
+  it("centers the initial deep-linked step through the stage-aware viewport hook", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 2,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const diagramStage = screen.getByTestId("diagram-stage-inner");
+
+    expect(screen.getByTestId("step-text").textContent).toContain(
+      "merchant-side transaction state"
+    );
+    await waitFor(() => {
+      expect(focusDiagramViewportMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          container: diagramContainer,
+          content: diagramStage,
+          focusGroup: expect.objectContaining({
+            mode: "group",
+            size: 2
+          })
+        })
+      );
+    });
   });
 
   it("keeps controls and the diagram visible when the step text is long", async () => {

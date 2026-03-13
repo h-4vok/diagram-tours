@@ -27,6 +27,7 @@ export async function renderMermaidDiagram(input: {
   });
 
   input.container.innerHTML = renderResult.svg;
+  normalizeRenderedSvg(input.container);
   annotateRenderedNodes(input.container, input.diagram.nodes);
   annotateConnectorLabels(input.container);
 }
@@ -92,6 +93,24 @@ function annotateRenderedNodes(container: HTMLElement, nodes: MermaidNode[]): vo
     element.dataset.nodeId = node.id;
     element.dataset.nodeLabel = node.label;
   });
+}
+
+function normalizeRenderedSvg(container: HTMLElement): void {
+  const svg = container.querySelector<SVGSVGElement>("svg");
+
+  if (svg === null) {
+    return;
+  }
+
+  const viewBoxSize = readViewBoxSize(svg);
+
+  if (viewBoxSize === null) {
+    return;
+  }
+
+  svg.setAttribute("width", String(viewBoxSize.width));
+  svg.setAttribute("height", String(viewBoxSize.height));
+  svg.style.removeProperty("max-width");
 }
 
 function setFocusState(input: {
@@ -166,6 +185,47 @@ function annotateConnectorLabels(container: HTMLElement): void {
   container.querySelectorAll<HTMLElement>(".edgeLabel").forEach((element) => {
     element.dataset.connectorRole = "label";
   });
+}
+
+function readViewBoxSize(svg: SVGSVGElement): { width: number; height: number } | null {
+  const values = readViewBoxValues(svg);
+
+  return values === null ? null : readNormalizedViewBoxSize(values);
+}
+
+function readViewBoxValues(svg: SVGSVGElement): number[] | null {
+  const viewBox = svg.getAttribute("viewBox");
+
+  if (viewBox === null) {
+    return null;
+  }
+
+  const values = viewBox
+    .trim()
+    .split(/\s+/)
+    .map((value) => Number(value));
+
+  return values.length === 4 ? values : null;
+}
+
+function readPositiveFiniteValue(value: number): number | null {
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function readNormalizedViewBoxSize(values: number[]): { width: number; height: number } | null {
+  const width = readPositiveFiniteValue(values[2]);
+
+  if (width === null) {
+    return null;
+  }
+
+  const height = readPositiveFiniteValue(values[3]);
+
+  if (height === null) {
+    return null;
+  }
+
+  return { width, height };
 }
 
 function setConnectorContext(container: HTMLElement, focusGroup: FocusGroup): void {

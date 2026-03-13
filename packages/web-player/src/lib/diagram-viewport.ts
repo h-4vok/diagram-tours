@@ -1,13 +1,6 @@
 import type { FocusGroup } from "$lib/focus-group";
 
-const MIN_OFFSET_DELTA = 8;
-const MAX_PAN_RATIO = 0.2;
-const PAN_X_PROPERTY = "--diagram-pan-x";
-const PAN_Y_PROPERTY = "--diagram-pan-y";
-const ZERO_OFFSET = {
-  offsetX: 0,
-  offsetY: 0
-};
+const MIN_SCROLL_DELTA = 8;
 
 export interface DiagramNodeRect {
   left: number;
@@ -17,13 +10,15 @@ export interface DiagramNodeRect {
 }
 
 export interface DiagramViewportMetrics {
+  contentHeight: number;
+  contentWidth: number;
   viewportHeight: number;
   viewportWidth: number;
 }
 
 export type DiagramViewportInstruction =
-  | { mode: "focus"; offsetX: number; offsetY: number }
-  | { mode: "neutral"; offsetX: number; offsetY: number }
+  | { mode: "focus"; scrollLeft: number; scrollTop: number }
+  | { mode: "neutral"; scrollLeft: number; scrollTop: number }
   | { mode: "preserve" };
 
 export function createViewportInstruction(input: {
@@ -33,8 +28,8 @@ export function createViewportInstruction(input: {
   if (input.focusedNodeRects.length === 0) {
     return {
       mode: "neutral",
-      offsetX: 0,
-      offsetY: 0
+      scrollLeft: 0,
+      scrollTop: 0
     };
   }
 
@@ -43,15 +38,16 @@ export function createViewportInstruction(input: {
 
 export function focusDiagramViewport(input: {
   container: HTMLElement;
+  content: HTMLElement;
   focusGroup: FocusGroup;
 }): void {
-  const previousOffset = readPanOffset(input.container);
+  const previousPosition = readScrollPosition(input.container);
 
   if (shouldPreserveWithoutMeasurement(input)) {
     return;
   }
 
-  const focusedNodeRects = measureNodeRects(input.container, input.focusGroup.nodeIds, previousOffset);
+  const focusedNodeRects = readNodeRects(input.content, input.focusGroup.nodeIds);
 
   if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
     return;
@@ -61,12 +57,12 @@ export function focusDiagramViewport(input: {
     container: input.container,
     instruction: createViewportInstruction({
       focusedNodeRects,
-      metrics: {
-        viewportHeight: input.container.clientHeight,
-        viewportWidth: input.container.clientWidth
-      }
+      metrics: readViewportMetrics({
+        container: input.container,
+        content: input.content
+      })
     }),
-    previousOffset
+    previousPosition
   });
 }
 
@@ -81,27 +77,26 @@ function createFocusInstruction(input: {
   }
 
   const bounds = mergeNodeRects(input.focusedNodeRects);
-  const maxOffsetX = Math.round(input.metrics.viewportWidth * MAX_PAN_RATIO);
-  const maxOffsetY = Math.round(input.metrics.viewportHeight * MAX_PAN_RATIO);
 
   return {
     mode: "focus",
-    offsetX: clampPanOffset(
-      input.metrics.viewportWidth / 2 - (bounds.left + bounds.width / 2),
-      maxOffsetX
+    scrollLeft: clampScrollTarget(
+      bounds.left + bounds.width / 2 - input.metrics.viewportWidth / 2,
+      input.metrics.contentWidth - input.metrics.viewportWidth
     ),
-    offsetY: clampPanOffset(
-      input.metrics.viewportHeight / 2 - (bounds.top + bounds.height / 2),
-      maxOffsetY
+    scrollTop: clampScrollTarget(
+      bounds.top + bounds.height / 2 - input.metrics.viewportHeight / 2,
+      input.metrics.contentHeight - input.metrics.viewportHeight
     )
   };
 }
 
 function shouldPreserveWithoutMeasurement(input: {
   container: HTMLElement;
+  content: HTMLElement;
   focusGroup: FocusGroup;
 }): boolean {
-  return input.focusGroup.mode !== "empty" && !isRenderableSvgReady(input.container);
+  return input.focusGroup.mode !== "empty" && !isRenderableSvgReady(input.content);
 }
 
 function shouldPreserveCurrentViewport(
@@ -114,63 +109,61 @@ function shouldPreserveCurrentViewport(
 function applyViewportInstruction(input: {
   container: HTMLElement;
   instruction: DiagramViewportInstruction;
-  previousOffset: { offsetX: number; offsetY: number };
+  previousPosition: { scrollLeft: number; scrollTop: number };
 }): void {
-  const nextOffset = resolveNextOffset(input.instruction, input.previousOffset);
+  const nextPosition = resolveNextScrollPosition(input.instruction, input.previousPosition);
 
-  writePanOffset(input.container, nextOffset);
+  writeScrollPosition(input.container, nextPosition);
 }
 
-function resolveNextOffset(
+function resolveNextScrollPosition(
   instruction: DiagramViewportInstruction,
-  previousOffset: { offsetX: number; offsetY: number }
-): { offsetX: number; offsetY: number } {
+  previousPosition: { scrollLeft: number; scrollTop: number }
+): { scrollLeft: number; scrollTop: number } {
   if (instruction.mode === "preserve") {
-    return previousOffset;
+    return previousPosition;
   }
 
-  if (!shouldMoveViewport(previousOffset, instruction)) {
-    return previousOffset;
+  if (!shouldMoveViewport(previousPosition, instruction)) {
+    return previousPosition;
   }
 
   return instruction;
 }
 
-function readNodeRects(container: HTMLElement, focusedNodeIds: string[]): DiagramNodeRect[] {
-  const containerRect = container.getBoundingClientRect();
+function readNodeRects(content: HTMLElement, focusedNodeIds: string[]): DiagramNodeRect[] {
+  const contentRect = content.getBoundingClientRect();
 
   return focusedNodeIds
-    .map((nodeId) => container.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
-    .flatMap((element) => (element === null ? [] : [toNodeRect(containerRect, element)]));
+    .map((nodeId) => content.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
+    .flatMap((element) => (element === null ? [] : [toNodeRect(contentRect, element)]));
 }
 
-function measureNodeRects(
-  container: HTMLElement,
-  focusedNodeIds: string[],
-  previousOffset: { offsetX: number; offsetY: number }
-): DiagramNodeRect[] {
-  writePanOffset(container, ZERO_OFFSET);
-
-  try {
-    return readNodeRects(container, focusedNodeIds);
-  } finally {
-    writePanOffset(container, previousOffset);
-  }
-}
-
-function toNodeRect(containerRect: DOMRect, element: HTMLElement): DiagramNodeRect {
+function toNodeRect(contentRect: DOMRect, element: HTMLElement): DiagramNodeRect {
   const elementRect = element.getBoundingClientRect();
 
   return {
-    left: elementRect.left - containerRect.left,
-    top: elementRect.top - containerRect.top,
+    left: elementRect.left - contentRect.left,
+    top: elementRect.top - contentRect.top,
     width: elementRect.width,
     height: elementRect.height
   };
 }
 
+function readViewportMetrics(input: {
+  container: HTMLElement;
+  content: HTMLElement;
+}): DiagramViewportMetrics {
+  return {
+    contentHeight: readContentExtent(input.content, "height"),
+    contentWidth: readContentExtent(input.content, "width"),
+    viewportHeight: sanitizeFiniteValue(input.container.clientHeight),
+    viewportWidth: sanitizeFiniteValue(input.container.clientWidth)
+  };
+}
+
 function hasStableMetrics(metrics: DiagramViewportMetrics): boolean {
-  return isFinitePositive(metrics.viewportWidth) && isFinitePositive(metrics.viewportHeight);
+  return hasStableViewportMetrics(metrics) && hasStableContentMetrics(metrics);
 }
 
 function hasStableNodeRects(rects: DiagramNodeRect[]): boolean {
@@ -193,54 +186,60 @@ function mergeNodeRects(rects: DiagramNodeRect[]): DiagramNodeRect {
   });
 }
 
-function clampPanOffset(offset: number, maxOffset: number): number {
-  if (offset < -maxOffset) {
-    return -maxOffset;
+function clampScrollTarget(target: number, maxScroll: number): number {
+  const sanitizedMaxScroll = Math.max(0, sanitizeFiniteValue(maxScroll));
+  const sanitizedTarget = sanitizeFiniteValue(target);
+
+  if (sanitizedTarget < 0) {
+    return 0;
   }
 
-  if (offset > maxOffset) {
-    return maxOffset;
+  if (sanitizedTarget > sanitizedMaxScroll) {
+    return sanitizedMaxScroll;
   }
 
-  return Math.round(offset);
+  return Math.round(sanitizedTarget);
 }
 
-function readPanOffset(container: HTMLElement): {
-  offsetX: number;
-  offsetY: number;
+function readScrollPosition(container: HTMLElement): {
+  scrollLeft: number;
+  scrollTop: number;
 } {
   return {
-    offsetX: readOffsetValue(container, PAN_X_PROPERTY),
-    offsetY: readOffsetValue(container, PAN_Y_PROPERTY)
+    scrollLeft: sanitizeFiniteValue(container.scrollLeft),
+    scrollTop: sanitizeFiniteValue(container.scrollTop)
   };
 }
 
-function readOffsetValue(container: HTMLElement, propertyName: string): number {
-  const value = container.style.getPropertyValue(propertyName);
-  const parsedValue = value.length === 0 ? 0 : Number.parseInt(value, 10);
-
-  return Number.isFinite(parsedValue) ? parsedValue : 0;
-}
-
 function shouldMoveViewport(
-  previousOffset: { offsetX: number; offsetY: number },
+  previousPosition: { scrollLeft: number; scrollTop: number },
   instruction: Extract<DiagramViewportInstruction, { mode: "focus" | "neutral" }>
 ): boolean {
   return (
-    Math.abs(previousOffset.offsetX - instruction.offsetX) >= MIN_OFFSET_DELTA ||
-    Math.abs(previousOffset.offsetY - instruction.offsetY) >= MIN_OFFSET_DELTA
+    Math.abs(previousPosition.scrollLeft - instruction.scrollLeft) >= MIN_SCROLL_DELTA ||
+    Math.abs(previousPosition.scrollTop - instruction.scrollTop) >= MIN_SCROLL_DELTA
   );
 }
 
-function writePanOffset(
+function writeScrollPosition(
   container: HTMLElement,
-  offset: {
-    offsetX: number;
-    offsetY: number;
+  position: {
+    scrollLeft: number;
+    scrollTop: number;
   }
 ): void {
-  container.style.setProperty(PAN_X_PROPERTY, `${offset.offsetX}px`);
-  container.style.setProperty(PAN_Y_PROPERTY, `${offset.offsetY}px`);
+  if (typeof container.scrollTo === "function") {
+    container.scrollTo({
+      behavior: "smooth",
+      left: position.scrollLeft,
+      top: position.scrollTop
+    });
+
+    return;
+  }
+
+  container.scrollLeft = position.scrollLeft;
+  container.scrollTop = position.scrollTop;
 }
 
 function isRenderableSvgReady(container: HTMLElement): boolean {
@@ -269,4 +268,31 @@ function hasFiniteOrigin(rect: DiagramNodeRect): boolean {
 
 function hasFiniteSize(rect: DiagramNodeRect): boolean {
   return isFinitePositive(rect.width) && isFinitePositive(rect.height);
+}
+
+function sanitizeFiniteValue(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function hasStableViewportMetrics(metrics: DiagramViewportMetrics): boolean {
+  return isFinitePositive(metrics.viewportWidth) && isFinitePositive(metrics.viewportHeight);
+}
+
+function hasStableContentMetrics(metrics: DiagramViewportMetrics): boolean {
+  return isFinitePositive(metrics.contentWidth) && isFinitePositive(metrics.contentHeight);
+}
+
+function readContentExtent(
+  content: HTMLElement,
+  axis: "height" | "width"
+): number {
+  return sanitizeFiniteValue(readStageExtent(content, axis) || readStageClientExtent(content, axis));
+}
+
+function readStageExtent(content: HTMLElement, axis: "height" | "width"): number {
+  return axis === "height" ? content.scrollHeight : content.scrollWidth;
+}
+
+function readStageClientExtent(content: HTMLElement, axis: "height" | "width"): number {
+  return axis === "height" ? content.clientHeight : content.clientWidth;
 }

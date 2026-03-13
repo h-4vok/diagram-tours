@@ -25,12 +25,14 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
       "decision-flow",
+      "huge-system",
       "incident-response",
       "parallel-onboarding",
       "payment-flow",
       "refund-flow",
       "release-pipeline",
       "support-decision-tree",
+      "viewport-centering",
       "viewport-stability"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
@@ -46,12 +48,14 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
       "Decision Flow",
+      "Huge System Stress Test",
       "Incident Response",
       "Parallel Onboarding",
       "Payment Flow",
       "Refund Flow",
       "Release Pipeline",
       "Support Decision Tree",
+      "Viewport Centering",
       "Viewport Stability"
     ]);
     expect(result.collection.skipped).toEqual([]);
@@ -62,6 +66,18 @@ describe("+layout.server", () => {
     const entry = await loadExampleEntry("viewport-stability");
 
     expectViewportStabilityExample(entry);
+  });
+
+  it("loads the huge system example as a discoverable stress-test tour", async () => {
+    const entry = await loadExampleEntry("huge-system");
+
+    expectHugeSystemExample(entry);
+  });
+
+  it("loads the viewport centering example with top, bottom, grouped, and empty focus steps", async () => {
+    const entry = await loadExampleEntry("viewport-centering");
+
+    expectViewportCenteringExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
@@ -110,6 +126,32 @@ function expectViewportStabilityExample(
   expect(readFocusLength(steps, 2)).toBe(2);
 }
 
+function expectViewportCenteringExample(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): void {
+  const steps = readSteps(entry);
+
+  expect(steps).toHaveLength(4);
+  expect(readFocusLength(steps, 0)).toBe(1);
+  expect(readFocusLength(steps, 1)).toBe(1);
+  expect(readFocusLength(steps, 2)).toBe(2);
+  expect(steps[3]?.focus).toEqual([]);
+}
+
+function expectHugeSystemExample(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): void {
+  const steps = readSteps(entry);
+
+  expect(readTitle(entry)).toBe("Huge System Stress Test");
+  expect(readNodeCount(entry)).toBeGreaterThanOrEqual(30);
+  expect(steps).toHaveLength(8);
+  expect(readFocusLength(steps, 0)).toBe(1);
+  expect(readFocusLength(steps, 2)).toBe(3);
+  expect(readFocusLength(steps, 5)).toBe(3);
+  expect(steps[6]?.focus).toEqual([]);
+}
+
 function readSteps(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ) {
@@ -123,4 +165,16 @@ function readFocusLength(
   index: number
 ): number {
   return steps[index]?.focus.length ?? 0;
+}
+
+function readTitle(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): string | undefined {
+  return entry?.tour.title;
+}
+
+function readNodeCount(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): number {
+  return entry?.tour.diagram.nodes.length ?? 0;
 }

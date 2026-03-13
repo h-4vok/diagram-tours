@@ -23,35 +23,45 @@
 
   let state = player.getState();
   let diagramContainer: HTMLDivElement;
+  let diagramContent: HTMLDivElement;
   let diagramError = "";
   let hasRenderedDiagram = false;
   let previousInitialStepIndex = initialStepIndex;
 
   async function goPrevious(): Promise<void> {
     state = player.goPrevious();
-    syncFocusState();
+    await syncFocusState();
     await navigateToStep(state.step.index);
   }
 
   async function goNext(): Promise<void> {
     state = player.goNext();
-    syncFocusState();
+    await syncFocusState();
     await navigateToStep(state.step.index);
   }
 
-  function syncFocusState(): void {
+  async function syncFocusState(): Promise<void> {
     if (!hasRenderedDiagram) {
+      return;
+    }
+
+    await waitForDiagramLayout();
+
+    const currentContext = readDiagramContext();
+
+    if (currentContext === null) {
       return;
     }
 
     const focusGroup = createFocusGroup(state.focusedNodeIds);
 
     applyFocusState({
-      container: diagramContainer,
+      container: currentContext.container,
       focusGroup
     });
     focusDiagramViewport({
-      container: diagramContainer,
+      container: currentContext.container,
+      content: currentContext.content,
       focusGroup
     });
   }
@@ -59,11 +69,11 @@
   onMount(async () => {
     try {
       await renderMermaidDiagram({
-        container: diagramContainer,
+        container: diagramContent,
         diagram: tour.diagram
       });
       hasRenderedDiagram = true;
-      syncFocusState();
+      await syncFocusState();
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
       toast.error(diagramError);
@@ -73,7 +83,7 @@
   $: if (initialStepIndex !== previousInitialStepIndex) {
     previousInitialStepIndex = initialStepIndex;
     state = player.setStepIndex(initialStepIndex);
-    syncFocusState();
+    void syncFocusState();
   }
 
   async function navigateToStep(stepIndex: number): Promise<void> {
@@ -82,6 +92,30 @@
       keepFocus: true,
       noScroll: true
     });
+  }
+
+  function waitForDiagramLayout(): Promise<void> {
+    return new Promise((resolveLayout) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolveLayout();
+        });
+      });
+    });
+  }
+
+  function readDiagramContext(): {
+    container: HTMLDivElement;
+    content: HTMLDivElement;
+  } | null {
+    const container = readBoundElement(diagramContainer);
+    const content = readBoundElement(diagramContent);
+
+    return container !== null && content !== null ? { container, content } : null;
+  }
+
+  function readBoundElement<T extends HTMLElement>(value: T | undefined): T | null {
+    return value ?? null;
   }
 </script>
 
@@ -119,7 +153,13 @@
 
   <section class="diagram-stage">
     <div class="diagram-shell">
-      <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram"></div>
+      <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
+        <div
+          bind:this={diagramContent}
+          data-testid="diagram-stage-inner"
+          class="diagram-stage-inner"
+        ></div>
+      </div>
       {#if diagramError.length > 0}
         <p data-testid="diagram-error" class="diagram-error">{diagramError}</p>
       {/if}

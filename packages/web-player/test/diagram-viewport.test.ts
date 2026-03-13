@@ -7,419 +7,578 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 
 describe("diagram viewport helpers", () => {
-  it("computes a bounded pan target for a single focused node", () => {
+  it("computes a bounded scroll target for a single focused node", () => {
     expect(
       createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: 420,
-            top: 250,
-            width: 80,
-            height: 40
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
+        focusedNodeRects: [createNodeRect({ height: 40, left: 420, top: 250, width: 80 })],
+        metrics: createMetrics()
       })
     ).toEqual({
       mode: "focus",
-      offsetX: -120,
-      offsetY: -70
+      scrollLeft: 160,
+      scrollTop: 70
     });
   });
 
-  it("computes a combined pan target for multiple focused nodes", () => {
-    const forwardInstruction =
-      createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: 140,
-            top: 180,
-            width: 80,
-            height: 40
-          },
-          {
-            left: 380,
-            top: 260,
-            width: 100,
-            height: 50
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
-      });
+  it("computes a combined scroll target for multiple focused nodes", () => {
+    const forwardInstruction = createViewportInstruction({
+      focusedNodeRects: [
+        createNodeRect({ height: 40, left: 140, top: 180, width: 80 }),
+        createNodeRect({ height: 50, left: 380, top: 260, width: 100 })
+      ],
+      metrics: createMetrics()
+    });
     const reversedInstruction = createViewportInstruction({
       focusedNodeRects: [
-        {
-          left: 380,
-          top: 260,
-          width: 100,
-          height: 50
-        },
-        {
-          left: 140,
-          top: 180,
-          width: 80,
-          height: 40
-        }
+        createNodeRect({ height: 50, left: 380, top: 260, width: 100 }),
+        createNodeRect({ height: 40, left: 140, top: 180, width: 80 })
       ],
-      metrics: {
-        viewportHeight: 400,
-        viewportWidth: 600
-      }
+      metrics: createMetrics()
     });
 
     expect(forwardInstruction).toEqual({
       mode: "focus",
-      offsetX: -10,
-      offsetY: -45
+      scrollLeft: 10,
+      scrollTop: 45
     });
     expect(reversedInstruction).toEqual(forwardInstruction);
   });
 
-  it("clamps positive pan offsets when a focused node is too far toward the top-left", () => {
-    expect(
-      createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: 10,
-            top: 10,
-            width: 40,
-            height: 40
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
-      })
-    ).toEqual({
-      mode: "focus",
-      offsetX: 120,
-      offsetY: 80
-    });
-  });
-
   it("returns a neutral viewport for empty focus and preserves on unstable measurements", () => {
-    expect(
-      createViewportInstruction({
-        focusedNodeRects: [],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
-      })
-    ).toEqual({
+    expect(createViewportInstruction({ focusedNodeRects: [], metrics: createMetrics() })).toEqual({
       mode: "neutral",
-      offsetX: 0,
-      offsetY: 0
+      scrollLeft: 0,
+      scrollTop: 0
     });
 
     expect(
       createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: 200,
-            top: 120,
-            width: 0,
-            height: 40
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
+        focusedNodeRects: [createNodeRect({ height: 40, left: 200, top: 120, width: 0 })],
+        metrics: createMetrics()
       })
     ).toEqual({
       mode: "preserve"
     });
   });
 
-  it("preserves the viewport when focus bounds contain invalid coordinates", () => {
+  it("preserves the viewport when focus bounds or metrics are invalid", () => {
     expect(
       createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: Number.NaN,
-            top: 120,
-            width: 40,
-            height: 40
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
+        focusedNodeRects: [createNodeRect({ height: 40, left: Number.NaN, top: 120, width: 40 })],
+        metrics: createMetrics()
+      })
+    ).toEqual({
+      mode: "preserve"
+    });
+
+    expect(
+      createViewportInstruction({
+        focusedNodeRects: [createNodeRect({ height: 40, left: 40, top: 40, width: 40 })],
+        metrics: createMetrics({ contentHeight: 0 })
       })
     ).toEqual({
       mode: "preserve"
     });
   });
 
-  it("clamps extreme focus targets to bounded offsets", () => {
+  it("clamps focus targets to the available scroll range", () => {
     expect(
       createViewportInstruction({
-        focusedNodeRects: [
-          {
-            left: 5000,
-            top: 4000,
-            width: 80,
-            height: 80
-          }
-        ],
-        metrics: {
-          viewportHeight: 400,
-          viewportWidth: 600
-        }
+        focusedNodeRects: [createNodeRect({ height: 40, left: 10, top: 10, width: 40 })],
+        metrics: createMetrics()
       })
     ).toEqual({
       mode: "focus",
-      offsetX: -120,
-      offsetY: -80
+      scrollLeft: 0,
+      scrollTop: 0
+    });
+
+    expect(
+      createViewportInstruction({
+        focusedNodeRects: [createNodeRect({ height: 80, left: 5000, top: 4000, width: 80 })],
+        metrics: createMetrics()
+      })
+    ).toEqual({
+      mode: "focus",
+      scrollLeft: 320,
+      scrollTop: 320
     });
   });
 
-  it("applies a pan offset when the focus target changes meaningfully", () => {
-    const container = createContainer();
+  it("applies a centered scroll target for a padded content stage", () => {
+    const fixture = createViewportFixture();
 
-    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
-    mockRect(container, {
-      height: 400,
-      left: 0,
-      top: 0,
-      width: 600
-    });
-    mockRect(container.querySelector("svg") as Element, {
-      height: 720,
-      left: 0,
-      top: 0,
-      width: 920
-    });
-    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
-      height: 80,
-      left: 460,
-      top: 300,
-      width: 100
-    });
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockNodeRect(fixture, "focus", { height: 80, left: 590, top: 430, width: 100 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["focus"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-80px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 340,
+      scrollTop: 270
+    });
   });
 
   it("preserves the current viewport when focus measurements are missing or unstable", () => {
-    const container = createContainer();
+    const fixture = createViewportFixture();
 
-    container.style.setProperty("--diagram-pan-x", "18px");
-    container.style.setProperty("--diagram-pan-y", "-24px");
+    assignScrollPosition(fixture.container, { scrollLeft: 18, scrollTop: 24 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["missing"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-24px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 18,
+      scrollTop: 24
+    });
 
-    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
-    mockRect(container, {
-      height: 400,
-      left: 0,
-      top: 0,
-      width: 600
-    });
-    mockRect(container.querySelector("svg") as Element, {
-      height: 720,
-      left: 0,
-      top: 0,
-      width: 920
-    });
-    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
-      height: 0,
-      left: 100,
-      top: 100,
-      width: 40
-    });
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockNodeRect(fixture, "focus", { height: 0, left: 200, top: 200, width: 40 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["focus"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("18px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-24px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 18,
+      scrollTop: 24
+    });
   });
 
   it("does not drift when re-centering the same step repeatedly", () => {
-    const container = createContainer();
+    const fixture = createViewportFixture();
 
-    container.innerHTML = '<svg></svg><div data-node-id="focus"></div>';
-    mockRect(container, {
-      height: 400,
-      left: 0,
-      top: 0,
-      width: 600
-    });
-    mockRect(container.querySelector("svg") as Element, {
-      height: 720,
-      left: 0,
-      top: 0,
-      width: 920
-    });
-    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
-      height: 80,
-      left: 460,
-      top: 300,
-      width: 100
-    });
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockNodeRect(fixture, "focus", { height: 80, left: 590, top: 430, width: 100 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["focus"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-80px");
-
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["focus"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-120px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-80px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 340,
+      scrollTop: 270
+    });
   });
 
   it("keeps the current viewport when the svg is not ready yet", () => {
-    const container = createContainer();
+    const fixture = createViewportFixture();
 
-    container.style.setProperty("--diagram-pan-x", "-30px");
-    container.style.setProperty("--diagram-pan-y", "18px");
-    container.innerHTML = '<div data-node-id="focus"></div>';
-    mockRect(container, {
-      height: 400,
-      left: 0,
-      top: 0,
-      width: 600
-    });
-    mockRect(container.querySelector("[data-node-id='focus']") as HTMLElement, {
-      height: 80,
-      left: 460,
-      top: 300,
-      width: 100
-    });
+    assignScrollPosition(fixture.container, { scrollLeft: 30, scrollTop: 18 });
+    setStageMarkup(fixture, '<div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockNodeRect(fixture, "focus", { height: 80, left: 590, top: 430, width: 100 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["focus"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-30px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("18px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 30,
+      scrollTop: 18
+    });
   });
 
   it("preserves the current viewport when the svg is ready but the focused node is missing", () => {
-    const container = createContainer();
+    const fixture = createViewportFixture();
 
-    container.style.setProperty("--diagram-pan-x", "-30px");
-    container.style.setProperty("--diagram-pan-y", "18px");
-    container.innerHTML = "<svg></svg>";
-    mockRect(container, {
-      height: 400,
-      left: 0,
-      top: 0,
-      width: 600
-    });
-    mockRect(container.querySelector("svg") as Element, {
-      height: 720,
-      left: 0,
-      top: 0,
-      width: 920
-    });
+    assignScrollPosition(fixture.container, { scrollLeft: 30, scrollTop: 18 });
+    setStageMarkup(fixture, "<svg></svg>");
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup(["missing"])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("-30px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("18px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 30,
+      scrollTop: 18
+    });
   });
 
-  it("falls back to zero when previous pan offsets are invalid css values", () => {
-    const container = createContainer();
+  it("falls back to zero when previous scroll values are invalid and neutral focus is requested", () => {
+    const fixture = createViewportFixture();
 
-    container.style.setProperty("--diagram-pan-x", "banana");
-    container.style.setProperty("--diagram-pan-y", "nope");
+    mockInvalidScrollPosition(fixture.container);
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup([])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("0px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("0px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 0,
+      scrollTop: 0
+    });
   });
 
-  it("returns to neutral focus only when the target difference is meaningful", () => {
-    const container = createContainer();
+  it("writes scroll positions directly when scrollTo is unavailable", () => {
+    const fixture = createViewportFixture();
 
-    container.style.setProperty("--diagram-pan-x", "2px");
-    container.style.setProperty("--diagram-pan-y", "-3px");
+    disableScrollTo(fixture.container);
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockNodeRect(fixture, "focus", { height: 80, left: 590, top: 430, width: 100 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 340,
+      scrollTop: 270
+    });
+  });
+
+  it("returns to the neutral origin only when the target difference is meaningful", () => {
+    const fixture = createViewportFixture();
+
+    assignScrollPosition(fixture.container, { scrollLeft: 2, scrollTop: 3 });
+
+    focusDiagramViewport({
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup([])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("2px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("-3px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 2,
+      scrollTop: 3
+    });
 
-    container.style.setProperty("--diagram-pan-x", "20px");
-    container.style.setProperty("--diagram-pan-y", "-24px");
+    assignScrollPosition(fixture.container, { scrollLeft: 20, scrollTop: 24 });
 
     focusDiagramViewport({
-      container,
+      container: fixture.container,
+      content: fixture.content,
       focusGroup: createFocusGroup([])
     });
 
-    expect(container.style.getPropertyValue("--diagram-pan-x")).toBe("0px");
-    expect(container.style.getPropertyValue("--diagram-pan-y")).toBe("0px");
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 0,
+      scrollTop: 0
+    });
+  });
+
+  it("clamps computed scroll targets to the available scroll range of the stage", () => {
+    const fixture = createViewportFixture({
+      contentHeight: 540,
+      contentWidth: 660
+    });
+
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 540, left: 0, top: 0, width: 660 });
+    mockElementRect(fixture, "svg", { height: 300, left: 80, top: 80, width: 500 });
+    mockNodeRect(fixture, "focus", { height: 60, left: 620, top: 500, width: 80 });
+
+    focusDiagramViewport({
+      container: fixture.container,
+      content: fixture.content,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 60,
+      scrollTop: 140
+    });
+  });
+
+  it("uses the stage client size when scroll extents are not populated", () => {
+    const fixture = createViewportFixture({
+      contentClientHeight: 960,
+      contentClientWidth: 1180,
+      contentHeight: 0,
+      contentWidth: 0
+    });
+
+    setStageMarkup(fixture, '<svg></svg><div data-node-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockNodeRect(fixture, "focus", { height: 80, left: 590, top: 430, width: 100 });
+
+    focusDiagramViewport({
+      container: fixture.container,
+      content: fixture.content,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 340,
+      scrollTop: 270
+    });
   });
 });
 
-function createContainer(): HTMLElement {
+function createViewportFixture(input?: {
+  contentClientHeight?: number;
+  contentClientWidth?: number;
+  contentHeight?: number;
+  contentWidth?: number;
+}): {
+  container: HTMLElement;
+  content: HTMLElement;
+} {
   const container = document.createElement("div");
+  const content = document.createElement("div");
 
   Object.defineProperties(container, {
-    clientHeight: { value: 400 },
-    clientWidth: { value: 600 }
+    clientHeight: { value: 400, writable: true },
+    clientWidth: { value: 600, writable: true }
   });
+  applyContentDimensions(content, input);
 
-  return container;
+  assignScrollPosition(container, { scrollLeft: 0, scrollTop: 0 });
+  container.scrollTo = createScrollToStub(container);
+  container.append(content);
+
+  return { container, content };
 }
 
-function mockRect(element: Element, input: {
+function setStageMarkup(
+  fixture: {
+    content: HTMLElement;
+  },
+  markup: string
+): void {
+  fixture.content.innerHTML = markup;
+}
+
+function mockStageRect(
+  fixture: {
+    content: HTMLElement;
+  },
+  input: RectInput
+): void {
+  mockRect(fixture.content, input);
+}
+
+function mockElementRect(
+  fixture: {
+    content: HTMLElement;
+  },
+  selector: string,
+  input: RectInput
+): void {
+  mockRect(fixture.content.querySelector(selector) as Element, input);
+}
+
+function mockNodeRect(
+  fixture: {
+    content: HTMLElement;
+  },
+  nodeId: string,
+  input: RectInput
+): void {
+  mockRect(fixture.content.querySelector(`[data-node-id="${nodeId}"]`) as Element, input);
+}
+
+function readScrollPosition(container: HTMLElement): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return {
+    scrollLeft: Number(container.scrollLeft),
+    scrollTop: Number(container.scrollTop)
+  };
+}
+
+function mockInvalidScrollPosition(container: HTMLElement): void {
+  Object.defineProperties(container, {
+    scrollLeft: { value: Number.NaN, writable: true },
+    scrollTop: { value: Number.NaN, writable: true }
+  });
+}
+
+function createNodeRect(input: RectInput): {
   height: number;
   left: number;
   top: number;
   width: number;
-}): void {
-  element.getBoundingClientRect = () =>
-    ({
-      bottom: input.top + input.height,
-      height: input.height,
-      left: input.left,
-      right: input.left + input.width,
-      top: input.top,
-      width: input.width
-    }) as DOMRect;
+} {
+  return input;
+}
+
+function mockRect(element: Element, input: RectInput): void {
+  element.getBoundingClientRect = () => createDomRect(input);
+}
+
+function createDomRect(input: RectInput): DOMRect {
+  return {
+    bottom: input.top + input.height,
+    height: input.height,
+    left: input.left,
+    right: input.left + input.width,
+    top: input.top,
+    width: input.width
+  } as DOMRect;
+}
+
+function createScrollToStub(container: HTMLElement): typeof container.scrollTo {
+  return ((options: ScrollToOptions | number, top?: number) => {
+    assignScrollPosition(container, toScrollPosition(container, options, top));
+  }) as typeof container.scrollTo;
+}
+
+function assignScrollPosition(
+  container: HTMLElement,
+  input: {
+    scrollLeft: number;
+    scrollTop: number;
+  }
+): void {
+  container.scrollLeft = input.scrollLeft;
+  container.scrollTop = input.scrollTop;
+}
+
+function disableScrollTo(container: HTMLElement): void {
+  Object.defineProperty(container, "scrollTo", {
+    value: undefined,
+    writable: true
+  });
+}
+
+function toScrollPosition(
+  container: HTMLElement,
+  options: ScrollToOptions | number,
+  top?: number
+): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return typeof options === "number"
+    ? toNumericScrollPosition(options, top)
+    : toObjectScrollPosition(container, options);
+}
+
+interface RectInput {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+}
+
+function createMetrics(input?: Partial<{
+  contentHeight: number;
+  contentWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
+}>): {
+  contentHeight: number;
+  contentWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
+} {
+  return {
+    contentHeight: resolveMetric(input, "contentHeight", 720),
+    contentWidth: resolveMetric(input, "contentWidth", 920),
+    viewportHeight: resolveMetric(input, "viewportHeight", 400),
+    viewportWidth: resolveMetric(input, "viewportWidth", 600)
+  };
+}
+
+function resolveMetric(
+  input: Partial<{
+    contentHeight: number;
+    contentWidth: number;
+    viewportHeight: number;
+    viewportWidth: number;
+  }> | undefined,
+  key: "contentHeight" | "contentWidth" | "viewportHeight" | "viewportWidth",
+  fallback: number
+): number {
+  return input?.[key] ?? fallback;
+}
+
+function applyContentDimensions(
+  content: HTMLElement,
+  input?: {
+    contentClientHeight?: number;
+    contentClientWidth?: number;
+    contentHeight?: number;
+    contentWidth?: number;
+  }
+): void {
+  Object.defineProperties(content, {
+    clientHeight: { value: resolveContentClientHeight(input), writable: true },
+    clientWidth: { value: resolveContentClientWidth(input), writable: true },
+    scrollHeight: { value: resolveContentHeight(input), writable: true },
+    scrollWidth: { value: resolveContentWidth(input), writable: true }
+  });
+}
+
+function resolveContentClientHeight(input?: {
+  contentClientHeight?: number;
+  contentHeight?: number;
+}): number {
+  return input?.contentClientHeight ?? resolveContentHeight(input);
+}
+
+function resolveContentClientWidth(input?: {
+  contentClientWidth?: number;
+  contentWidth?: number;
+}): number {
+  return input?.contentClientWidth ?? resolveContentWidth(input);
+}
+
+function resolveContentHeight(input?: { contentHeight?: number }): number {
+  return input?.contentHeight ?? 960;
+}
+
+function resolveContentWidth(input?: { contentWidth?: number }): number {
+  return input?.contentWidth ?? 1180;
+}
+
+function toNumericScrollPosition(left: number, top?: number): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return {
+    scrollLeft: left,
+    scrollTop: top ?? 0
+  };
+}
+
+function toObjectScrollPosition(
+  container: HTMLElement,
+  options: ScrollToOptions
+): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return {
+    scrollLeft: options.left ?? container.scrollLeft,
+    scrollTop: options.top ?? container.scrollTop
+  };
 }
