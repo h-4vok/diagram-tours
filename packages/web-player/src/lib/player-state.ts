@@ -12,10 +12,14 @@ export interface TourPlayer {
   getState: () => TourPlayerState;
   goPrevious: () => TourPlayerState;
   goNext: () => TourPlayerState;
+  setStepIndex: (stepIndex: number) => TourPlayerState;
 }
 
-export function createTourPlayer(tour: ResolvedDiagramTour): TourPlayer {
-  let stepIndex = 0;
+export function createTourPlayer(
+  tour: ResolvedDiagramTour,
+  initialStepIndex: number
+): TourPlayer {
+  let stepIndex = clampStepIndex(initialStepIndex, tour.steps.length);
 
   return {
     getState: () => createState(tour, stepIndex),
@@ -26,6 +30,11 @@ export function createTourPlayer(tour: ResolvedDiagramTour): TourPlayer {
     },
     goNext: () => {
       stepIndex = clampStepIndex(stepIndex + 1, tour.steps.length);
+
+      return createState(tour, stepIndex);
+    },
+    setStepIndex: (nextStepIndex) => {
+      stepIndex = clampStepIndex(nextStepIndex, tour.steps.length);
 
       return createState(tour, stepIndex);
     }

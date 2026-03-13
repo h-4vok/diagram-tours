@@ -1,5 +1,7 @@
+:root[data-theme="dark"] .theme-root,
 .theme-root[data-theme="dark"] {
   --color-accent-muted: #d0ab88;
+  --color-bg-accent-glow: rgb(56 189 248 / 8%);
   --color-bg-bottom: #0f1218;
   --color-bg-glow: rgb(122 92 255 / 18%);
   --color-bg-top: #1a2028;
@@ -21,11 +23,16 @@
   --edge-label-padding-y: 1px;
   --edge-label-radius: 5px;
   --color-focus-ring: rgb(138 171 255 / 40%);
+  --color-focus-shadow: rgb(122 146 255 / 26%);
   --color-muted: #b7c2ce;
+  --color-node-dim-filter: 72%;
   --color-node-focus-fill: #253360;
   --color-node-focus-stroke: #8aa2ff;
   --color-node-focus-text: #f4f7fb;
+  --color-connector-context-opacity: 0.88;
+  --color-connector-context-surface: rgb(16 21 29 / 68%);
   --color-surface: rgb(19 24 33 / 80%);
   --color-text: #f4f7fb;
-  --diagram-dim-opacity: 0.18;
+  --diagram-dim-opacity: 0.14;
+  --shadow-soft: 0 28px 70px rgb(0 0 0 / 28%);
 }

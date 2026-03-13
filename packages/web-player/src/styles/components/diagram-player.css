@@ -1,17 +1,32 @@
 .diagram {
-  align-items: start;
-  display: flex;
-  justify-content: center;
-  min-height: var(--diagram-min-height);
-  overflow: auto;
-  padding: var(--space-xs);
+  block-size: clamp(var(--diagram-min-height), 50vh, var(--diagram-min-height-lg));
+  display: block;
+  inline-size: 100%;
+  min-width: 0;
+  overflow: auto scroll;
+  padding: 0;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+.diagram-stage-inner {
+  box-sizing: border-box;
+  display: grid;
+  inline-size: max-content;
+  min-block-size: 100%;
+  min-inline-size: 100%;
+  padding:
+    clamp(16rem, 32vh, 22rem)
+    max(20rem, 45vw);
+  place-items: center;
 }
 
 .diagram svg {
   display: block;
   height: auto;
+  inline-size: max-content;
   max-width: none;
-  width: min(100%, 88rem);
+  transition: opacity 400ms ease;
 }
 
 /* stylelint-disable selector-class-pattern */
@@ -47,9 +62,14 @@
   white-space: nowrap;
 }
 
+.diagram [data-connector-state="context"] div {
+  background: var(--color-connector-context-surface);
+  opacity: var(--color-connector-context-opacity);
+}
+
 .diagram .edgeLabel :is(p, span) {
   background: transparent;
-  background-color: transparent;
+  background-color: transparent !important;
   border: 0;
   color: inherit;
   margin: 0;
@@ -59,9 +79,14 @@
 
 [data-node-id] {
   opacity: 1;
+  transition:
+    filter 400ms ease,
+    opacity 400ms ease,
+    transform 400ms ease;
 }
 
 [data-focus-state="dimmed"] {
+  filter: saturate(var(--color-node-dim-filter));
   opacity: var(--diagram-dim-opacity);
 }
 
@@ -70,6 +95,7 @@
 }
 
 [data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
+  filter: drop-shadow(0 0 10px var(--color-focus-shadow));
   fill: var(--color-node-focus-fill);
   stroke: var(--color-node-focus-stroke);
   stroke-width: 2px;
@@ -86,12 +112,60 @@
 }
 /* stylelint-enable selector-class-pattern */
 
+.diagram [data-connector-role="label"] {
+  transition: opacity 400ms ease;
+}
+
+.error-panel {
+  gap: var(--space-lg);
+}
+
+.error-panel__message {
+  max-height: none;
+  min-height: 0;
+}
+
+.error-actions {
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.error-actions__button {
+  border-radius: 0.9rem;
+  min-height: 2.7rem;
+  padding: 0.72rem 1rem;
+}
+
+.error-actions__button--primary {
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
+}
+
+.error-actions__button--primary:hover,
+.error-actions__button--primary:focus-visible {
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent);
+}
+
+.error-actions__button--secondary {
+  background: color-mix(in srgb, var(--color-bg-surface) 34%, transparent);
+  border-color: color-mix(in srgb, var(--color-border) 92%, transparent);
+}
+
+.error-actions__button--secondary:hover,
+.error-actions__button--secondary:focus-visible {
+  background: color-mix(in srgb, var(--color-button-secondary-bg) 86%, transparent);
+  border-color: color-mix(in srgb, var(--color-button-secondary-text) 18%, var(--color-border));
+}
+
+.error-actions__button:active {
+  transform: translateY(1px);
+}
+
 @media (width >= 900px) {
   .diagram-shell {
     min-height: calc(var(--diagram-min-height-lg) + (2 * var(--space-md)));
   }
 
   .diagram {
-    min-height: var(--diagram-min-height-lg);
+    block-size: var(--diagram-min-height-lg);
   }
 }

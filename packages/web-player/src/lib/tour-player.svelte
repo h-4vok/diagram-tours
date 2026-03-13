@@ -1,6 +1,8 @@
 <svelte:options runes={false} />
 
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
 
@@ -9,45 +11,112 @@
     getMermaidErrorMessage,
     renderMermaidDiagram
   } from "$lib/mermaid-diagram";
+  import { focusDiagramViewport } from "$lib/diagram-viewport";
+  import { createFocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
+  export let initialStepIndex: number;
+  export let selectedSlug: string;
   export let tour: ResolvedDiagramTour;
-  const player = createTourPlayer(tour);
+  const player = createTourPlayer(tour, initialStepIndex);
 
   let state = player.getState();
   let diagramContainer: HTMLDivElement;
+  let diagramContent: HTMLDivElement;
   let diagramError = "";
+  let hasRenderedDiagram = false;
+  let previousInitialStepIndex = initialStepIndex;
 
-  function goPrevious(): void {
+  async function goPrevious(): Promise<void> {
     state = player.goPrevious();
-    syncFocusState();
+    await syncFocusState();
+    await navigateToStep(state.step.index);
   }
 
-  function goNext(): void {
+  async function goNext(): Promise<void> {
     state = player.goNext();
-    syncFocusState();
+    await syncFocusState();
+    await navigateToStep(state.step.index);
   }
 
-  function syncFocusState(): void {
+  async function syncFocusState(): Promise<void> {
+    if (!hasRenderedDiagram) {
+      return;
+    }
+
+    await waitForDiagramLayout();
+
+    const currentContext = readDiagramContext();
+
+    if (currentContext === null) {
+      return;
+    }
+
+    const focusGroup = createFocusGroup(state.focusedNodeIds);
+
     applyFocusState({
-      container: diagramContainer,
-      focusedNodeIds: state.focusedNodeIds
+      container: currentContext.container,
+      focusGroup
+    });
+    focusDiagramViewport({
+      container: currentContext.container,
+      content: currentContext.content,
+      focusGroup
     });
   }
 
   onMount(async () => {
     try {
       await renderMermaidDiagram({
-        container: diagramContainer,
+        container: diagramContent,
         diagram: tour.diagram
       });
-      syncFocusState();
+      hasRenderedDiagram = true;
+      await syncFocusState();
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
       toast.error(diagramError);
     }
   });
+
+  $: if (initialStepIndex !== previousInitialStepIndex) {
+    previousInitialStepIndex = initialStepIndex;
+    state = player.setStepIndex(initialStepIndex);
+    void syncFocusState();
+  }
+
+  async function navigateToStep(stepIndex: number): Promise<void> {
+    await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
+      invalidateAll: false,
+      keepFocus: true,
+      noScroll: true
+    });
+  }
+
+  function waitForDiagramLayout(): Promise<void> {
+    return new Promise((resolveLayout) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolveLayout();
+        });
+      });
+    });
+  }
+
+  function readDiagramContext(): {
+    container: HTMLDivElement;
+    content: HTMLDivElement;
+  } | null {
+    const container = readBoundElement(diagramContainer);
+    const content = readBoundElement(diagramContent);
+
+    return container !== null && content !== null ? { container, content } : null;
+  }
+
+  function readBoundElement<T extends HTMLElement>(value: T | undefined): T | null {
+    return value ?? null;
+  }
 </script>
 
 <header class="hero">
@@ -64,7 +133,7 @@
       <button
         type="button"
         class="button button--secondary"
-        onclick={goPrevious}
+        on:click={goPrevious}
         disabled={!state.canGoPrevious}
         data-testid="previous-button"
       >
@@ -73,7 +142,7 @@
       <button
         type="button"
         class="button"
-        onclick={goNext}
+        on:click={goNext}
         disabled={!state.canGoNext}
         data-testid="next-button"
       >
@@ -84,7 +153,13 @@
 
   <section class="diagram-stage">
     <div class="diagram-shell">
-      <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram"></div>
+      <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
+        <div
+          bind:this={diagramContent}
+          data-testid="diagram-stage-inner"
+          class="diagram-stage-inner"
+        ></div>
+      </div>
       {#if diagramError.length > 0}
         <p data-testid="diagram-error" class="diagram-error">{diagramError}</p>
       {/if}
