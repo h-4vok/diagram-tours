@@ -1,10 +1,27 @@
 # Diagram Tour
 
-Diagram Tour is an open-source framework for **explainable diagrams**.
+Diagram Tour is an open-source framework for explainable diagrams.
 
-It allows you to create **guided, step-by-step explanations for Mermaid diagrams** using a simple YAML tour definition. Instead of static architecture diagrams, you can provide interactive walkthroughs that highlight components and explain system flows.
+It lets you pair Mermaid diagrams with YAML tour definitions so people can move through a system one step at a time instead of reading a static diagram cold.
 
-## Example
+## Current Capabilities
+
+The repository currently provides:
+
+- Mermaid flowchart parsing with stable node IDs
+- YAML tour parsing and validation
+- recursive discovery of `*.tour.yaml` files from a directory
+- single-file preview for authoring workflows
+- slug-based routing for multiple tours
+- deep links to specific steps through `?step=`
+- step text with `{{node_id}}` label interpolation
+- semantic focus steps, including multi-focus and empty-focus steps
+- a Svelte web player with guided navigation
+- theme persistence across reloads and direct links
+- guided recovery for unknown tour routes
+- smoke coverage for viewport behavior and large-diagram scenarios
+
+## Quick Example
 
 Mermaid diagram:
 
@@ -35,107 +52,111 @@ steps:
       The {{validation_service}} verifies the request before it continues.
 ```
 
-Diagram Tour renders this as a **guided explanation** that highlights nodes and walks the user through the system step by step.
+The player resolves `{{api_gateway}}` to `API Gateway`, highlights the selected focus targets, and lets readers move through the tour step by step.
 
-## Core Concepts
+## Tour Model
 
-### Mermaid Diagram
+Version 1 tour files contain:
 
-Diagram Tour works on Mermaid diagrams.
-
-Nodes must have **stable IDs** so the tour can reference them.
-
-Example:
-
-```mermaid
-api_gateway[API Gateway]
-```
-
-### Tour Definition
-
-A YAML file defines the walkthrough.
+- `version`
+- `title`
+- `diagram`
+- `steps`
 
 Each step contains:
 
-- nodes to focus
-- explanation text
+- `focus`
+- `text`
 
-References inside text use:
+`focus` references Mermaid node IDs. `text` can reference those same IDs with `{{node_id}}`, which resolves to the node label from the diagram.
 
-```text
-{{node_id}}
+An empty focus array is valid:
+
+```yaml
+focus: []
 ```
 
-Example:
+That means the step has no specific node emphasis. The player may use that for a reset, overview, or neutral context moment.
 
-```text
-The {{api_gateway}} forwards the request to {{validation_service}}.
-```
-
-These references resolve automatically to the **Mermaid label**.
+Full contract details live in [docs/tour-spec-v1.md](docs/tour-spec-v1.md).
 
 ## Repository Structure
 
 ```text
 packages/
-  core/        domain model and tour engine
-  parser/      YAML + Mermaid parsing
-  web-player/  UI for running tours
+  core/        shared domain types
+  parser/      YAML + Mermaid loading, parsing, validation, discovery
+  web-player/  Svelte UI for interactive tours
 
 examples/
-  sample tours
+  reference tours and stress fixtures
 
-fixtures/
-  test fixtures
+docs/
+  product, architecture, runtime, and authoring docs
 ```
 
-## Project Goals (v1)
+## Example Tours
 
-- Guided tours for Mermaid flowcharts
-- YAML tour definitions
-- Highlight focused nodes
-- Step-by-step explanation text
-- Simple web player
+The repository ships with a small example library that doubles as product reference material and regression coverage.
 
-## Non-goals (v1)
+| Example | Purpose |
+| --- | --- |
+| `payment-flow` | Baseline guided architecture walkthrough |
+| `refund-flow` | Additional linear product-style flow |
+| `decision-flow` | Branch-heavy Mermaid structure |
+| `incident-response` | Operational walkthrough example |
+| `parallel-onboarding` | Parallel path explanation |
+| `release-pipeline` | Delivery pipeline tour |
+| `support-decision-tree` | Decision-tree style diagram |
+| `viewport-stability` | Empty-focus and viewport stability fixture |
+| `viewport-centering` | Top, bottom, grouped, and neutral focus viewport checks |
+| `huge-system` | Large stress-test tour for dense diagrams and label readability |
 
-- audio narration
-- branching tours
-- multi-diagram tours
-- complex animations
+## Local Development
 
-## How This Repository Is Developed
+Install dependencies:
 
-Diagram Tour is developed in an AI-assisted workflow with **delivery mode** as the default operating model.
+```bash
+bun install
+```
 
-The owner defines product direction and desired capabilities. Codex is expected to carry bounded tasks through design, tests, implementation, refactoring, and final green checks without unnecessary pause points between those steps.
+Start the web player against the default `examples/` directory:
 
-We value:
+```bash
+bun run dev
+```
 
-- contracts first
-- strong guardrails
-- clear tests
-- 100% test coverage
-- separation of responsibilities
-- updated documentation when behavior or contracts change
+Preview a single tour file directly:
 
-## Development
+```bash
+DIAGRAM_TOUR_SOURCE_TARGET=./examples/payment-flow/payment-flow.tour.yaml bun run dev
+```
 
-This project uses:
+PowerShell:
 
-- Bun
-- TypeScript
-- strict lint rules
-- Stylelint for modular CSS guardrails
-- TDD workflow
-- enforced 100% coverage thresholds
+```powershell
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/payment-flow/payment-flow.tour.yaml"
+bun run dev
+```
 
-Before contributing, read:
+Preview a custom examples directory:
 
-- AGENTS.md
-- ENGINEERING_PLAYBOOK.md
-- REPO_WORK_RULES.md
-- DELIVERY_CHECKLIST.md
+```bash
+DIAGRAM_TOUR_SOURCE_TARGET=./examples bun run dev
+```
+
+PowerShell:
+
+```powershell
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples"
+bun run dev
+```
+
+If you run smoke tests locally for the first time, install Chromium once:
+
+```bash
+bunx playwright install chromium
+```
 
 ## Commands
 
@@ -144,9 +165,48 @@ Before contributing, read:
 - `bun run test`
 - `bun run smoke`
 - `bun run build`
+- `bun run dev`
 
-If you are running smoke tests locally for the first time, install the browser once:
+## CI
 
-```bash
-bunx playwright install chromium
-```
+GitHub Actions currently validates pull requests and `main` with:
+
+- `bun install --frozen-lockfile`
+- `bun run lint`
+- `bun run typecheck`
+- `bun run test`
+- `bunx playwright install --with-deps chromium`
+- `bun run smoke`
+- `bun run build`
+
+That means CI covers static checks, unit coverage, browser smoke coverage, and production buildability.
+
+## Documentation
+
+Start here when working in the repo:
+
+- [AGENTS.md](AGENTS.md)
+- [ENGINEERING_PLAYBOOK.md](ENGINEERING_PLAYBOOK.md)
+- [REPO_WORK_RULES.md](REPO_WORK_RULES.md)
+- [DELIVERY_CHECKLIST.md](DELIVERY_CHECKLIST.md)
+
+Then use the product docs:
+
+- [Tour Specification v1](docs/tour-spec-v1.md)
+- [Architecture Overview](docs/architecture/overview.md)
+- [Runtime Loading](docs/runtime-loading.md)
+- [Authoring Guide](docs/authoring-guide.md)
+- [ADR 0001: Runtime Loading and Focus Semantics](docs/adr/0001-runtime-loading-and-focus-semantics.md)
+
+## Development Expectations
+
+Diagram Tour is developed in an AI-assisted workflow with delivery mode as the default operating model.
+
+The repository expects:
+
+- contracts first
+- strong guardrails
+- clear tests
+- 100% coverage for statements, branches, functions, and lines
+- separation of responsibilities across packages
+- documentation updates when behavior or contracts change
