@@ -1,16 +1,26 @@
 .button {
   align-items: center;
   background: var(--color-button-bg);
-  border: 1px solid transparent;
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-button-bg) 82%, var(--color-border));
+  border-radius: var(--radius-control);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-bg-surface) 58%, transparent);
   color: var(--color-button-text);
   cursor: pointer;
   display: inline-flex;
-  font-weight: 700;
+  font-family: var(--font-family-sans);
+  font-size: 0.9375rem;
+  font-weight: 500;
   justify-content: center;
+  letter-spacing: -0.01em;
   min-height: 2.9rem;
-  padding: 0.75rem 1.05rem;
+  padding: var(--button-padding-y) var(--button-padding-x);
   text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
   white-space: nowrap;
 }
 
@@ -27,16 +37,29 @@
 .button:hover:not(:disabled),
 .button:focus-visible:not(:disabled) {
   background: var(--color-button-bg-hover);
+  border-color: color-mix(in srgb, var(--color-button-bg-hover) 80%, var(--color-border));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-button-bg-hover) 14%, transparent);
 }
 
 .button--secondary {
   background: var(--color-button-secondary-bg);
+  border-color: color-mix(in srgb, var(--color-border-strong, var(--color-border)) 56%, var(--color-border));
   color: var(--color-button-secondary-text);
 }
 
 .button--secondary:hover:not(:disabled),
 .button--secondary:focus-visible:not(:disabled) {
   background: var(--color-button-secondary-bg-hover);
+  border-color: color-mix(
+    in srgb,
+    var(--color-button-secondary-text) 16%,
+    var(--color-border-strong, var(--color-border))
+  );
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-border) 14%, transparent);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .theme-toggle {

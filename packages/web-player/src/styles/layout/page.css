@@ -1,7 +1,7 @@
 .theme-root {
   background:
-    radial-gradient(circle at 82% 18%, var(--color-bg-accent-glow, transparent) 0%, transparent 28%),
-    radial-gradient(circle at top, var(--color-bg-glow) 0%, transparent 42%),
+    radial-gradient(circle at 78% 16%, var(--color-bg-accent-glow, transparent) 0%, transparent 24%),
+    radial-gradient(circle at top, var(--color-bg-glow) 0%, transparent 38%),
     linear-gradient(180deg, var(--color-bg-top) 0%, var(--color-bg-bottom) 100%);
   min-height: 100vh;
   overflow-x: clip;
@@ -15,7 +15,7 @@
   min-width: 0;
   min-height: 100vh;
   overflow-x: clip;
-  padding: 0.55rem 0.55rem 0.6rem;
+  padding: 0.4rem 0.45rem 0.5rem;
   position: relative;
 }
 
@@ -36,13 +36,15 @@
 
 .topbar {
   align-items: center;
-  background: color-mix(in srgb, var(--color-bg-top) 82%, transparent);
-  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-bg-surface) 70%, transparent);
   display: grid;
   gap: 0.75rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  min-height: 3.65rem;
-  padding: 0.45rem 0.55rem 0.45rem 0.8rem;
+  min-height: 3.1rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.72rem;
 }
 
 .topbar__brandrow,
@@ -60,15 +62,16 @@
 .topbar__brand {
   color: var(--color-text);
   font-size: clamp(1rem, 0.96rem + 0.32vw, 1.2rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   text-decoration: none;
 }
 
 .topbar__link {
-  color: var(--color-muted);
-  font-size: 0.96rem;
-  font-weight: 600;
+  color: var(--color-text-secondary, var(--color-muted));
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   text-decoration: none;
 }
 
@@ -81,7 +84,7 @@
 }
 
 .topbar__browsebutton {
-  min-height: 2.55rem;
+  min-height: 2.4rem;
   min-width: 6.5rem;
 }
 
@@ -96,9 +99,9 @@
 
 .browse-panel {
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  border: 1px solid var(--color-border);
-  border-radius: 1.35rem;
-  box-shadow: var(--shadow-soft);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 72%, var(--color-border));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay, var(--shadow-soft));
   display: grid;
   gap: var(--space-md);
   inset: calc(var(--space-md) + 4.5rem) auto auto var(--space-md);
@@ -119,15 +122,18 @@
 
 .browse-panel__eyebrow {
   color: var(--color-muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+  font-family: var(--font-family-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
   line-height: 1.45;
   text-transform: uppercase;
 }
 
 .browse-panel__title {
-  font-size: 1.2rem;
-  letter-spacing: -0.03em;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .browse-panel__close {
@@ -137,10 +143,10 @@
 
 .browse-panel__notice {
   align-items: start;
-  background: var(--color-bg-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-bg-soft) 84%, var(--color-bg-surface));
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 42%, var(--color-border));
+  border-radius: var(--radius-card-tight);
+  color: var(--color-text-secondary, var(--color-muted));
   display: grid;
   gap: var(--space-xs);
   grid-template-columns: auto 1fr;
@@ -154,13 +160,13 @@
 .browse-panel__noticemark {
   color: var(--color-danger);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 @media (width >= 900px) {
   .app-shell {
-    padding: 0.65rem;
+    padding: 0.45rem 0.5rem 0.55rem;
   }
 }
 
@@ -178,7 +184,7 @@
   }
 
   .browse-backdrop {
-    background: color-mix(in srgb, var(--color-bg-bottom) 40%, transparent);
+    background: var(--color-overlay-backdrop, color-mix(in srgb, var(--color-bg-bottom) 40%, transparent));
     backdrop-filter: blur(6px);
   }
 

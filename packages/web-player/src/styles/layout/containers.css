@@ -22,21 +22,28 @@
 }
 
 .tour-link {
-  background: color-mix(in srgb, var(--color-bg-surface) 82%, transparent);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, var(--color-border));
+  border-radius: var(--radius-card);
   color: var(--color-text);
   padding: 0.82rem var(--space-md);
   text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
 }
 
 .tour-link:hover,
 .tour-link:focus-visible {
   background: var(--color-bg-surface);
   border-color: color-mix(in srgb, var(--color-accent) 25%, var(--color-border));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-border) 10%, transparent);
 }
 
 .tour-link--active {
+  background: color-mix(in srgb, var(--color-bg-surface) 90%, var(--color-bg-soft));
   border-color: var(--color-node-focus-stroke);
   box-shadow: inset 0 0 0 1px var(--color-node-focus-stroke);
   color: var(--color-text);

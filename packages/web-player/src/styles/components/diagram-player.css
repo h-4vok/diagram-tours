@@ -7,6 +7,24 @@
   padding: 0;
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-border-strong, var(--color-border)) 82%, transparent)
+    color-mix(in srgb, var(--color-bg-soft) 76%, transparent);
+}
+
+.diagram::-webkit-scrollbar {
+  height: 0.8rem;
+  width: 0.8rem;
+}
+
+.diagram::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--color-bg-soft) 76%, transparent);
+}
+
+.diagram::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-border-strong, var(--color-border)) 82%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-bg-soft) 76%, transparent);
+  border-radius: 999px;
 }
 
 .diagram-stage-inner {
@@ -16,8 +34,8 @@
   min-block-size: 100%;
   min-inline-size: 100%;
   padding:
-    clamp(11rem, 20vh, 15rem)
-    max(12rem, 24vw);
+    clamp(10rem, 18vh, 13rem)
+    max(8rem, 16vw);
   place-items: center;
 }
 
@@ -95,7 +113,7 @@
 }
 
 [data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
-  filter: drop-shadow(0 0 10px var(--color-focus-shadow));
+  filter: drop-shadow(0 0 var(--focus-glow-blur, 8px) var(--color-focus-shadow));
   fill: var(--color-node-focus-fill);
   stroke: var(--color-node-focus-stroke);
   stroke-width: 2px;
@@ -131,9 +149,9 @@
 }
 
 .error-actions__button {
-  border-radius: 0.9rem;
+  border-radius: var(--radius-control);
   min-height: 2.7rem;
-  padding: 0.72rem 1rem;
+  padding: var(--button-padding-y) var(--button-padding-x);
 }
 
 .error-actions__button--primary {
@@ -162,18 +180,18 @@
 
 @media (width >= 900px) {
   .diagram {
-    block-size: calc(100vh - 5.8rem);
+    block-size: calc(100vh - 5.1rem);
   }
 }
 
 @media (width < 720px) {
   .diagram {
-    block-size: calc(100vh - 6.9rem);
+    block-size: calc(100vh - 6.4rem);
   }
 
   .diagram-stage-inner {
     padding:
-      clamp(9rem, 18vh, 12rem)
-      max(7rem, 12vw);
+      clamp(8rem, 16vh, 11rem)
+      max(5rem, 10vw);
   }
 }

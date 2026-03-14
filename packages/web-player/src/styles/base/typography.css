@@ -1,5 +1,22 @@
+:root {
+  --font-family-sans:
+    "IBM Plex Sans",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  --font-family-mono:
+    "IBM Plex Mono",
+    "SFMono-Regular",
+    "Cascadia Code",
+    "Fira Code",
+    monospace;
+}
+
 body {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-family-sans);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
 h1,
@@ -9,6 +26,13 @@ p {
 
 .theme-root {
   color: var(--color-text);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-family-mono);
 }
 
 .hero h1 {
@@ -21,19 +45,25 @@ p {
 
 .lede,
 .step-text {
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 0.9688rem;
+  line-height: 1.68;
 }
 
 .lede {
-  color: var(--color-muted);
+  color: var(--color-text-secondary, var(--color-muted));
   max-width: 42rem;
 }
 
 .step-count {
   color: var(--color-accent-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-family: var(--font-family-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.step-text {
+  color: var(--color-text-secondary, var(--color-text));
 }
 
 .diagram-error {
