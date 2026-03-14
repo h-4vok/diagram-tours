@@ -1,44 +1,130 @@
-.docs-nav,
 .step-panel,
 .diagram-shell {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-bg-main, var(--color-bg-bottom)) 88%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
-}
-
-.docs-nav {
-  padding: var(--space-lg);
 }
 
 .step-panel {
-  align-self: start;
   display: grid;
-  grid-template-rows: auto minmax(5.5rem, 9.5rem) auto;
-  max-width: 42rem;
-  padding: var(--space-lg);
-  width: 100%;
+  gap: 0.6rem;
+  grid-template-rows: auto minmax(3.25rem, 5.7rem) auto;
+  max-width: min(17.75rem, calc(100vw - (2 * var(--space-md))));
+  padding: 0.72rem 0.78rem;
+  width: min(17.75rem, calc(100vw - (2 * var(--space-md))));
+}
+
+.step-panel--overlay {
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 48%, var(--color-border));
+  border-radius: var(--radius-card);
+  bottom: 0.85rem;
+  box-shadow: var(--shadow-overlay, var(--shadow-soft));
+  position: absolute;
+  right: 0.85rem;
+  z-index: 15;
 }
 
 .step-text {
-  margin-top: var(--space-sm);
-  min-height: 5.5rem;
-  max-height: 9.5rem;
+  margin-top: 0;
+  min-height: 3.25rem;
+  max-height: 5.7rem;
   overflow: auto;
-  padding-right: var(--space-xs);
+  padding-right: 0.2rem;
 }
 
 .diagram-shell {
+  max-width: 100%;
   min-width: 0;
-  min-height: clamp(24rem, 56vh, calc(var(--diagram-min-height-lg) + (2 * var(--space-md))));
-  overflow: hidden;
-  padding: var(--space-sm);
+  min-height: 100%;
+  overflow: clip;
+  padding: 0;
   width: 100%;
 }
 
+.diagram-shell--canvas {
+  background:
+    radial-gradient(circle at 50% 14%, color-mix(in srgb, var(--color-bg-glow) 32%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-bg-top) 18%, transparent), transparent 24%),
+    color-mix(in srgb, var(--color-bg-main, var(--color-bg-bottom)) 94%, transparent);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: none;
+  position: relative;
+}
+
+.tour-identity {
+  background: color-mix(in srgb, var(--color-surface) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 42%, var(--color-border));
+  border-radius: var(--radius-chip);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-border) 10%, transparent);
+  display: grid;
+  gap: 0.1rem;
+  left: 0.85rem;
+  max-width: min(22rem, calc(100% - 12rem));
+  padding: 0.55rem 0.85rem;
+  position: absolute;
+  top: 0.85rem;
+  z-index: 12;
+}
+
+.tour-identity__label,
+.tour-identity__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-identity__label {
+  color: var(--color-text-secondary, var(--color-muted));
+  font-family: var(--font-family-mono);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.tour-identity__title {
+  color: var(--color-text);
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
 .diagram-error {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-sm);
+  border-top: 0;
+  margin-top: 0;
   padding: var(--space-sm) var(--space-xs) 0;
+  width: 100%;
+}
+
+.diagram-error--overlay {
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  border-radius: var(--radius-card-tight);
+  bottom: 0.85rem;
+  box-shadow: var(--shadow-soft);
+  left: 0.85rem;
+  max-width: min(22rem, calc(100% - (2 * var(--space-md))));
+  padding: var(--space-sm) var(--space-md);
+  position: absolute;
+  z-index: 9;
+}
+
+@media (width < 720px) {
+  .step-panel {
+    max-width: none;
+    width: calc(100% - 1rem);
+  }
+
+  .step-panel--overlay {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .tour-identity {
+    left: 0.5rem;
+    max-width: calc(100% - 1rem);
+    top: 0.5rem;
+  }
 }

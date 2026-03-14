@@ -6,9 +6,13 @@ test("renders the docs shell and navigates between discovered examples", async (
   await page.goto("/decision-flow?step=3");
 
   await expect(page.getByText("Diagram Tours")).toBeVisible();
-  await expect(page.getByTestId("tour-navigation")).toBeVisible();
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
+  await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
+  await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "christianguzman.uk" })).toBeVisible();
   await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
-  await expect(page.getByRole("heading", { name: "Decision Flow" })).toBeVisible();
+  await page.getByTestId("browse-trigger").click();
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
   await expect(page.getByRole("link", { name: "Payment Flow" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Refund Flow" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Release Pipeline" })).toBeVisible();
@@ -26,15 +30,27 @@ test("renders the docs shell and navigates between discovered examples", async (
   await page.getByRole("link", { name: "Refund Flow" }).click();
 
   await expect(page).toHaveURL(/\/refund-flow$/);
-  await expect(page.getByRole("heading", { name: "Refund Flow" })).toBeVisible();
   await expect(page.getByTestId("step-text")).toContainText(
     "reverse a payment"
   );
 
+  await page.getByTestId("browse-trigger").click();
   await page.getByRole("link", { name: "Decision Flow" }).click();
 
   await expect(page).toHaveURL(/\/decision-flow$/);
-  await expect(page.getByRole("heading", { name: "Decision Flow" })).toBeVisible();
+  await expect(page.getByTestId("step-text")).toBeVisible();
+});
+
+test("keeps document-level horizontal overflow suppressed while the canvas owns the body", async ({
+  page
+}) => {
+  await page.goto("/decision-flow");
+
+  await expect(page.getByTestId("diagram-container")).toBeVisible();
+  await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
+
+  await expectDocumentWidthToMatchViewport(page);
+  await expectCanvasToOwnBody(page);
 });
 
 test("best-effort centers focused areas inside the padded viewport stage", async ({
@@ -84,7 +100,6 @@ test("loads and navigates the huge stress-test diagram without destabilizing the
 }) => {
   await page.goto("/huge-system?step=5");
 
-  await expect(page.getByRole("heading", { name: "Huge System Stress Test" })).toBeVisible();
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="event_bus"]')
@@ -105,10 +120,12 @@ test("loads and navigates the huge stress-test diagram without destabilizing the
 test("starts the huge stress-test tour at a readable first-focus scale", async ({ page }) => {
   await page.goto("/huge-system");
 
-  await expect(page.getByRole("heading", { name: "Huge System Stress Test" })).toBeVisible();
   await expect(page).toHaveURL(/\/huge-system$/);
   await expectDiagramVisible(page);
-  await expectFocusedAreaNearViewportCenter(page, ["edge"]);
+  await expectFocusedAreaNearViewportCenter(page, ["edge"], {
+    x: 280,
+    y: 220
+  });
 
   expect(await readNodeAxisSize(page, "edge", "width")).toBeGreaterThan(80);
 });
@@ -136,11 +153,14 @@ test("keeps the diagram usable when the selected step text is long", async ({ pa
 
   const stepTextBox = await page.getByTestId("step-text").boundingBox();
   const diagramBox = await page.getByTestId("diagram-container").boundingBox();
+  const overlayBox = await page.getByTestId("step-overlay").boundingBox();
 
   assertLayoutBox(stepTextBox);
   assertLayoutBox(diagramBox);
+  assertLayoutBox(overlayBox);
   expect(diagramBox.height).toBeGreaterThan(300);
-  expect(diagramBox.y).toBeGreaterThan(stepTextBox.y);
+  expect(overlayBox.y + overlayBox.height).toBeLessThanOrEqual(diagramBox.y + diagramBox.height);
+  expect(overlayBox.x + overlayBox.width).toBeLessThanOrEqual(diagramBox.x + diagramBox.width);
 });
 
 test("persists dark mode across reloads and direct navigation", async ({ page }) => {
@@ -199,9 +219,75 @@ async function expectDiagramVisible(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
 }
 
-async function expectFocusedAreaNearViewportCenter(page: Page, nodeIds: string[]): Promise<void> {
-  await expect.poll(async () => readCenterDistance(page, nodeIds, "x")).toBeLessThan(180);
-  await expect.poll(async () => readCenterDistance(page, nodeIds, "y")).toBeLessThan(220);
+async function expectDocumentWidthToMatchViewport(page: Page): Promise<void> {
+  const metrics = await page.evaluate(() => ({
+    bodyClientWidth: document.documentElement.clientWidth,
+    bodyScrollWidth: document.documentElement.scrollWidth
+  }));
+
+  expect(metrics.bodyScrollWidth).toBe(metrics.bodyClientWidth);
+}
+
+async function expectCanvasToOwnBody(page: Page): Promise<void> {
+  const canvasBox = await page.getByTestId("diagram-container").boundingBox();
+  const viewport = page.viewportSize();
+
+  assertLayoutBox(canvasBox);
+  assertViewport(viewport);
+  expectCanvasHeight(canvasBox, viewport);
+  expectCanvasWidth(canvasBox, viewport);
+}
+
+function assertViewport(input: {
+  height: number;
+  width: number;
+} | null): asserts input is {
+  height: number;
+  width: number;
+} {
+  expect(input).not.toBeNull();
+}
+
+function expectCanvasHeight(
+  canvasBox: {
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+  },
+  viewport: {
+    height: number;
+    width: number;
+  }
+): void {
+  expect(canvasBox.height).toBeGreaterThan(viewport.height * 0.6);
+}
+
+function expectCanvasWidth(
+  canvasBox: {
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+  },
+  viewport: {
+    height: number;
+    width: number;
+  }
+): void {
+  expect(canvasBox.width).toBeGreaterThan(viewport.width * 0.9);
+}
+
+async function expectFocusedAreaNearViewportCenter(
+  page: Page,
+  nodeIds: string[],
+  thresholds: { x: number; y: number } = {
+    x: 180,
+    y: 220
+  }
+): Promise<void> {
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "x")).toBeLessThan(thresholds.x);
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "y")).toBeLessThan(thresholds.y);
 }
 
 function mergeBounds(input: Array<{

@@ -50,7 +50,8 @@ describe("tour-player.svelte", () => {
       tour: resolvedPaymentFlowTour
     });
 
-    expect(await screen.findByRole("heading", { name: "Payment Flow" })).toBeDefined();
+    expect(await screen.findByTestId("player-canvas")).toBeDefined();
+    expect(screen.getByTestId("tour-identity").textContent).toContain("Payment Flow");
     expect(screen.getByTestId("step-text").textContent).toContain(
       "public edge of the checkout system"
     );
@@ -103,7 +104,7 @@ describe("tour-player.svelte", () => {
     expect(toastErrorMock).toHaveBeenCalledWith("Failed to render Mermaid diagram.");
   });
 
-  it("places the step card above the diagram", async () => {
+  it("renders the step card as an overlay inside the diagram shell", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -112,14 +113,13 @@ describe("tour-player.svelte", () => {
 
     await screen.findByTestId("step-text");
 
-    const stepPanel = container.querySelector(".step-panel");
-    const diagramStage = container.querySelector(".diagram-stage");
+    const stepPanel = container.querySelector('[data-testid="step-overlay"]');
+    const diagramShell = container.querySelector('[data-testid="diagram-shell"]');
 
     expect(stepPanel).not.toBeNull();
-    expect(diagramStage).not.toBeNull();
-    expect(stepPanel?.compareDocumentPosition(diagramStage as Node)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
-    );
+    expect(diagramShell).not.toBeNull();
+    expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
+    expect(container.querySelector('[data-testid="tour-identity"]')).not.toBeNull();
   });
 
   it("starts from the deep-linked step and updates the URL when navigating", async () => {
