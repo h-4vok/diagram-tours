@@ -3,11 +3,17 @@
   width: 100%;
 }
 
+.player-canvas {
+  max-width: 100%;
+  min-height: 100%;
+  min-width: 0;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
 }
 
 .tour-list {

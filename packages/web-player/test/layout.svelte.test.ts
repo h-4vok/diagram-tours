@@ -15,7 +15,7 @@ describe("+layout.svelte", () => {
     window.localStorage.clear();
   });
 
-  it("renders the top bar and navigation, even for a single-tour collection", async () => {
+  it("renders the top bar and a browse entry point for navigation", async () => {
     render(Layout, {
       data: {
         collection: singleTourCollection,
@@ -24,14 +24,12 @@ describe("+layout.svelte", () => {
     });
 
     expect(await screen.findByText("Diagram Tours")).toBeDefined();
-    expect(await screen.findByTestId("tour-navigation")).toBeDefined();
-    expect(screen.getAllByTestId("tour-nav-link")).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Payment Flow" }).getAttribute("href")).toBe(
-      "/payment-flow"
-    );
+    expect(screen.getByTestId("browse-trigger")).toBeDefined();
+    expect(screen.queryByTestId("browse-panel")).toBeNull();
+    expect(screen.queryByTestId("tour-navigation")).toBeNull();
   });
 
-  it("renders multiple navigation entries and keeps the theme toggle available", async () => {
+  it("opens browse, shows tours, and keeps the theme toggle available", async () => {
     render(Layout, {
       data: {
         collection: resolvedTourCollection,
@@ -39,7 +37,15 @@ describe("+layout.svelte", () => {
       }
     });
 
+    expect(screen.getByRole("link", { name: "christianguzman.uk" }).getAttribute("href")).toBe(
+      "https://christianguzman.uk"
+    );
+    await fireEvent.click(screen.getByTestId("browse-trigger"));
+
     expect(await screen.findAllByTestId("tour-nav-link")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Payment Flow" }).getAttribute("href")).toBe(
+      "/payment-flow"
+    );
     expect(screen.getByTestId("theme-toggle").textContent).toContain("Dark mode");
 
     await fireEvent.click(screen.getByTestId("theme-toggle"));
@@ -78,9 +84,11 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect((await screen.findByTestId("skipped-tours-notice")).textContent?.replace(/\s+/g, " ")).toContain(
-      "1 tour was skipped due to validation errors."
-    );
+    await fireEvent.click(screen.getByTestId("browse-trigger"));
+
+    expect(
+      (await screen.findByTestId("skipped-tours-notice")).textContent?.replace(/\s+/g, " ")
+    ).toContain("1 tour was skipped due to validation errors.");
   });
 
   it("shows the preview notice for single-file author previews", async () => {
@@ -95,8 +103,26 @@ describe("+layout.svelte", () => {
       }
     });
 
+    await fireEvent.click(screen.getByTestId("browse-trigger"));
+
     expect((await screen.findByTestId("preview-target-notice")).textContent).toContain(
       "Previewing payment-flow.tour.yaml"
     );
+  });
+
+  it("closes browse with escape after opening it", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByTestId("browse-panel")).toBeNull();
   });
 });

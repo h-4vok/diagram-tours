@@ -119,50 +119,49 @@
   }
 </script>
 
-<header class="hero">
-  <h1>{tour.title}</h1>
-  <p class="lede">A minimal linear player for the resolved diagram tour collection.</p>
-</header>
-
-<section class="page__content">
-  <aside class="step-panel">
-    <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
-    <p data-testid="step-text" class="step-text">{state.step.text}</p>
-
-    <div class="controls">
-      <button
-        type="button"
-        class="button button--secondary"
-        on:click={goPrevious}
-        disabled={!state.canGoPrevious}
-        data-testid="previous-button"
-      >
-        Previous
-      </button>
-      <button
-        type="button"
-        class="button"
-        on:click={goNext}
-        disabled={!state.canGoNext}
-        data-testid="next-button"
-      >
-        Next
-      </button>
+<section class="player-canvas" data-testid="player-canvas">
+  <div class="diagram-shell diagram-shell--canvas" data-testid="diagram-shell">
+    <div class="tour-identity" data-testid="tour-identity">
+      <p class="tour-identity__label">Current tour</p>
+      <p class="tour-identity__title">{tour.title}</p>
     </div>
-  </aside>
 
-  <section class="diagram-stage">
-    <div class="diagram-shell">
-      <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
-        <div
-          bind:this={diagramContent}
-          data-testid="diagram-stage-inner"
-          class="diagram-stage-inner"
-        ></div>
+    <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
+      <div
+        bind:this={diagramContent}
+        data-testid="diagram-stage-inner"
+        class="diagram-stage-inner"
+      ></div>
+    </div>
+
+    <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
+      <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
+      <p data-testid="step-text" class="step-text">{state.step.text}</p>
+
+      <div class="controls">
+        <button
+          type="button"
+          class="button button--secondary"
+          on:click={goPrevious}
+          disabled={!state.canGoPrevious}
+          data-testid="previous-button"
+        >
+          Previous
+        </button>
+        <button
+          type="button"
+          class="button"
+          on:click={goNext}
+          disabled={!state.canGoNext}
+          data-testid="next-button"
+        >
+          Next
+        </button>
       </div>
-      {#if diagramError.length > 0}
-        <p data-testid="diagram-error" class="diagram-error">{diagramError}</p>
-      {/if}
-    </div>
-  </section>
+    </aside>
+
+    {#if diagramError.length > 0}
+      <p data-testid="diagram-error" class="diagram-error diagram-error--overlay">{diagramError}</p>
+    {/if}
+  </div>
 </section>

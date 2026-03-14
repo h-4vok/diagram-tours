@@ -1,5 +1,5 @@
 .diagram {
-  block-size: clamp(var(--diagram-min-height), 50vh, var(--diagram-min-height-lg));
+  block-size: calc(100vh - 5.55rem);
   display: block;
   inline-size: 100%;
   min-width: 0;
@@ -16,8 +16,8 @@
   min-block-size: 100%;
   min-inline-size: 100%;
   padding:
-    clamp(16rem, 32vh, 22rem)
-    max(20rem, 45vw);
+    clamp(11rem, 20vh, 15rem)
+    max(12rem, 24vw);
   place-items: center;
 }
 
@@ -161,11 +161,19 @@
 }
 
 @media (width >= 900px) {
-  .diagram-shell {
-    min-height: calc(var(--diagram-min-height-lg) + (2 * var(--space-md)));
+  .diagram {
+    block-size: calc(100vh - 5.8rem);
+  }
+}
+
+@media (width < 720px) {
+  .diagram {
+    block-size: calc(100vh - 6.9rem);
   }
 
-  .diagram {
-    block-size: var(--diagram-min-height-lg);
+  .diagram-stage-inner {
+    padding:
+      clamp(9rem, 18vh, 12rem)
+      max(7rem, 12vw);
   }
 }

@@ -1,44 +1,126 @@
-.docs-nav,
 .step-panel,
 .diagram-shell {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-bg-main, var(--color-bg-bottom)) 86%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
-}
-
-.docs-nav {
-  padding: var(--space-lg);
 }
 
 .step-panel {
-  align-self: start;
   display: grid;
-  grid-template-rows: auto minmax(5.5rem, 9.5rem) auto;
-  max-width: 42rem;
-  padding: var(--space-lg);
-  width: 100%;
+  gap: 0.7rem;
+  grid-template-rows: auto minmax(3.8rem, 6.25rem) auto;
+  max-width: min(20rem, calc(100vw - (2 * var(--space-md))));
+  padding: 0.8rem 0.85rem;
+  width: min(20rem, calc(100vw - (2 * var(--space-md))));
+}
+
+.step-panel--overlay {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 1.2rem;
+  bottom: 0.85rem;
+  box-shadow: 0 14px 36px color-mix(in srgb, rgb(0 0 0 / 22%) 28%, transparent);
+  position: absolute;
+  right: 0.85rem;
+  z-index: 15;
 }
 
 .step-text {
-  margin-top: var(--space-sm);
-  min-height: 5.5rem;
-  max-height: 9.5rem;
+  margin-top: 0;
+  min-height: 3.8rem;
+  max-height: 6.25rem;
   overflow: auto;
-  padding-right: var(--space-xs);
+  padding-right: 0.2rem;
 }
 
 .diagram-shell {
+  max-width: 100%;
   min-width: 0;
-  min-height: clamp(24rem, 56vh, calc(var(--diagram-min-height-lg) + (2 * var(--space-md))));
-  overflow: hidden;
-  padding: var(--space-sm);
+  min-height: 100%;
+  overflow: clip;
+  padding: 0;
   width: 100%;
 }
 
+.diagram-shell--canvas {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-bg-top) 22%, transparent), transparent 24%),
+    color-mix(in srgb, var(--color-bg-main, var(--color-bg-bottom)) 92%, transparent);
+  border: 0;
+  border-radius: 1.1rem;
+  box-shadow: none;
+  position: relative;
+}
+
+.tour-identity {
+  background: color-mix(in srgb, var(--color-surface) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  border-radius: 999px;
+  display: grid;
+  gap: 0.1rem;
+  left: 0.85rem;
+  max-width: min(22rem, calc(100% - 12rem));
+  padding: 0.55rem 0.85rem;
+  position: absolute;
+  top: 0.85rem;
+  z-index: 12;
+}
+
+.tour-identity__label,
+.tour-identity__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-identity__label {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tour-identity__title {
+  color: var(--color-text);
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 .diagram-error {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-sm);
+  border-top: 0;
+  margin-top: 0;
   padding: var(--space-sm) var(--space-xs) 0;
+  width: 100%;
+}
+
+.diagram-error--overlay {
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 1rem;
+  bottom: 0.85rem;
+  left: 0.85rem;
+  max-width: min(22rem, calc(100% - (2 * var(--space-md))));
+  padding: var(--space-sm) var(--space-md);
+  position: absolute;
+  z-index: 9;
+}
+
+@media (width < 720px) {
+  .step-panel {
+    max-width: none;
+    width: calc(100% - 1rem);
+  }
+
+  .step-panel--overlay {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .tour-identity {
+    left: 0.5rem;
+    max-width: calc(100% - 1rem);
+    top: 0.5rem;
+  }
 }
