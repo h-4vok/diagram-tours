@@ -72,6 +72,12 @@ Fecha de corte: 2026-03-16
   - Nota: no se encontro implementacion actual en el repo
 - Timeline visual de pasos
   - Nota: no se encontro implementacion actual en el repo
+- Soporte para otros tipos de diagramas mas complejos, incluyendo diagramas de secuencia
+  - Nota: hoy el alcance documentado y soportado esta centrado en flowcharts de Mermaid
+  - Pendiente: investigar el modelo de Mermaid para sequence diagrams y definir el impacto en parser, validacion, referencias y player
+- Soporte para operar `diagram-tours` mediante comandos globales en npm o bun
+  - Nota: aunque el uso actual sea local en esta PC, queremos planear una experiencia de CLI instalable y reutilizable
+  - Pendiente: definir distribucion, entrypoints, ergonomia de comandos, compatibilidad con Bun y npm, y expectativas de authoring/preview antes de implementarlo
 - Node click navigation para saltar al primer step asociado a un nodo
   - Nota: no se encontro implementacion actual en el repo
 - Explorer navigation en arbol por estructura de proyecto
