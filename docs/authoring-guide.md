@@ -103,11 +103,20 @@ Error messages include the source path and step number when possible, so keep st
 
 A practical local loop is:
 
-1. point `DIAGRAM_TOUR_SOURCE_TARGET` at a single tour file
-2. run `bun run dev`
-3. iterate on Mermaid and YAML together
-4. run `bun run test`
-5. run `bun run smoke` if viewport or interaction behavior changed
+1. start the player against the target you want to edit
+2. iterate on Mermaid and YAML together
+3. run `bun run test`
+4. run `bun run smoke` if viewport or interaction behavior changed
+
+Common startup options:
+
+```bash
+bun run dev ./examples/payment-flow/payment-flow.tour.yaml
+bun run dev ./examples
+bun run dev:interactive
+```
+
+The legacy environment-variable flow still works when you want to drive the runtime directly:
 
 PowerShell example:
 
