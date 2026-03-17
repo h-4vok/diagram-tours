@@ -1,46 +1,8 @@
-import { resolve } from "node:path";
+import { readSourceTarget, readViteArgs, spawnWebPlayer } from "./dev-web-player-lib";
 
 const args = process.argv.slice(2);
-const sourceTarget = readSourceTarget(args);
+const sourceTarget = readSourceTarget(args, ".");
 const viteArgs = readViteArgs(args);
-const bunExecutable = process.execPath;
-
-const child = Bun.spawn(
-  [bunExecutable, "run", "--cwd", "packages/web-player", "dev", ...viteArgs],
-  {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      DIAGRAM_TOUR_SOURCE_TARGET: resolve(process.cwd(), sourceTarget)
-    },
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit"
-  }
-);
+const child = spawnWebPlayer({ sourceTarget, viteArgs });
 
 process.exit(await child.exited);
-
-function readSourceTarget(input: string[]): string {
-  for (const value of input) {
-    if (!value.startsWith("--")) {
-      return value;
-    }
-  }
-
-  return ".";
-}
-
-function readViteArgs(input: string[]): string[] {
-  let skippedTarget = false;
-
-  return input.filter((value) => {
-    if (!skippedTarget && !value.startsWith("--")) {
-      skippedTarget = true;
-
-      return false;
-    }
-
-    return true;
-  });
-}

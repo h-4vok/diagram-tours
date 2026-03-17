@@ -7,6 +7,7 @@ Fuente inicial: contraste entre [`docs/reqs.md`](docs/reqs.md), el codigo actual
 ## Convenciones
 
 - `Done`: implementado y presente en el repo
+- `In Progress`: ya arrancado, con trabajo integrado en el repo, pero todavia no cerrado
 - `Partial`: existe parcialmente o la implementacion no coincide del todo con la intencion del requerimiento
 - `Todo`: todavia no esta implementado
 
@@ -53,10 +54,6 @@ Fecha de corte: 2026-03-17
 
 ### Partial
 
-- Editor preview
-  - Estado actual: existe mediante `DIAGRAM_TOUR_SOURCE_TARGET`
-  - Gap: la UX actual no coincide con la idea de `bun run dev path/to/tour.yaml` como argumento directo
-  - Evidencia: `README.md`, `packages/web-player/src/lib/source-target.ts`
 - Author diagnostics
   - Estado actual: los errores incluyen archivo, step y campo, y el player muestra tours omitidos en un badge de `Issues` con popover flotante
   - Gap: siguen faltando line/column, mejor jerarquia de mensajes y una capa mas rica de diagnostico para autores
@@ -65,6 +62,14 @@ Fecha de corte: 2026-03-17
   - Estado actual: el workspace fue muy pulido, pero `reqs.md` todavia marca esta zona como abierta y sigue siendo razonable tratarla como refinamiento continuo
   - Gap: conectores, labels y jerarquia visual fina todavia pueden mejorar
   - Evidencia: `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
+
+### In Progress
+
+- Editor preview
+  - Estado actual: soporta `bun run dev <target>` para archivo o directorio, y tambien `bun run dev:interactive` para elegir el source target desde consola
+  - Gap: sigue faltando consolidarlo dentro de una UX de CLI mas unificada, especialmente pensando en una futura instalacion global
+  - Pendiente inmediato: decidir si el wizard actual es suficiente o si necesita recientes, deteccion de targets y mejor ergonomia de arranque
+  - Evidencia: `README.md`, `scripts/dev-web-player.ts`, `scripts/dev-web-player-interactive.ts`, `packages/web-player/src/lib/source-target.ts`
 
 ### Todo
 

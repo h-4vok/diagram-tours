@@ -126,6 +126,19 @@ Start the web player against the default `examples/` directory:
 bun run dev
 ```
 
+Start the web player against an explicit directory or tour file:
+
+```bash
+bun run dev ./examples
+bun run dev ./examples/payment-flow/payment-flow.tour.yaml
+```
+
+Use the interactive startup helper when you want a guided CLI menu:
+
+```bash
+bun run dev:interactive
+```
+
 Preview a single tour file directly:
 
 ```bash
@@ -166,6 +179,7 @@ bunx playwright install chromium
 - `bun run smoke`
 - `bun run build`
 - `bun run dev`
+- `bun run dev:interactive`
 
 ## CI
 
