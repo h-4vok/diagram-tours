@@ -423,6 +423,7 @@ function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {
   }) as typeof parent.scrollTo;
 }
 
+
 function toScrollPositionForTest(
   parent: HTMLElement,
   options: ScrollToOptions | number,
