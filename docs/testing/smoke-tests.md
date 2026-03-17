@@ -261,3 +261,56 @@ Why these checks exist:
 
 - they cover a tour semantic already supported by the v1 contract
 - they protect against subtle viewport regressions on neutral steps
+
+## Navigation Minimap
+
+File: `packages/web-player/smoke/payment-flow.spec.ts`
+
+### Desktop minimap stays visible and tracks the focused step
+
+- Navigates to `payment-flow`
+- Verifies that the minimap shell and surface are visible on desktop
+- Verifies that the current-step focus marker exists
+- Advances to the next step
+- Verifies that the minimap focus marker style changes with the new focus target
+
+Why these checks exist:
+
+- they validate that the minimap is part of the desktop player shell
+- they confirm that the minimap follows guided-step focus, not just raw scroll position
+
+### Clicking the minimap pans the main diagram viewport
+
+- Navigates to `huge-system`
+- Records the current diagram scroll position
+- Clicks near the far corner of the minimap surface
+- Verifies that the main diagram scroll position changes
+
+Why these checks exist:
+
+- they validate the simplest direct-manipulation navigation path
+- they use the browser-visible scroll state of the real canvas instead of internals
+
+### Dragging the minimap viewport rectangle pans the main diagram viewport
+
+- Navigates to `huge-system`
+- Records the current diagram scroll position
+- Drags the minimap viewport rectangle
+- Verifies that the main diagram scroll position changes
+
+Why these checks exist:
+
+- they protect the higher-precision navigation mode of the minimap
+- they ensure the minimap is not just a passive indicator
+
+### Small screens hide the minimap automatically
+
+- Shrinks the viewport to a mobile-sized width
+- Navigates to `payment-flow`
+- Verifies that the step overlay still exists
+- Verifies that the minimap does not render
+
+Why these checks exist:
+
+- they protect the desktop-first scope of minimap v1
+- they ensure mobile layouts do not inherit a cramped or accidental minimap UI

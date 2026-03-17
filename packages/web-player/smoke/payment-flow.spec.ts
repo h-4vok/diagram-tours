@@ -232,6 +232,69 @@ test("empty-focus steps keep viewport behavior stable", async ({ page }) => {
   expect(neutralScrollTop).toBe(0);
 });
 
+test("desktop minimap stays visible and tracks the focused step", async ({ page }) => {
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+  await expect(page.getByTestId("minimap-shell")).toBeVisible();
+  await expect(page.getByTestId("minimap-surface")).toBeVisible();
+  expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
+  await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
+
+  const initialMarkerStyle = await page.getByTestId("minimap-focus-marker").getAttribute("style");
+
+  await page.getByTestId("next-button").click();
+  await expect(page.getByTestId("step-text")).toContainText("Validation Service");
+  await expect
+    .poll(async () => page.getByTestId("minimap-focus-marker").getAttribute("style"))
+    .not.toBe(initialMarkerStyle);
+});
+
+test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
+  await page.goto("/huge-system");
+  await expectDiagramVisible(page);
+  await expect(page.getByTestId("minimap-surface")).toBeVisible();
+
+  const previousScroll = await readDiagramScrollPosition(page);
+  const minimapBox = await page.getByTestId("minimap-surface").boundingBox();
+
+  assertLayoutBox(minimapBox);
+  await page.getByTestId("minimap-surface").click({
+    position: {
+      x: minimapBox.width - 10,
+      y: minimapBox.height - 10
+    }
+  });
+
+  await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
+});
+
+test("dragging the minimap viewport rectangle pans the main diagram viewport", async ({ page }) => {
+  await page.goto("/huge-system");
+  await expectDiagramVisible(page);
+  await expect(page.getByTestId("minimap-viewport-rect")).toBeVisible();
+
+  const previousScroll = await readDiagramScrollPosition(page);
+  const viewportRectBox = await page.getByTestId("minimap-viewport-rect").boundingBox();
+
+  assertLayoutBox(viewportRectBox);
+  await page.mouse.move(viewportRectBox.x + viewportRectBox.width / 2, viewportRectBox.y + viewportRectBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(viewportRectBox.x + viewportRectBox.width / 2 + 36, viewportRectBox.y + viewportRectBox.height / 2 + 24, {
+    steps: 4
+  });
+  await page.mouse.up();
+
+  await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
+});
+
+test("small screens hide the minimap automatically", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 640 });
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+  await expect(page.getByTestId("step-overlay")).toBeVisible();
+  await expect(page.getByTestId("minimap-shell")).toHaveCount(0);
+});
+
 async function expectDiagramVisible(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
 }
@@ -365,6 +428,16 @@ async function readNodeAxisSize(
   assertLayoutBox(nodeBox);
 
   return nodeBox[axis];
+}
+
+async function readDiagramScrollPosition(page: Page): Promise<{
+  scrollLeft: number;
+  scrollTop: number;
+}> {
+  return page.getByTestId("diagram-container").evaluate((element) => ({
+    scrollLeft: element.scrollLeft,
+    scrollTop: element.scrollTop
+  }));
 }
 
 function assertLayoutBox(input: {

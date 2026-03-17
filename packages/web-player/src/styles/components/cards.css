@@ -17,11 +17,8 @@
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 48%, var(--color-border));
   border-radius: var(--radius-card);
-  bottom: 0.85rem;
   box-shadow: var(--shadow-overlay, var(--shadow-soft));
-  position: absolute;
-  right: 0.85rem;
-  z-index: 15;
+  position: relative;
 }
 
 .step-text {
@@ -50,6 +47,22 @@
   border-radius: var(--radius-card);
   box-shadow: none;
   position: relative;
+}
+
+.canvas-overlay-stack {
+  align-items: flex-end;
+  bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  pointer-events: none;
+  position: absolute;
+  right: 0.85rem;
+  z-index: 15;
+}
+
+.canvas-overlay-stack > * {
+  pointer-events: auto;
 }
 
 .tour-identity {
@@ -127,16 +140,154 @@
   z-index: 9;
 }
 
+.minimap-shell {
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay, var(--shadow-soft));
+  display: grid;
+  gap: 0.72rem;
+  min-width: 13.5rem;
+  padding: 0.72rem 0.78rem;
+}
+
+.minimap-shell--collapsed {
+  gap: 0;
+  min-width: 0;
+}
+
+.minimap-shell__header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.minimap-shell__label {
+  color: var(--color-text-secondary, var(--color-muted));
+  font-family: var(--font-family-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.minimap-shell__toggle {
+  appearance: none;
+  background: color-mix(in srgb, var(--color-bg-soft) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 2rem;
+  padding: 0.3rem 0.7rem;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.minimap-shell__toggle:hover,
+.minimap-shell__toggle:focus-visible {
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 42%, var(--color-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
+}
+
+.minimap-surface {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-bg-soft) 92%, var(--color-surface)), color-mix(in srgb, var(--color-bg-main) 94%, var(--color-surface))),
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--color-bg-glow) 28%, transparent), transparent 42%);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  border-radius: calc(var(--radius-card-tight) * 0.95);
+  cursor: crosshair;
+  overflow: hidden;
+  position: relative;
+}
+
+.minimap-node-marker {
+  background: color-mix(in srgb, var(--color-bg-soft) 84%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 52%, transparent);
+  border-radius: 0.3rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg-main) 24%, transparent);
+  opacity: 0.94;
+  position: absolute;
+}
+
+.minimap-focus-marker {
+  background: color-mix(in srgb, var(--color-node-focus-fill) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-node-focus-stroke) 94%, transparent);
+  border-radius: 0.3rem;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 18%, transparent),
+    0 0 12px color-mix(in srgb, var(--color-node-focus-stroke) 18%, transparent);
+  position: absolute;
+}
+
+.minimap-viewport-rect {
+  appearance: none;
+  background: color-mix(in srgb, var(--color-node-focus-fill) 20%, transparent);
+  border: 1px solid color-mix(in srgb, white 78%, var(--color-node-focus-stroke));
+  border-radius: 0.42rem;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 48%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
+  cursor: grab;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  position: absolute;
+}
+
+.minimap-viewport-rect:active {
+  cursor: grabbing;
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-surface {
+  background:
+    linear-gradient(180deg, rgb(38 46 64 / 92%), rgb(24 30 43 / 94%)),
+    radial-gradient(circle at 28% 22%, rgb(138 162 255 / 12%), transparent 46%);
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-node-marker {
+  background: rgb(116 130 162 / 34%);
+  border-color: rgb(164 179 214 / 38%);
+  box-shadow:
+    inset 0 0 0 1px rgb(206 217 246 / 6%),
+    0 0 0 1px rgb(10 14 22 / 18%);
+  opacity: 1;
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-focus-marker {
+  background: rgb(86 112 198 / 64%);
+  border-color: rgb(151 174 255 / 96%);
+  box-shadow:
+    0 0 0 1px rgb(151 174 255 / 22%),
+    0 0 14px rgb(138 162 255 / 18%);
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-viewport-rect {
+  background: rgb(138 162 255 / 12%);
+  border-color: rgb(226 234 255 / 72%);
+  box-shadow:
+    inset 0 0 0 1px rgb(151 174 255 / 44%),
+    0 0 0 1px rgb(151 174 255 / 22%);
+}
+
 @media (width < 720px) {
   .step-panel {
     max-width: none;
     width: calc(100% - 1rem);
   }
 
-  .step-panel--overlay {
-    bottom: 0.5rem;
+  .canvas-overlay-stack {
     left: 0.5rem;
     right: 0.5rem;
+    bottom: 0.5rem;
   }
 
   .tour-identity {

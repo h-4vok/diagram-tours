@@ -35,6 +35,9 @@ Cutoff date: 2026-03-17
   - Evidence: `packages/web-player/src/lib/diagram-viewport.ts`
 - Canvas-first layout with top bar, step overlay, and floating browse panel
   - Evidence: `packages/web-player/src/routes/+layout.svelte`
+- Desktop-first navigation minimap with click-to-pan, viewport dragging, focus markers, responsive auto-hide, and persisted collapsed state
+  - Note: the step overlay now stacks above the minimap in the bottom-right overlay column
+  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/lib/diagram-minimap.ts`, `packages/web-player/test/diagram-minimap.test.ts`
 - Theme toggle and theme persistence
   - Evidence: `packages/web-player/src/routes/+layout.svelte`
 - Recursive discovery of `*.tour.yaml`
@@ -73,8 +76,6 @@ Cutoff date: 2026-03-17
 
 ### Todo
 
-- Navigation minimap
-  - Note: no current implementation was found in the repository
 - Visual step timeline
   - Note: no current implementation was found in the repository
 - Support for more complex diagram types, including Mermaid sequence diagrams
@@ -94,6 +95,8 @@ Cutoff date: 2026-03-17
   - Note: no current implementation was found in the repository
 - Animated viewport transitions
   - Note: no current implementation was found in the repository
+- Step-overlay redesign after minimap integration
+  - Note: the current step overlay now stacks above the minimap and is good enough for v1, but it should be revisited as part of a more intentional navigation/stepper layout
 - Smarter group centering
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - Explicit viewport constraints
