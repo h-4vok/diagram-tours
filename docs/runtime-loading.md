@@ -13,6 +13,25 @@ The source target can point to:
 - a directory containing one or more `*.tour.yaml` files
 - a single `*.tour.yaml` file for direct author preview
 
+## Local Startup Flows
+
+For local development, Diagram Tour currently supports multiple startup paths:
+
+- `bun run dev`
+  - starts against the repo-wide default target used by the development script
+- `bun run dev <target>`
+  - starts directly against an explicit directory or `.tour.yaml` file target
+- `bun run dev:interactive`
+  - opens a console wizard that lets the operator choose whether to open all tours, a directory, or a single tour file
+
+Argument precedence is intentional:
+
+- if an explicit positional target is provided, the startup flow skips any interactive prompt
+- if no explicit target is provided, `dev:interactive` prompts in the console
+- the resolved startup target is then passed to the web player through `DIAGRAM_TOUR_SOURCE_TARGET`
+
+This means the environment variable remains the runtime source of truth, while the development scripts provide a more ergonomic way to choose it.
+
 ## Directory Mode
 
 When the source target is a directory, the parser:

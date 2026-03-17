@@ -16,36 +16,146 @@
   margin-top: var(--space-md);
 }
 
-.tour-list {
+.browse-tree {
   display: grid;
-  gap: var(--space-xs);
+  gap: 0.18rem;
 }
 
-.tour-link {
+.browse-search {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.browse-search__label {
+  color: var(--color-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.browse-search__input {
+  background: color-mix(in srgb, var(--color-bg-surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, var(--color-border));
+  border-radius: var(--radius-card-tight);
+  color: var(--color-text);
+  font: inherit;
+  min-height: 2.45rem;
+  padding: 0.58rem 0.72rem;
+}
+
+.browse-search__input::placeholder {
+  color: var(--color-muted);
+}
+
+.browse-search__input:focus-visible {
+  border-color: var(--color-node-focus-stroke);
+  outline: 2px solid color-mix(in srgb, var(--color-node-focus-stroke) 24%, transparent);
+  outline-offset: 2px;
+}
+
+.browse-row {
+  appearance: none;
+  align-items: center;
   background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, var(--color-border));
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-card-tight);
   color: var(--color-text);
-  padding: 0.82rem var(--space-md);
+  column-gap: 0.65rem;
+  display: grid;
+  grid-template-columns: 0.9rem auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 0.5rem 0.64rem 0.5rem calc(0.64rem + (var(--browse-depth, 0) * 0.82rem));
+  text-align: left;
   text-decoration: none;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease,
     color 160ms ease;
+  width: 100%;
 }
 
-.tour-link:hover,
-.tour-link:focus-visible {
+.browse-row:hover,
+.browse-row:focus-visible {
   background: var(--color-bg-surface);
   border-color: color-mix(in srgb, var(--color-accent) 25%, var(--color-border));
   box-shadow: 0 8px 18px color-mix(in srgb, var(--color-border) 10%, transparent);
 }
 
-.tour-link--active {
+.browse-row--folder {
+  cursor: pointer;
+}
+
+.browse-row--active {
   background: color-mix(in srgb, var(--color-bg-surface) 90%, var(--color-bg-soft));
   border-color: var(--color-node-focus-stroke);
   box-shadow: inset 0 0 0 1px var(--color-node-focus-stroke);
-  color: var(--color-text);
+}
+
+.browse-row__caret {
+  color: var(--color-muted);
+  font-family: var(--font-family-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.browse-row__icon {
+  display: inline-block;
+  height: 0.9rem;
+  position: relative;
+  width: 0.9rem;
+}
+
+.browse-row__icon--folder {
+  background: color-mix(in srgb, var(--color-bg-soft) 70%, var(--color-bg-surface));
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 72%, var(--color-border));
+  border-radius: 0.2rem;
+}
+
+.browse-row__icon--folder::before {
+  background: color-mix(in srgb, var(--color-bg-soft) 96%, white 4%);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 68%, var(--color-border));
+  border-bottom: 0;
+  border-radius: 0.16rem 0.16rem 0 0;
+  content: "";
+  height: 0.28rem;
+  left: 0.08rem;
+  position: absolute;
+  top: -0.18rem;
+  width: 0.42rem;
+}
+
+.browse-row__icon--tour {
+  border: 1px solid color-mix(in srgb, var(--color-node-focus-stroke) 60%, var(--color-border));
+  border-radius: 0.24rem;
+  transform: rotate(45deg) scale(0.82);
+}
+
+.browse-row__content {
+  display: grid;
+  gap: 0.06rem;
+  min-width: 0;
+}
+
+.browse-row__title {
+  font-size: 0.89rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.browse-row__title--folder {
+  font-family: var(--font-family-mono);
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.browse-empty-state {
+  background: color-mix(in srgb, var(--color-bg-soft) 84%, var(--color-bg-surface));
+  border: 1px dashed color-mix(in srgb, var(--color-border-strong, var(--color-border)) 42%, var(--color-border));
+  border-radius: var(--radius-card-tight);
+  color: var(--color-text-secondary, var(--color-muted));
+  padding: var(--space-md);
 }

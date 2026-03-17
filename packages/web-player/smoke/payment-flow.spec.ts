@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-test("renders the docs shell and navigates between discovered examples", async ({
+test("docs shell browse navigation changes tours without breaking the player", async ({
   page
 }) => {
   await page.goto("/decision-flow?step=3");
@@ -11,11 +11,10 @@ test("renders the docs shell and navigates between discovered examples", async (
   await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
   await expect(page.getByRole("link", { name: "christianguzman.uk" })).toBeVisible();
   await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("tour-identity").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Payment Flow" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Refund Flow" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Release Pipeline" })).toBeVisible();
+  await expect(page.getByTestId("browse-search-input")).toBeVisible();
+  await expect(page.getByTestId("browse-folder-row").first()).toBeVisible();
   await expect(page.getByTestId("step-text")).toContainText(
     "human or audited service"
   );
@@ -27,7 +26,9 @@ test("renders the docs shell and navigates between discovered examples", async (
     page.locator('[data-testid="diagram-container"][data-focus-group-mode="group"][data-focus-group-size="2"]')
   ).toHaveCount(1);
 
-  await page.getByRole("link", { name: "Refund Flow" }).click();
+  await page.getByTestId("browse-search-input").fill("refund");
+  await expect(page.getByText("Refund Flow")).toBeVisible();
+  await page.getByText("Refund Flow").click();
 
   await expect(page).toHaveURL(/\/refund-flow$/);
   await expect(page.getByTestId("step-text")).toContainText(
@@ -35,13 +36,29 @@ test("renders the docs shell and navigates between discovered examples", async (
   );
 
   await page.getByTestId("browse-trigger").click();
-  await page.getByRole("link", { name: "Decision Flow" }).click();
+  await page.getByTestId("browse-search-input").fill("decision");
+  await expect(page.getByText("Decision Flow")).toBeVisible();
+  await page.getByText("Decision Flow").click();
 
   await expect(page).toHaveURL(/\/decision-flow$/);
   await expect(page.getByTestId("step-text")).toBeVisible();
 });
 
-test("keeps document-level horizontal overflow suppressed while the canvas owns the body", async ({
+test("browse search keeps long queries strict enough to avoid unrelated fuzzy matches", async ({ page }) => {
+  await page.goto("/refund-flow");
+
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
+  await expect(page.getByTestId("browse-trigger")).toBeVisible();
+  await page.getByTestId("browse-trigger").click();
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
+  await page.getByTestId("browse-search-input").fill("release");
+
+  await expect(page.getByText("Release Pipeline")).toBeVisible();
+  await expect(page.getByText("Parallel Onboarding")).toHaveCount(0);
+  await expect(page.getByText("Huge System Stress Test")).toHaveCount(0);
+});
+
+test("diagram canvas owns horizontal overflow instead of the document body", async ({
   page
 }) => {
   await page.goto("/decision-flow");
@@ -53,7 +70,7 @@ test("keeps document-level horizontal overflow suppressed while the canvas owns 
   await expectCanvasToOwnBody(page);
 });
 
-test("best-effort centers focused areas inside the padded viewport stage", async ({
+test("focused areas stay reasonably centered through viewport-centering examples", async ({
   page
 }) => {
   await page.goto("/viewport-centering");
@@ -70,7 +87,7 @@ test("best-effort centers focused areas inside the padded viewport stage", async
   await expectFocusedAreaNearViewportCenter(page, ["verify", "observe"]);
 });
 
-test("keeps the same Mermaid svg mounted while deep-linked steps change", async ({ page }) => {
+test("deep-linked step changes reuse the same Mermaid svg", async ({ page }) => {
   await page.goto("/decision-flow?step=2");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
@@ -95,7 +112,7 @@ test("keeps the same Mermaid svg mounted while deep-linked steps change", async 
   );
 });
 
-test("loads and navigates the huge stress-test diagram without destabilizing the player", async ({
+test("huge-system stress fixture remains navigable across step changes", async ({
   page
 }) => {
   await page.goto("/huge-system?step=5");
@@ -117,7 +134,7 @@ test("loads and navigates the huge stress-test diagram without destabilizing the
   ).toHaveCount(1);
 });
 
-test("starts the huge stress-test tour at a readable first-focus scale", async ({ page }) => {
+test("huge-system first step starts at a readable focus scale", async ({ page }) => {
   await page.goto("/huge-system");
 
   await expect(page).toHaveURL(/\/huge-system$/);
@@ -130,7 +147,7 @@ test("starts the huge stress-test tour at a readable first-focus scale", async (
   expect(await readNodeAxisSize(page, "edge", "width")).toBeGreaterThan(80);
 });
 
-test("keeps connector labels readable as secondary context in a branching diagram", async ({
+test("connector labels remain readable as context in a branching diagram", async ({
   page
 }) => {
   await page.goto("/incident-response?step=2");
@@ -146,7 +163,7 @@ test("keeps connector labels readable as secondary context in a branching diagra
   ).toBeGreaterThan(0);
 });
 
-test("keeps the diagram usable when the selected step text is long", async ({ page }) => {
+test("long step text does not break the usable diagram area", async ({ page }) => {
   await page.goto("/incident-response?step=4");
 
   await expectDiagramVisible(page);
@@ -163,7 +180,7 @@ test("keeps the diagram usable when the selected step text is long", async ({ pa
   expect(overlayBox.x + overlayBox.width).toBeLessThanOrEqual(diagramBox.x + diagramBox.width);
 });
 
-test("persists dark mode across reloads and direct navigation", async ({ page }) => {
+test("dark mode persists across reloads and direct navigation", async ({ page }) => {
   await page.goto("/payment-flow");
   await expectDiagramVisible(page);
 
@@ -179,7 +196,7 @@ test("persists dark mode across reloads and direct navigation", async ({ page })
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 });
 
-test("shows a guided 404 for unknown tours and offers a single recovery action", async ({ page }) => {
+test("unknown tours show a guided 404 with a single recovery action", async ({ page }) => {
   const response = await page.goto("/examples/tuvieja");
 
   expect(response?.status()).toBe(404);
@@ -193,7 +210,7 @@ test("shows a guided 404 for unknown tours and offers a single recovery action",
   await expect(page).toHaveURL(/\/[^/]+$/);
 });
 
-test("keeps empty-focus viewport behavior stable in the dedicated example", async ({ page }) => {
+test("empty-focus steps keep viewport behavior stable", async ({ page }) => {
   await page.goto("/viewport-centering?step=3");
   await expectDiagramVisible(page);
 
