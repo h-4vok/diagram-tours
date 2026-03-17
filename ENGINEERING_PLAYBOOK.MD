@@ -73,11 +73,14 @@ The repository enforces strong guardrails and they are part of normal developmen
 
 When behavior, contracts, or developer workflow changes, update the relevant documentation in the same delivery.
 
+Repository-facing documentation should be written in English unless a task explicitly requires another language.
+
 Examples include:
 
 - update product contract docs when the tour format changes
 - update examples when they better explain the delivered capability
 - update README when contributor-facing expectations change
+- update runtime or startup docs when source-target resolution, CLI entrypoints, or developer launch flows change
 - update delivery or engineering docs when the operating model changes
 
 ## Decision Records

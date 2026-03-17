@@ -61,6 +61,8 @@ Verify:
 - lint passes
 - no debug code remains
 - documentation is updated if behavior or contracts changed
+- repository-facing documentation added or changed in the delivery is written in English
+- README/runtime-loading docs are updated if CLI commands, startup flows, or source-target behavior changed
 
 ## Final Delivery Summary
 
