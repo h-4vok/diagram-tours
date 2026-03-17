@@ -26,32 +26,20 @@ export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagra
   const context = createTourContext(absoluteTourPath);
 
   return runWithContext(context, async () => {
-    const tourSource = await readTextFile(absoluteTourPath);
-    const rawTour = parseTourDocument({
-      source: tourSource,
+    const rawTour = await readRawTourDocument({
+      absoluteTourPath,
       context
     });
-    const absoluteDiagramPath = resolve(dirname(absoluteTourPath), rawTour.diagram);
-    const diagramSource = await readTextFile(absoluteDiagramPath);
-    const nodeIndex = createNodeIndex(diagramSource);
+    const diagramSource = await readDiagramSource({
+      absoluteTourPath,
+      diagramPath: rawTour.diagram
+    });
 
-    return {
-      version: rawTour.version,
-      title: rawTour.title,
-      diagram: {
-        path: normalizePath(rawTour.diagram),
-        source: diagramSource,
-        nodes: Array.from(nodeIndex.values())
-      },
-      steps: rawTour.steps.map((step, index) =>
-        resolveTourStep({
-          step,
-          stepIndex: index + 1,
-          nodeIndex,
-          context
-        })
-      )
-    };
+    return resolveLoadedTour({
+      context,
+      diagramSource,
+      rawTour
+    });
   });
 }
 
@@ -86,34 +74,22 @@ async function createDiscoveredTourCollection(
   sourceRoot: string
 ): Promise<ResolvedDiagramTourCollection> {
   const tourPaths = await collectTourPaths(sourceRoot);
-  const entries: ResolvedDiagramTourCollectionEntry[] = [];
-  const skipped: SkippedResolvedDiagramTour[] = [];
+  const result = createDiscoveredCollectionResult();
 
   for (const absoluteTourPath of tourPaths) {
-    try {
-      entries.push(
-        await createCollectionEntry({
-          absoluteTourPath,
-          sourceRoot
-        })
-      );
-    } catch (error) {
-      skipped.push({
-        sourcePath: normalizePath(relative(sourceRoot, absoluteTourPath)),
-        error: (error as Error).message
-      });
-    }
+    await appendDiscoveredTourResult({
+      absoluteTourPath,
+      result,
+      sourceRoot
+    });
   }
 
   invariant(
-    entries.length > 0,
+    result.entries.length > 0,
     `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(sourceRoot)}".`
   );
 
-  return {
-    entries,
-    skipped
-  };
+  return result;
 }
 
 async function createCollectionEntry(input: {
@@ -152,10 +128,63 @@ function collectTourFilePath(sourceRoot: string, name: string): string[] {
   return [resolve(sourceRoot, name)];
 }
 
+function createDiscoveredCollectionResult(): {
+  entries: ResolvedDiagramTourCollectionEntry[];
+  skipped: SkippedResolvedDiagramTour[];
+} {
+  return {
+    entries: [],
+    skipped: []
+  };
+}
+
+async function appendDiscoveredTourResult(input: {
+  absoluteTourPath: string;
+  result: {
+    entries: ResolvedDiagramTourCollectionEntry[];
+    skipped: SkippedResolvedDiagramTour[];
+  };
+  sourceRoot: string;
+}): Promise<void> {
+  try {
+    input.result.entries.push(
+      await createCollectionEntry({
+        absoluteTourPath: input.absoluteTourPath,
+        sourceRoot: input.sourceRoot
+      })
+    );
+  } catch (error) {
+    input.result.skipped.push(createSkippedTourEntry(input.absoluteTourPath, input.sourceRoot, error));
+  }
+}
+
+function createSkippedTourEntry(
+  absoluteTourPath: string,
+  sourceRoot: string,
+  error: unknown
+): SkippedResolvedDiagramTour {
+  return {
+    sourcePath: normalizePath(relative(sourceRoot, absoluteTourPath)),
+    error: (error as Error).message
+  };
+}
+
 async function readTextFile(path: string): Promise<string> {
   const source = await readFile(path, "utf8");
 
   return normalizeNewlines(source);
+}
+
+async function readRawTourDocument(input: {
+  absoluteTourPath: string;
+  context: TourContext;
+}): Promise<DiagramTour> {
+  const tourSource = await readTextFile(input.absoluteTourPath);
+
+  return parseTourDocument({
+    source: tourSource,
+    context: input.context
+  });
 }
 
 function parseTourDocument(input: { source: string; context: TourContext }): DiagramTour {
@@ -175,22 +204,64 @@ function createTourContext(sourcePath: string): TourContext {
   };
 }
 
+async function readDiagramSource(input: {
+  absoluteTourPath: string;
+  diagramPath: string;
+}): Promise<string> {
+  const absoluteDiagramPath = resolve(dirname(input.absoluteTourPath), input.diagramPath);
+
+  return readTextFile(absoluteDiagramPath);
+}
+
+function resolveLoadedTour(input: {
+  context: TourContext;
+  diagramSource: string;
+  rawTour: DiagramTour;
+}): ResolvedDiagramTour {
+  const nodeIndex = createNodeIndex(input.diagramSource);
+
+  return {
+    version: input.rawTour.version,
+    title: input.rawTour.title,
+    diagram: createResolvedDiagram(input.rawTour.diagram, input.diagramSource, nodeIndex),
+    steps: resolveLoadedTourSteps(input.rawTour.steps, nodeIndex, input.context)
+  };
+}
+
+function createResolvedDiagram(
+  diagramPath: string,
+  diagramSource: string,
+  nodeIndex: NodeIndex
+): ResolvedDiagramTour["diagram"] {
+  return {
+    path: normalizePath(diagramPath),
+    source: diagramSource,
+    nodes: Array.from(nodeIndex.values())
+  };
+}
+
+function resolveLoadedTourSteps(
+  steps: TourStep[],
+  nodeIndex: NodeIndex,
+  context: TourContext
+): ResolvedDiagramTour["steps"] {
+  return steps.map((step, index) =>
+    resolveTourStep({
+      step,
+      stepIndex: index + 1,
+      nodeIndex,
+      context
+    })
+  );
+}
+
 function toDiagramTour(input: { value: unknown; context: TourContext }): DiagramTour {
   invariant(isRecord(input.value), createTourMessage(input.context, "document must be an object"));
 
   const version = input.value.version;
-  const title = asNonEmptyString(
-    input.value.title,
-    createTourMessage(input.context, "title is required")
-  );
-  const diagram = asNonEmptyString(
-    input.value.diagram,
-    createTourMessage(input.context, "diagram path is required")
-  );
-  const steps = asNonEmptyArray(
-    input.value.steps,
-    createTourMessage(input.context, "steps must be a non-empty array")
-  );
+  const title = readTourTitle(input.value, input.context);
+  const diagram = readTourDiagramPath(input.value, input.context);
+  const steps = readTourSteps(input.value, input.context);
 
   invariant(
     version === SUPPORTED_TOUR_VERSION,
@@ -209,6 +280,21 @@ function toDiagramTour(input: { value: unknown; context: TourContext }): Diagram
       })
     )
   };
+}
+
+function readTourTitle(value: Record<string, unknown>, context: TourContext): string {
+  return asNonEmptyString(value.title, createTourMessage(context, "title is required"));
+}
+
+function readTourDiagramPath(value: Record<string, unknown>, context: TourContext): string {
+  return asNonEmptyString(value.diagram, createTourMessage(context, "diagram path is required"));
+}
+
+function readTourSteps(value: Record<string, unknown>, context: TourContext): unknown[] {
+  return asNonEmptyArray(
+    value.steps,
+    createTourMessage(context, "steps must be a non-empty array")
+  );
 }
 
 function toTourStep(input: {

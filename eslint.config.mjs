@@ -9,6 +9,7 @@ import svelteConfig from "./packages/web-player/svelte.config.js";
 
 const sharedRules = {
   complexity: ["error", 3],
+  "max-depth": ["error", 3],
   "max-params": ["error", 3],
   curly: ["error", "all"],
   eqeqeq: ["error", "always"],
@@ -30,7 +31,14 @@ const sharedRules = {
       varsIgnorePattern: "^_",
       caughtErrorsIgnorePattern: "^_"
     }
-  ]
+  ],
+};
+
+const typedGuardrailRules = {
+  "max-lines-per-function": ["error", 30],
+  "@typescript-eslint/no-floating-promises": "error",
+  "@typescript-eslint/no-unnecessary-condition": "error",
+  "@typescript-eslint/switch-exhaustiveness-check": "error"
 };
 
 export default defineConfig([
@@ -67,8 +75,11 @@ export default defineConfig([
     languageOptions: {
       parser: svelteParser,
       parserOptions: {
+        extraFileExtensions: [".svelte"],
         parser: tseslint.parser,
-        svelteConfig
+        projectService: true,
+        svelteConfig,
+        tsconfigRootDir: import.meta.dirname
       },
       globals: {
         ...globals.browser
@@ -79,12 +90,23 @@ export default defineConfig([
     }
   },
   {
-    files: ["packages/web-player/src/**/*.ts", "packages/web-player/vite.config.ts"],
+    files: [
+      "packages/*/src/**/*.ts",
+      "packages/web-player/src/**/*.svelte",
+      "scripts/**/*.ts"
+    ],
     languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname
+      },
       globals: {
         ...globals.browser,
         ...globals.node
       }
+    },
+    rules: {
+      ...typedGuardrailRules
     }
   }
 ]);

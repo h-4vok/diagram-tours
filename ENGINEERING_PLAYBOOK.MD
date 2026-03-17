@@ -64,8 +64,13 @@ The repository enforces strong guardrails and they are part of normal developmen
 - lint rules must pass
 - test coverage must remain at `100%` for statements, branches, functions, and lines
 - cyclomatic complexity must remain at or below `3`
+- block nesting depth must remain at or below `3`
+- function bodies should stay at or below `30` lines unless a narrower exception is explicitly justified
 - function arity must remain at or below `3`
 - if more inputs are required, prefer an object parameter
+- floating promises are not allowed
+- unnecessary conditional guards are not allowed
+- discriminated unions and similar switches must remain exhaustive
 - type checks must pass
 - the final relevant test suite must pass
 
