@@ -36,7 +36,10 @@ Code must not be delivered if any guardrail is broken:
 - coverage drops below `100%` for statements, branches, functions, or lines
 - typecheck fails
 - configured complexity rules fail
+- configured nesting-depth rules fail
+- configured function-length rules fail
 - configured function arity rules fail
+- configured async/exhaustiveness guardrails fail
 - documented contracts are changed without corresponding documentation updates
 
 ## Owner Verification Readiness

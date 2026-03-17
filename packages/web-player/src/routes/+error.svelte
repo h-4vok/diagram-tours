@@ -34,7 +34,7 @@
     <div class="controls error-actions">
       <a
         class="button error-actions__button error-actions__button--primary"
-        href={resolve(fallbackTour === undefined ? "/" : `/${fallbackTour.slug}`)}
+        href={resolve(`/${fallbackTour.slug}`)}
       >
         Back to Tours
       </a>

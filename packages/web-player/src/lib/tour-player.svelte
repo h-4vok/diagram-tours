@@ -33,6 +33,24 @@
     maxWidth: 220
   } as const;
 
+  type ViewportDragState = {
+    didDrag: boolean;
+    offsetX: number;
+    offsetY: number;
+    pointerId: number;
+  };
+
+  type ViewportOrigin = {
+    x: number;
+    y: number;
+  };
+
+  type ViewportDragInput = {
+    dragState: ViewportDragState;
+    metrics: DiagramMinimapMetrics;
+    viewportOrigin: ViewportOrigin;
+  };
+
   export let initialStepIndex: number;
   export let selectedSlug: string;
   export let tour: ResolvedDiagramTour;
@@ -51,14 +69,7 @@
   let isMinimapCollapsed = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
   let previousInitialStepIndex = initialStepIndex;
-  let viewportDragState:
-    | {
-        didDrag: boolean;
-        offsetX: number;
-        offsetY: number;
-        pointerId: number;
-      }
-    | null = null;
+  let viewportDragState: ViewportDragState | null = null;
 
   async function goPrevious(): Promise<void> {
     state = player.goPrevious();
@@ -418,14 +429,7 @@
         });
   }
 
-  function readViewportDragState(event: PointerEvent):
-    | {
-        didDrag: boolean;
-        offsetX: number;
-        offsetY: number;
-        pointerId: number;
-      }
-    | null {
+  function readViewportDragState(event: PointerEvent): ViewportDragState | null {
     const viewportRect = event.currentTarget;
 
     if (minimapGeometry === null || !(viewportRect instanceof HTMLElement)) {
@@ -452,47 +456,18 @@
     return viewportDragState !== null && event.pointerId === viewportDragState.pointerId;
   }
 
-  function readCurrentViewportDragState(event: PointerEvent):
-    | {
-        didDrag: boolean;
-        offsetX: number;
-        offsetY: number;
-        pointerId: number;
-      }
-    | null {
+  function readCurrentViewportDragState(event: PointerEvent): ViewportDragState | null {
     return matchesViewportDragPointer(event) ? viewportDragState : null;
   }
 
-  function markViewportDragStateAsDragged(input: {
-    didDrag: boolean;
-    offsetX: number;
-    offsetY: number;
-    pointerId: number;
-  }): {
-    didDrag: boolean;
-    offsetX: number;
-    offsetY: number;
-    pointerId: number;
-  } {
+  function markViewportDragStateAsDragged(input: ViewportDragState): ViewportDragState {
     return {
       ...input,
       didDrag: true
     };
   }
 
-  function readViewportDragInput(event: PointerEvent): {
-    dragState: {
-      didDrag: boolean;
-      offsetX: number;
-      offsetY: number;
-      pointerId: number;
-    };
-    metrics: DiagramMinimapMetrics;
-    viewportOrigin: {
-      x: number;
-      y: number;
-    };
-  } | null {
+  function readViewportDragInput(event: PointerEvent): ViewportDragInput | null {
     const dragState = readCurrentViewportDragState(event);
     const metrics = readCurrentMinimapMetrics();
     const viewportOrigin = readDraggedViewportOrigin(event);
@@ -509,64 +484,26 @@
   }
 
   function hasMissingViewportDragInput(
-    dragState: {
-      didDrag: boolean;
-      offsetX: number;
-      offsetY: number;
-      pointerId: number;
-    } | null,
+    dragState: ViewportDragState | null,
     metrics: DiagramMinimapMetrics | null,
-    viewportOrigin: {
-      x: number;
-      y: number;
-    } | null
+    viewportOrigin: ViewportOrigin | null
   ): boolean {
     return [dragState, metrics, viewportOrigin].some((value) => value === null);
   }
 
   function createViewportDragInputPayload(input: {
-    dragState: {
-      didDrag: boolean;
-      offsetX: number;
-      offsetY: number;
-      pointerId: number;
-    } | null;
+    dragState: ViewportDragState | null;
     metrics: DiagramMinimapMetrics | null;
-    viewportOrigin:
-      | {
-          x: number;
-          y: number;
-        }
-      | null;
-  }): {
-    dragState: {
-      didDrag: boolean;
-      offsetX: number;
-      offsetY: number;
-      pointerId: number;
-    };
-    metrics: DiagramMinimapMetrics;
-    viewportOrigin: {
-      x: number;
-      y: number;
-    };
-  } {
+    viewportOrigin: ViewportOrigin | null;
+  }): ViewportDragInput {
     return {
-      dragState: input.dragState as {
-        didDrag: boolean;
-        offsetX: number;
-        offsetY: number;
-        pointerId: number;
-      },
+      dragState: input.dragState as ViewportDragState,
       metrics: input.metrics as DiagramMinimapMetrics,
-      viewportOrigin: input.viewportOrigin as {
-        x: number;
-        y: number;
-      }
+      viewportOrigin: input.viewportOrigin as ViewportOrigin
     };
   }
 
-  function readDraggedViewportOrigin(event: PointerEvent): { x: number; y: number } | null {
+  function readDraggedViewportOrigin(event: PointerEvent): ViewportOrigin | null {
     const minimapPoint = readMinimapPoint(event);
 
     if (minimapPoint === null || viewportDragState === null) {
