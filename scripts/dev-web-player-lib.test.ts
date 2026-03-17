@@ -46,7 +46,9 @@ describe("dev-web-player-lib", () => {
   });
 
   test("validates directory targets", () => {
-    expect(validateSourceTarget("./examples", "directory")).toContain("\\examples");
+    expect(normalizePathForAssertion(validateSourceTarget("./examples", "directory"))).toContain(
+      "/examples"
+    );
   });
 
   test("validates .tour.yaml file targets", () => {
@@ -61,3 +63,7 @@ describe("dev-web-player-lib", () => {
     );
   });
 });
+
+function normalizePathForAssertion(input: string): string {
+  return input.replaceAll("\\", "/");
+}
