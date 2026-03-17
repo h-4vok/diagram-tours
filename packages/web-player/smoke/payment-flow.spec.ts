@@ -47,6 +47,8 @@ test("renders the docs shell and navigates between discovered examples", async (
 test("keeps long search queries strict enough to avoid unrelated fuzzy matches", async ({ page }) => {
   await page.goto("/refund-flow");
 
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
+  await expect(page.getByTestId("browse-trigger")).toBeVisible();
   await page.getByTestId("browse-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await page.getByTestId("browse-search-input").fill("release");
