@@ -180,8 +180,36 @@ describe("+layout.svelte", () => {
     ).toBe(
       "1 invalid tour was omitted from the collection."
     );
-    expect(screen.getByText("broken.tour.yaml")).toBeDefined();
-    expect(screen.getByText("broken")).toBeDefined();
+
+    const diagnosticsItem = await screen.findByTestId("diagnostics-item");
+
+    expect(diagnosticsItem.textContent).toContain("broken.tour.yaml");
+    expect(diagnosticsItem.textContent).toContain("broken");
+  });
+
+  it("pins favorites above the tree and persists them in local storage", async () => {
+    render(Layout, {
+      data: {
+        collection: nestedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await expandFolder("payments");
+    await expandFolder("support/refund-flow");
+
+    const refundRow = screen
+      .getAllByTestId("browse-tour-row")
+      .find((element) => element.textContent?.includes("Refund Flow"));
+
+    expect(refundRow).toBeDefined();
+
+    await fireEvent.click(refundRow!.querySelector("[data-testid='favorite-toggle']")!);
+
+    expect(window.localStorage.getItem("diagram-tour:favorites")).toBe('["refund-flow"]');
+    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Favorites");
+    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Refund Flow");
   });
 
   it("shows the preview notice for single-file author previews", async () => {

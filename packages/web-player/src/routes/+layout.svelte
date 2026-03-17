@@ -16,11 +16,18 @@
   } from "$lib/theme";
   import type { ResolvedDiagramTourCollection } from "@diagram-tour/core";
   import {
+    buildFavoriteBrowseEntries,
+    readStoredFavoriteSlugs,
+    toggleFavoriteSlug,
+    writeStoredFavoriteSlugs
+  } from "$lib/browse-favorites";
+  import {
     buildBrowseTree,
     collectActiveBrowseFolderIds,
     filterBrowseTree,
     flattenBrowseTree
   } from "$lib/browse-tree";
+  import { createDiagnosticDisplayItems } from "$lib/diagnostics";
   import type { SourceTargetInfo } from "$lib/source-target";
 
   export let data: {
@@ -36,11 +43,18 @@
   let browseSearchInput: HTMLInputElement | undefined;
   let browseOpenedAt = 0;
   let browseSearch = "";
+  let favoriteSlugs: string[] = [];
   let expandedFolderIds: string[] = [];
   let activeEntry: ResolvedDiagramTourCollection["entries"][number] | null = null;
   let activeSlug: string | null = null;
   let browseTree = buildBrowseTree(data.collection.entries, null);
   let activeFolderIds: string[] = [];
+  let diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
+  let favoriteEntries = buildFavoriteBrowseEntries({
+    entries: data.collection.entries,
+    favoriteSlugs,
+    query: browseSearch
+  });
   let filteredBrowseTree = browseTree;
   let isBrowseFiltering = false;
   let browseRows = flattenBrowseTree(browseTree, [], false);
@@ -51,6 +65,12 @@
     activeEntry = readActiveEntry(data.collection.entries, activeSlug);
     browseTree = buildBrowseTree(data.collection.entries, activeSlug);
     activeFolderIds = collectActiveBrowseFolderIds(browseTree);
+    diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
+    favoriteEntries = buildFavoriteBrowseEntries({
+      entries: data.collection.entries,
+      favoriteSlugs,
+      query: browseSearch
+    });
     filteredBrowseTree = filterBrowseTree(browseTree, browseSearch);
     isBrowseFiltering = browseSearch.trim().length > 0;
     browseRows = flattenBrowseTree(filteredBrowseTree, expandedFolderIds, isBrowseFiltering);
@@ -130,6 +150,7 @@
       theme = storedTheme;
     }
 
+    favoriteSlugs = readStoredFavoriteSlugs(window.localStorage);
     setDocumentTheme(document, theme);
     previousPathname = page.url.pathname;
     isHydrated = true;
@@ -155,6 +176,15 @@
     expandedFolderIds = expandedFolderIds.includes(folderId)
       ? expandedFolderIds.filter((item) => item !== folderId)
       : [...expandedFolderIds, folderId];
+  }
+
+  function toggleFavorite(slug: string): void {
+    favoriteSlugs = toggleFavoriteSlug(favoriteSlugs, slug);
+    writeStoredFavoriteSlugs(window.localStorage, favoriteSlugs);
+  }
+
+  function isFavorite(slug: string): boolean {
+    return favoriteSlugs.includes(slug);
   }
 
   function isFolderExpanded(folderId: string): boolean {
@@ -263,10 +293,14 @@
                 </div>
 
                 <div class="diagnostics-list" data-testid="diagnostics-list">
-                  {#each data.collection.skipped as skipped (skipped.sourcePath)}
+                  {#each diagnosticItems as diagnostic (diagnostic.path)}
                     <article class="diagnostics-item" data-testid="diagnostics-item">
-                      <p class="diagnostics-item__path">{skipped.sourcePath}</p>
-                      <p class="diagnostics-item__error">{skipped.error}</p>
+                      <p class="diagnostics-item__title">{diagnostic.title}</p>
+                      <p class="diagnostics-item__path">{diagnostic.path}</p>
+                      <p class="diagnostics-item__error">{diagnostic.summary}</p>
+                      {#if diagnostic.detail !== null}
+                        <p class="diagnostics-item__detail">{diagnostic.detail}</p>
+                      {/if}
                     </article>
                   {/each}
                 </div>
@@ -339,6 +373,49 @@
             />
           </label>
 
+          {#if favoriteEntries.length > 0}
+            <section class="browse-favorites" data-testid="browse-favorites">
+              <p class="browse-favorites__label">Favorites</p>
+              <div class="browse-favorites__list">
+                {#each favoriteEntries as favorite (favorite.slug)}
+                  <div
+                    class:browse-row--active={favorite.slug === activeSlug}
+                    class="browse-row browse-row--favorite"
+                    data-testid="browse-favorite-row"
+                  >
+                    <a
+                      href={resolve(`/${favorite.slug}`)}
+                      class="browse-row__link"
+                      data-tour-slug={favorite.slug}
+                      on:click={closeBrowse}
+                    >
+                      <span class="browse-row__caret" aria-hidden="true"></span>
+                      <span
+                        class="browse-row__icon browse-row__icon--tour"
+                        data-testid="browse-tour-icon"
+                        aria-hidden="true"
+                      ></span>
+                      <span class="browse-row__content">
+                        <span class="browse-row__title">{favorite.title}</span>
+                      </span>
+                    </a>
+                    <button
+                      type="button"
+                      class:browse-row__favorite--active={isFavorite(favorite.slug)}
+                      class="browse-row__favorite"
+                      data-testid="favorite-toggle"
+                      aria-pressed={isFavorite(favorite.slug)}
+                      aria-label={`Toggle favorite for ${favorite.title}`}
+                      on:click|preventDefault|stopPropagation={() => toggleFavorite(favorite.slug)}
+                    >
+                      *
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            </section>
+          {/if}
+
           {#if browseRows.length === 0}
             <div class="browse-empty-state" data-testid="browse-empty-state">
               <p>No tours match "{browseSearch}".</p>
@@ -373,25 +450,41 @@
                     </span>
                   </button>
                 {:else}
-                  <a
-                    href={resolve(`/${row.node.slug}`)}
-                    class:browse-row--active={row.node.isActive}
+                  {@const tourNode = row.node}
+                  <div
+                    class:browse-row--active={tourNode.isActive}
                     class="browse-row browse-row--tour"
                     data-testid="browse-tour-row"
-                    data-tour-slug={row.node.slug}
+                    data-tour-slug={tourNode.slug}
                     style={`--browse-depth:${row.depth};`}
-                    on:click={closeBrowse}
                   >
-                    <span class="browse-row__caret" aria-hidden="true"></span>
-                    <span
-                      class="browse-row__icon browse-row__icon--tour"
-                      data-testid="browse-tour-icon"
-                      aria-hidden="true"
-                    ></span>
-                    <span class="browse-row__content">
-                      <span class="browse-row__title">{row.node.title}</span>
-                    </span>
-                  </a>
+                    <a
+                      href={resolve(`/${tourNode.slug}`)}
+                      class="browse-row__link"
+                      on:click={closeBrowse}
+                    >
+                      <span class="browse-row__caret" aria-hidden="true"></span>
+                      <span
+                        class="browse-row__icon browse-row__icon--tour"
+                        data-testid="browse-tour-icon"
+                        aria-hidden="true"
+                      ></span>
+                      <span class="browse-row__content">
+                        <span class="browse-row__title">{tourNode.title}</span>
+                      </span>
+                    </a>
+                    <button
+                      type="button"
+                      class:browse-row__favorite--active={isFavorite(tourNode.slug)}
+                      class="browse-row__favorite"
+                      data-testid="favorite-toggle"
+                      aria-pressed={isFavorite(tourNode.slug)}
+                      aria-label={`Toggle favorite for ${tourNode.title}`}
+                      on:click|preventDefault|stopPropagation={() => toggleFavorite(tourNode.slug)}
+                    >
+                      *
+                    </button>
+                  </div>
                 {/if}
               {/each}
             </nav>

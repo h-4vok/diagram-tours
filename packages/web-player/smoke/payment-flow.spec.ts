@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { startDevServer } from "./dev-server";
 
 test("docs shell browse navigation changes tours without breaking the player", async ({
   page
@@ -268,6 +269,40 @@ test("clicking the minimap pans the main diagram viewport", async ({ page }) => 
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
 });
 
+test("zoom-to-fit returns a displaced diagram toward a centered overview", async ({ page }) => {
+  await page.goto("/huge-system");
+  await expectDiagramVisible(page);
+
+  const minimapBox = await page.getByTestId("minimap-surface").boundingBox();
+
+  assertLayoutBox(minimapBox);
+  await page.getByTestId("minimap-surface").click({
+    position: {
+      x: minimapBox.width - 10,
+      y: minimapBox.height - 10
+    }
+  });
+
+  await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual({
+    scrollLeft: 0,
+    scrollTop: 0
+  });
+
+  const displacedDistance = {
+    x: await readDiagramScrollDistanceFromCenter(page, "x"),
+    y: await readDiagramScrollDistanceFromCenter(page, "y")
+  };
+
+  await page.getByTestId("zoom-to-fit").click();
+
+  await expect.poll(async () => readDiagramScrollDistanceFromCenter(page, "x")).toBeLessThan(
+    displacedDistance.x
+  );
+  await expect.poll(async () => readDiagramScrollDistanceFromCenter(page, "y")).toBeLessThan(
+    displacedDistance.y
+  );
+});
+
 test("dragging the minimap viewport rectangle pans the main diagram viewport", async ({ page }) => {
   await page.goto("/huge-system");
   await expectDiagramVisible(page);
@@ -285,6 +320,76 @@ test("dragging the minimap viewport rectangle pans the main diagram viewport", a
   await page.mouse.up();
 
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
+});
+
+test("clicking a node jumps directly to its matching step", async ({ page }) => {
+  await page.goto("/refund-flow");
+  await expectDiagramVisible(page);
+
+  await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click();
+
+  await expect(page).toHaveURL(/\/refund-flow\?step=2$/);
+  await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");
+});
+
+test("clicking a repeated node opens a chooser with matching steps", async ({ page }) => {
+  await page.goto("/viewport-stability");
+  await expectDiagramVisible(page);
+
+  await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click();
+
+  await expect(page.getByTestId("node-step-chooser")).toBeVisible();
+  await expect(page.getByTestId("node-step-choice")).toHaveCount(2);
+  await page.getByTestId("node-step-choice").nth(1).click();
+
+  await expect(page).toHaveURL(/\/viewport-stability\?step=3$/);
+});
+
+test("favorites pin a starred tour above the browse tree", async ({ page }) => {
+  await page.goto("/refund-flow");
+  await expectDiagramVisible(page);
+
+  await page.getByTestId("browse-trigger").click();
+  await page
+    .locator('[data-testid="browse-tour-row"][data-tour-slug="refund-flow"]')
+    .getByTestId("favorite-toggle")
+    .click();
+
+  await expect(page.getByTestId("browse-favorites")).toBeVisible();
+  await expect(page.getByTestId("browse-favorite-row")).toContainText("Refund Flow");
+});
+
+test("timeline pills jump directly between steps", async ({ page }) => {
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+
+  await page.getByTestId("timeline-step-button").nth(2).click();
+
+  await expect(page).toHaveURL(/\/payment-flow\?step=3$/);
+  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+});
+
+test("issues popover presents a readable diagnostics hierarchy", async ({ page }) => {
+  const server = await startDevServer({
+    port: 4181,
+    script: "dev"
+  });
+
+  try {
+    await page.goto(`${server.baseUrl}/parallel-onboarding`);
+    await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
+
+    await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();
+    await page.getByTestId("diagnostics-trigger").evaluate((element) => {
+      (element as HTMLButtonElement).click();
+    });
+
+    await expect(page.getByTestId("diagnostics-panel")).toBeVisible();
+    await expect(page.getByTestId("diagnostics-item").first()).toContainText(".tour.yaml");
+    await expect(page.getByTestId("diagnostics-item").first()).toContainText("unknown Mermaid node id");
+  } finally {
+    await server.stop();
+  }
 });
 
 test("small screens hide the minimap automatically", async ({ page }) => {
@@ -438,6 +543,21 @@ async function readDiagramScrollPosition(page: Page): Promise<{
     scrollLeft: element.scrollLeft,
     scrollTop: element.scrollTop
   }));
+}
+
+async function readDiagramScrollDistanceFromCenter(
+  page: Page,
+  axis: "x" | "y"
+): Promise<number> {
+  return page.getByTestId("diagram-container").evaluate((element, targetAxis) => {
+    const maxScroll =
+      targetAxis === "x"
+        ? element.scrollWidth - element.clientWidth
+        : element.scrollHeight - element.clientHeight;
+    const currentScroll = targetAxis === "x" ? element.scrollLeft : element.scrollTop;
+
+    return Math.abs(currentScroll - Math.max(0, maxScroll / 2));
+  }, axis);
 }
 
 function assertLayoutBox(input: {

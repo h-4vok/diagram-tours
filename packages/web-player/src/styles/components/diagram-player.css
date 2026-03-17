@@ -98,9 +98,28 @@
 [data-node-id] {
   opacity: 1;
   transition:
+    box-shadow 220ms ease,
     filter 400ms ease,
     opacity 400ms ease,
     transform 400ms ease;
+}
+
+[data-step-target="true"] {
+  cursor: pointer;
+}
+
+[data-step-target="true"] :is(rect, path, polygon, circle, ellipse) {
+  transition:
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    filter 180ms ease;
+}
+
+[data-step-target="true"]:hover :is(rect, path, polygon, circle, ellipse),
+[data-step-target-active="true"] :is(rect, path, polygon, circle, ellipse) {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-node-focus-stroke) 24%, transparent));
+  stroke: color-mix(in srgb, var(--color-node-focus-stroke) 72%, transparent);
+  stroke-width: 2px;
 }
 
 [data-focus-state="dimmed"] {

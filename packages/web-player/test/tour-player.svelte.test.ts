@@ -22,9 +22,14 @@ vi.mock("$app/navigation", () => ({
   goto: gotoMock
 }));
 
-vi.mock("../src/lib/diagram-viewport", () => ({
-  focusDiagramViewport: focusDiagramViewportMock
-}));
+vi.mock("../src/lib/diagram-viewport", async (importOriginal) => {
+  const actual = Object(await importOriginal()) as Record<string, unknown>;
+
+  return {
+    ...actual,
+    focusDiagramViewport: focusDiagramViewportMock
+  };
+});
 
 vi.mock("../src/lib/mermaid-diagram", () => ({
   renderMermaidDiagram: renderMermaidDiagramMock,
@@ -178,6 +183,113 @@ describe("tour-player.svelte", () => {
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
     });
     expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe("false");
+  });
+
+  it("renders a clickable numbered timeline and jumps directly to a chosen step", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const timelineButtons = await screen.findAllByTestId("timeline-step-button");
+
+    expect(timelineButtons).toHaveLength(4);
+    expect(timelineButtons[0].getAttribute("aria-current")).toBe("step");
+    expect(timelineButtons[0].className).toContain("step-timeline__pill--current");
+
+    await fireEvent.click(timelineButtons[2]);
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
+    });
+  });
+
+  it("navigates directly when a clicked node maps to a single step", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const responseNode = diagramContainer.querySelector('[data-node-id="response"]') as HTMLElement;
+
+    expect(responseNode.dataset.stepTarget).toBe("true");
+    await fireEvent.click(responseNode);
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
+    });
+  });
+
+  it("opens a chooser when a clicked node maps to multiple steps", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: createMultiMatchTour()
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const gatewayNode = diagramContainer.querySelector('[data-node-id="api_gateway"]') as HTMLElement;
+
+    await fireEvent.click(gatewayNode);
+
+    expect(await screen.findByTestId("node-step-chooser")).toBeDefined();
+    expect(screen.getAllByTestId("node-step-choice")).toHaveLength(2);
+
+    await fireEvent.click(screen.getAllByTestId("node-step-choice")[1]);
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
+    });
+  });
+
+  it("keeps non-navigable nodes inert when clicked", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const clientNode = diagramContainer.querySelector('[data-node-id="client"]') as HTMLElement;
+
+    expect(clientNode.dataset.stepTarget).toBeUndefined();
+    await fireEvent.click(clientNode);
+
+    expect(screen.queryByTestId("node-step-chooser")).toBeNull();
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("renders zoom-to-fit and recenters the overview when pressed", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const diagramContainer = (await screen.findByTestId("diagram-container")) as HTMLDivElement;
+
+    diagramContainer.scrollLeft = 30;
+    diagramContainer.scrollTop = 20;
+
+    await fireEvent.click(screen.getByTestId("zoom-to-fit"));
+
+    expect(diagramContainer.scrollLeft).toBe(300);
+    expect(diagramContainer.scrollTop).toBe(220);
   });
 
   it("starts from the deep-linked step and updates the URL when navigating", async () => {
@@ -421,6 +533,23 @@ function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {
     parent.scrollLeft = position.scrollLeft;
     parent.scrollTop = position.scrollTop;
   }) as typeof parent.scrollTo;
+}
+
+function createMultiMatchTour() {
+  return {
+    ...resolvedPaymentFlowTour,
+    steps: [
+      resolvedPaymentFlowTour.steps[0],
+      {
+        ...resolvedPaymentFlowTour.steps[1],
+        focus: [
+          ...resolvedPaymentFlowTour.steps[1].focus,
+          { id: "api_gateway", label: "API Gateway" }
+        ]
+      },
+      ...resolvedPaymentFlowTour.steps.slice(2)
+    ]
+  };
 }
 
 

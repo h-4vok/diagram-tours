@@ -22,9 +22,20 @@
     type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
-  import { focusDiagramViewport } from "$lib/diagram-viewport";
+  import {
+    createOverviewScrollPosition,
+    focusDiagramViewport,
+    type DiagramViewportMetrics
+  } from "$lib/diagram-viewport";
   import { createFocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
+  import {
+    createNodeStepChoices,
+    createNodeStepIndex,
+    hasNodeStepMatches,
+    readNodeStepMatches,
+    type NodeStepChoice
+  } from "$lib/tour-step-links";
   import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
   const MINIMAP_BREAKPOINT = 720;
@@ -33,6 +44,15 @@
     maxHeight: 160,
     maxWidth: 220
   } as const;
+  const NODE_CHOOSER_WIDTH = 240;
+
+  type NodeStepChooser = {
+    label: string;
+    left: number;
+    nodeId: string;
+    options: NodeStepChoice[];
+    top: number;
+  };
 
   type ViewportDragState = {
     didDrag: boolean;
@@ -63,6 +83,7 @@
   const player = createTourPlayer(tour, initialStepIndex);
 
   let state = player.getState();
+  let diagramShell: HTMLDivElement;
   let diagramContainer: HTMLDivElement;
   let diagramContent: HTMLDivElement;
   let minimapSurface: HTMLDivElement;
@@ -71,21 +92,19 @@
   let isCompactViewport = false;
   let isMinimapCollapsed = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
+  let nodeStepChooser: NodeStepChooser | null = null;
+  let nodeStepIndex = createNodeStepIndex(tour);
   let optimisticViewportRect: DiagramMinimapRect | null = null;
   let previousInitialStepIndex = initialStepIndex;
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
 
   async function goPrevious(): Promise<void> {
-    state = player.goPrevious();
-    await syncFocusState();
-    await navigateToStep(state.step.index);
+    await goToStepIndex(state.stepIndex - 1);
   }
 
   async function goNext(): Promise<void> {
-    state = player.goNext();
-    await syncFocusState();
-    await navigateToStep(state.step.index);
+    await goToStepIndex(state.stepIndex + 1);
   }
 
   async function syncFocusState(): Promise<void> {
@@ -136,10 +155,19 @@
   $: if (initialStepIndex !== previousInitialStepIndex) {
     previousInitialStepIndex = initialStepIndex;
     state = player.setStepIndex(initialStepIndex);
+    closeNodeStepChooser();
     void syncFocusState();
   }
 
+  $: nodeStepIndex = createNodeStepIndex(tour);
   $: renderedViewportRect = optimisticViewportRect ?? minimapGeometry?.viewportRect ?? null;
+
+  async function goToStepIndex(stepIndex: number): Promise<void> {
+    closeNodeStepChooser();
+    state = player.setStepIndex(stepIndex);
+    await syncFocusState();
+    await navigateToStep(state.step.index);
+  }
 
   async function navigateToStep(stepIndex: number): Promise<void> {
     await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
@@ -177,9 +205,21 @@
     dispatch("togglebrowse");
   }
 
+  function handleWindowPointerDown(event: PointerEvent): void {
+    if (!shouldCloseNodeStepChooser(event)) {
+      return;
+    }
+
+    closeNodeStepChooser();
+  }
+
   function toggleMinimap(): void {
     isMinimapCollapsed = !isMinimapCollapsed;
     persistMinimapState();
+  }
+
+  function handleZoomToFit(): void {
+    writeDiagramScrollPosition(readOverviewScrollPosition());
   }
 
   async function renderInitialDiagram(): Promise<void> {
@@ -189,6 +229,7 @@
         diagram: tour.diagram
       });
       hasRenderedDiagram = true;
+      refreshNavigableNodeState();
       await syncFocusState();
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
@@ -278,6 +319,26 @@
     minimapGeometry = shouldHideMinimapGeometry() ? null : createCurrentMinimapGeometry();
   }
 
+  async function handleDiagramClick(event: MouseEvent): Promise<void> {
+    const nodeElement = readClickedNodeElement(event);
+    const nodeClickInput = readNodeClickInput(nodeElement);
+
+    if (nodeClickInput === null) {
+      closeNodeStepChooser();
+
+      return;
+    }
+
+    if (shouldNavigateDirectly(nodeClickInput.matchingSteps)) {
+      await goToSingleNodeStep(nodeClickInput.matchingSteps);
+
+      return;
+    }
+
+    nodeStepChooser = createNodeStepChooser(nodeClickInput);
+    refreshNavigableNodeState();
+  }
+
   function handleMinimapSurfacePointerDown(event: PointerEvent): void {
     const metrics = readCurrentMinimapMetrics();
     const minimapPoint = readMinimapPoint(event);
@@ -353,6 +414,12 @@
           container: currentContext.container,
           content: currentContext.content
         });
+  }
+
+  function readOverviewScrollPosition(): { scrollLeft: number; scrollTop: number } | null {
+    const metrics = readCurrentMinimapMetrics();
+
+    return metrics === null ? null : createOverviewScrollPosition(metrics as DiagramViewportMetrics);
   }
 
   function readMinimapPoint(event: MouseEvent | PointerEvent): { x: number; y: number } | null {
@@ -436,6 +503,46 @@
           }),
           minimapSize: MINIMAP_SIZE
         });
+  }
+
+  function refreshNavigableNodeState(): void {
+    const content = readBoundElement(diagramContent);
+
+    if (content === null) {
+      return;
+    }
+
+    content.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+      applyNodeStepTargetState(element);
+    });
+  }
+
+  function applyNodeStepTargetState(element: HTMLElement): void {
+    const nodeId = element.dataset.nodeId ?? "";
+
+    if (!hasNodeStepMatches(nodeStepIndex, nodeId)) {
+      clearNodeStepTargetState(element);
+
+      return;
+    }
+
+    element.dataset.stepTarget = "true";
+    setNodeStepTargetActiveState(element, nodeId);
+  }
+
+  function clearNodeStepTargetState(element: HTMLElement): void {
+    element.removeAttribute("data-step-target");
+    element.removeAttribute("data-step-target-active");
+  }
+
+  function setNodeStepTargetActiveState(element: HTMLElement, nodeId: string): void {
+    if (nodeStepChooser?.nodeId === nodeId) {
+      element.dataset.stepTargetActive = "true";
+
+      return;
+    }
+
+    element.removeAttribute("data-step-target-active");
   }
 
   function readViewportDragState(event: PointerEvent): ViewportDragState | null {
@@ -541,6 +648,107 @@
     };
   }
 
+  function readClickedNodeElement(event: MouseEvent): HTMLElement | null {
+    const target = event.target;
+
+    return target instanceof HTMLElement ? target.closest<HTMLElement>("[data-node-id]") : null;
+  }
+
+  function createNodeStepChooser(
+    input: {
+      matchingSteps: number[];
+      nodeElement: HTMLElement;
+    }
+  ): NodeStepChooser | null {
+    const shell = readBoundElement(diagramShell);
+
+    if (shell === null) {
+      return null;
+    }
+
+    return {
+      label: readChooserNodeLabel(input.nodeElement),
+      ...readNodeChooserPosition(shell, input.nodeElement),
+      nodeId: input.nodeElement.dataset.nodeId ?? "",
+      options: createNodeStepChoices(tour, input.matchingSteps)
+    };
+  }
+
+  function readChooserNodeLabel(nodeElement: HTMLElement): string {
+    return nodeElement.dataset.nodeLabel ?? nodeElement.dataset.nodeId ?? "Node";
+  }
+
+  function readNodeChooserPosition(
+    shell: HTMLDivElement,
+    nodeElement: HTMLElement
+  ): { left: number; top: number } {
+    const shellRect = shell.getBoundingClientRect();
+    const nodeRect = nodeElement.getBoundingClientRect();
+
+    return {
+      left: clampNodeChooserLeft(nodeRect.left - shellRect.left),
+      top: nodeRect.bottom - shellRect.top + 10
+    };
+  }
+
+  function clampNodeChooserLeft(value: number): number {
+    const shell = readBoundElement(diagramShell);
+
+    if (shell === null) {
+      return value;
+    }
+
+    return clampMinimapCoordinate(value, shell.clientWidth - NODE_CHOOSER_WIDTH - 12);
+  }
+
+  function closeNodeStepChooser(): void {
+    nodeStepChooser = null;
+    refreshNavigableNodeState();
+  }
+
+  function shouldCloseNodeStepChooser(event: PointerEvent): boolean {
+    if (nodeStepChooser === null) {
+      return false;
+    }
+
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+      return true;
+    }
+
+    return target.closest("[data-testid='node-step-chooser'], [data-node-id]") === null;
+  }
+
+  function readNodeClickInput(
+    nodeElement: HTMLElement | null
+  ): { matchingSteps: number[]; nodeElement: HTMLElement } | null {
+    if (nodeElement === null) {
+      return null;
+    }
+
+    return createNodeClickInputPayload(nodeElement, readNodeStepMatchesForElement(nodeElement));
+  }
+
+  function shouldNavigateDirectly(matchingSteps: number[]): boolean {
+    return matchingSteps.length === 1;
+  }
+
+  async function goToSingleNodeStep(matchingSteps: number[]): Promise<void> {
+    await goToStepIndex(matchingSteps[0]);
+  }
+
+  function readNodeStepMatchesForElement(nodeElement: HTMLElement): number[] {
+    return readNodeStepMatches(nodeStepIndex, nodeElement.dataset.nodeId ?? "");
+  }
+
+  function createNodeClickInputPayload(
+    nodeElement: HTMLElement,
+    matchingSteps: number[]
+  ): { matchingSteps: number[]; nodeElement: HTMLElement } | null {
+    return matchingSteps.length === 0 ? null : { matchingSteps, nodeElement };
+  }
+
   function clampViewportRectToBounds(input: {
     bounds: DiagramMinimapRect;
     height: number;
@@ -588,8 +796,14 @@
   }
 </script>
 
+<svelte:window on:pointerdown={handleWindowPointerDown} />
+
 <section class="player-canvas" data-testid="player-canvas">
-  <div class="diagram-shell diagram-shell--canvas" data-testid="diagram-shell">
+  <div
+    bind:this={diagramShell}
+    class="diagram-shell diagram-shell--canvas"
+    data-testid="diagram-shell"
+  >
     <button
       type="button"
       class="tour-identity"
@@ -600,7 +814,13 @@
       <p class="tour-identity__title">{tour.title}</p>
     </button>
 
-    <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div
+      bind:this={diagramContainer}
+      data-testid="diagram-container"
+      class="diagram"
+      on:click={handleDiagramClick}
+    >
       <div
         bind:this={diagramContent}
         data-testid="diagram-stage-inner"
@@ -608,9 +828,47 @@
       ></div>
     </div>
 
+    {#if nodeStepChooser !== null}
+      <div
+        class="node-step-chooser"
+        data-testid="node-step-chooser"
+        style={`left:${nodeStepChooser.left}px;top:${nodeStepChooser.top}px;`}
+      >
+        <p class="node-step-chooser__title">{nodeStepChooser.label}</p>
+        <div class="node-step-chooser__list">
+          {#each nodeStepChooser.options as option (option.stepIndex)}
+            <button
+              type="button"
+              class="node-step-chooser__option"
+              data-testid="node-step-choice"
+              on:click={() => void goToStepIndex(option.stepIndex)}
+            >
+              <span class="node-step-chooser__step">Step {option.stepNumber}</span>
+              <span class="node-step-chooser__preview">{option.preview}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <div class="canvas-overlay-stack" data-testid="canvas-overlay-stack">
       <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
         <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
+        <div class="step-timeline" data-testid="step-timeline">
+          {#each tour.steps as step, stepIndex (step.index)}
+            <button
+              type="button"
+              class:step-timeline__pill--current={stepIndex === state.stepIndex}
+              class:step-timeline__pill--complete={stepIndex < state.stepIndex}
+              class="step-timeline__pill"
+              data-testid="timeline-step-button"
+              aria-current={stepIndex === state.stepIndex ? "step" : undefined}
+              on:click={() => void goToStepIndex(stepIndex)}
+            >
+              {step.index}
+            </button>
+          {/each}
+        </div>
         <p data-testid="step-text" class="step-text">{state.step.text}</p>
 
         <div class="controls">
@@ -643,15 +901,25 @@
         >
           <div class="minimap-shell__header">
             <p class="minimap-shell__label">Navigation minimap</p>
-            <button
-              type="button"
-              class="minimap-shell__toggle"
-              data-testid="minimap-toggle"
-              aria-expanded={!isMinimapCollapsed}
-              on:click={toggleMinimap}
-            >
-              {isMinimapCollapsed ? "Show" : "Hide"}
-            </button>
+            <div class="minimap-shell__actions">
+              <button
+                type="button"
+                class="minimap-shell__toggle"
+                data-testid="zoom-to-fit"
+                on:click={handleZoomToFit}
+              >
+                Zoom to fit
+              </button>
+              <button
+                type="button"
+                class="minimap-shell__toggle"
+                data-testid="minimap-toggle"
+                aria-expanded={!isMinimapCollapsed}
+                on:click={toggleMinimap}
+              >
+                {isMinimapCollapsed ? "Show" : "Hide"}
+              </button>
+            </div>
           </div>
 
           {#if !isMinimapCollapsed && minimapGeometry !== null}
