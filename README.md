@@ -209,6 +209,7 @@ Then use the product docs:
 - [Tour Specification v1](docs/tour-spec-v1.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Runtime Loading](docs/runtime-loading.md)
+- [Smoke Tests](docs/testing/smoke-tests.md)
 - [Authoring Guide](docs/authoring-guide.md)
 - [ADR 0001: Runtime Loading and Focus Semantics](docs/adr/0001-runtime-loading-and-focus-semantics.md)
 
