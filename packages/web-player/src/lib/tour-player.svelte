@@ -19,6 +19,7 @@
     readDiagramMinimapMetrics,
     readDiagramMinimapNodeRects,
     type DiagramMinimapGeometry,
+    type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
   import { focusDiagramViewport } from "$lib/diagram-viewport";
@@ -38,6 +39,8 @@
     offsetX: number;
     offsetY: number;
     pointerId: number;
+    rectHeight: number;
+    rectWidth: number;
   };
 
   type ViewportOrigin = {
@@ -68,7 +71,9 @@
   let isCompactViewport = false;
   let isMinimapCollapsed = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
+  let optimisticViewportRect: DiagramMinimapRect | null = null;
   let previousInitialStepIndex = initialStepIndex;
+  let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
 
   async function goPrevious(): Promise<void> {
@@ -133,6 +138,8 @@
     state = player.setStepIndex(initialStepIndex);
     void syncFocusState();
   }
+
+  $: renderedViewportRect = optimisticViewportRect ?? minimapGeometry?.viewportRect ?? null;
 
   async function navigateToStep(stepIndex: number): Promise<void> {
     await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
@@ -311,6 +318,7 @@
     }
 
     viewportDragState = markViewportDragStateAsDragged(dragInput.dragState);
+    optimisticViewportRect = createOptimisticViewportRect(dragInput);
 
     const nextPosition = createMinimapViewportScrollPosition({
       metrics: dragInput.metrics,
@@ -330,6 +338,7 @@
   }
 
   function detachViewportDrag(): void {
+    optimisticViewportRect = null;
     viewportDragState = null;
     window.removeEventListener("pointermove", handleViewportPointerMove);
     window.removeEventListener("pointerup", handleViewportPointerUp);
@@ -440,7 +449,9 @@
       didDrag: false,
       offsetX: event.clientX - viewportRect.getBoundingClientRect().left,
       offsetY: event.clientY - viewportRect.getBoundingClientRect().top,
-      pointerId: event.pointerId
+      pointerId: event.pointerId,
+      rectHeight: minimapGeometry.viewportRect.height,
+      rectWidth: minimapGeometry.viewportRect.width
     };
   }
 
@@ -465,6 +476,20 @@
       ...input,
       didDrag: true
     };
+  }
+
+  function createOptimisticViewportRect(input: ViewportDragInput): DiagramMinimapRect | null {
+    if (minimapGeometry === null) {
+      return null;
+    }
+
+    return clampViewportRectToBounds({
+      bounds: minimapGeometry.bounds,
+      height: input.dragState.rectHeight,
+      left: input.viewportOrigin.x,
+      top: input.viewportOrigin.y,
+      width: input.dragState.rectWidth
+    });
   }
 
   function readViewportDragInput(event: PointerEvent): ViewportDragInput | null {
@@ -513,6 +538,21 @@
     return {
       x: minimapPoint.x - viewportDragState.offsetX,
       y: minimapPoint.y - viewportDragState.offsetY
+    };
+  }
+
+  function clampViewportRectToBounds(input: {
+    bounds: DiagramMinimapRect;
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+  }): DiagramMinimapRect {
+    return {
+      height: input.height,
+      left: clampMinimapCoordinate(input.left, input.bounds.width - input.width),
+      top: clampMinimapCoordinate(input.top, input.bounds.height - input.height),
+      width: input.width
     };
   }
 
@@ -640,14 +680,16 @@
                 ></div>
               {/each}
 
-              <button
-                type="button"
-                class="minimap-viewport-rect"
-                data-testid="minimap-viewport-rect"
-                aria-label="Drag viewport"
-                style={formatMinimapRectStyle(minimapGeometry.viewportRect)}
-                on:pointerdown={handleViewportPointerDown}
-              ></button>
+              {#if renderedViewportRect !== null}
+                <button
+                  type="button"
+                  class="minimap-viewport-rect"
+                  data-testid="minimap-viewport-rect"
+                  aria-label="Drag viewport"
+                  style={formatMinimapRectStyle(renderedViewportRect)}
+                  on:pointerdown={handleViewportPointerDown}
+                ></button>
+              {/if}
             </div>
           {/if}
         </aside>
