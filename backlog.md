@@ -12,7 +12,7 @@ Fuente inicial: contraste entre [`docs/reqs.md`](docs/reqs.md), el codigo actual
 
 ## Snapshot
 
-Fecha de corte: 2026-03-16
+Fecha de corte: 2026-03-17
 
 ### Done
 
@@ -46,21 +46,21 @@ Fecha de corte: 2026-03-16
   - Evidencia: `packages/web-player/src/routes/+error.svelte`
 - Smoke coverage para carga, deep linking, viewport, theme switching y diagramas grandes
   - Evidencia: `packages/web-player/smoke/payment-flow.spec.ts`
+- Browse panel con navegacion de tours como explorer
+  - Estado actual: arbol basado en estructura de carpetas real, con compact folders, buscador por texto, fuzzy match simple, iconografia carpeta/diagrama y apertura de la rama activa
+  - Nota: el detalle de tours omitidos se movio a un badge de `Issues` en el top bar para no mezclar navegacion con diagnosticos
+  - Evidencia: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/browse-tree.ts`, `packages/web-player/test/browse-tree.test.ts`
 
 ### Partial
 
-- Browse panel con navegacion de tours
-  - Estado actual: existe como lista plana
-  - Gap: falta evolucionarlo a explorer en arbol basado en estructura de carpetas
-  - Evidencia: `packages/web-player/src/routes/+layout.svelte`
 - Editor preview
   - Estado actual: existe mediante `DIAGRAM_TOUR_SOURCE_TARGET`
   - Gap: la UX actual no coincide con la idea de `bun run dev path/to/tour.yaml` como argumento directo
   - Evidencia: `README.md`, `packages/web-player/src/lib/source-target.ts`
 - Author diagnostics
-  - Estado actual: los errores ya incluyen archivo, step y campo
-  - Gap: no hay line/column, panel dedicado ni una capa mas rica de diagnostico para autores
-  - Evidencia: `packages/parser/src/index.ts`
+  - Estado actual: los errores incluyen archivo, step y campo, y el player muestra tours omitidos en un badge de `Issues` con popover flotante
+  - Gap: siguen faltando line/column, mejor jerarquia de mensajes y una capa mas rica de diagnostico para autores
+  - Evidencia: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`
 - Layout polish y highlight hierarchy
   - Estado actual: el workspace fue muy pulido, pero `reqs.md` todavia marca esta zona como abierta y sigue siendo razonable tratarla como refinamiento continuo
   - Gap: conectores, labels y jerarquia visual fina todavia pueden mejorar
@@ -78,10 +78,13 @@ Fecha de corte: 2026-03-16
 - Soporte para operar `diagram-tours` mediante comandos globales en npm o bun
   - Nota: aunque el uso actual sea local en esta PC, queremos planear una experiencia de CLI instalable y reutilizable
   - Pendiente: definir distribucion, entrypoints, ergonomia de comandos, compatibilidad con Bun y npm, y expectativas de authoring/preview antes de implementarlo
+- Favoritos de tours dentro del browse panel
+  - Nota: no es prioridad para la primera iteracion del explorer, pero puede mejorar mucho la navegacion en colecciones grandes
+- Shortcuts y navegacion por teclado consistentes entre browse panel y diagrama
+  - Nota: queremos atacarlo como una iniciativa unificada mas adelante, no mezclarlo con la implementacion inicial del browse explorer
+  - Pendiente: definir modelo comun de shortcuts, foco, discoverability y conflictos de teclas
 - Node click navigation para saltar al primer step asociado a un nodo
   - Nota: no se encontro implementacion actual en el repo
-- Explorer navigation en arbol por estructura de proyecto
-  - Nota: hoy sigue siendo lista plana
 - Zoom-to-fit opcional
   - Nota: no se encontro implementacion actual en el repo
 - Transiciones animadas de viewport

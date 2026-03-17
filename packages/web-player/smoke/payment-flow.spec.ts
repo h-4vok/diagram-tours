@@ -11,11 +11,10 @@ test("renders the docs shell and navigates between discovered examples", async (
   await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
   await expect(page.getByRole("link", { name: "christianguzman.uk" })).toBeVisible();
   await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("tour-identity").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Payment Flow" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Refund Flow" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Release Pipeline" })).toBeVisible();
+  await expect(page.getByTestId("browse-search-input")).toBeVisible();
+  await expect(page.getByTestId("browse-folder-row").first()).toBeVisible();
   await expect(page.getByTestId("step-text")).toContainText(
     "human or audited service"
   );
@@ -27,7 +26,9 @@ test("renders the docs shell and navigates between discovered examples", async (
     page.locator('[data-testid="diagram-container"][data-focus-group-mode="group"][data-focus-group-size="2"]')
   ).toHaveCount(1);
 
-  await page.getByRole("link", { name: "Refund Flow" }).click();
+  await page.getByTestId("browse-search-input").fill("refund");
+  await expect(page.getByText("Refund Flow")).toBeVisible();
+  await page.getByText("Refund Flow").click();
 
   await expect(page).toHaveURL(/\/refund-flow$/);
   await expect(page.getByTestId("step-text")).toContainText(
@@ -35,10 +36,24 @@ test("renders the docs shell and navigates between discovered examples", async (
   );
 
   await page.getByTestId("browse-trigger").click();
-  await page.getByRole("link", { name: "Decision Flow" }).click();
+  await page.getByTestId("browse-search-input").fill("decision");
+  await expect(page.getByText("Decision Flow")).toBeVisible();
+  await page.getByText("Decision Flow").click();
 
   await expect(page).toHaveURL(/\/decision-flow$/);
   await expect(page.getByTestId("step-text")).toBeVisible();
+});
+
+test("keeps long search queries strict enough to avoid unrelated fuzzy matches", async ({ page }) => {
+  await page.goto("/refund-flow");
+
+  await page.getByTestId("browse-trigger").click();
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
+  await page.getByTestId("browse-search-input").fill("release");
+
+  await expect(page.getByText("Release Pipeline")).toBeVisible();
+  await expect(page.getByText("Parallel Onboarding")).toHaveCount(0);
+  await expect(page.getByText("Huge System Stress Test")).toHaveCount(0);
 });
 
 test("keeps document-level horizontal overflow suppressed while the canvas owns the body", async ({

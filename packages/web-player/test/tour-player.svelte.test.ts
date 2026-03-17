@@ -229,6 +229,7 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("next-button")).toBeDefined();
     expect(screen.getByTestId("diagram-container")).toBeDefined();
   });
+
 });
 
 function renderDiagramForTest(input: {

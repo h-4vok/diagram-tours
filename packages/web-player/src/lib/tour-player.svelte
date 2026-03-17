@@ -3,6 +3,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
 
@@ -19,6 +20,9 @@
   export let initialStepIndex: number;
   export let selectedSlug: string;
   export let tour: ResolvedDiagramTour;
+  const dispatch = createEventDispatcher<{
+    togglebrowse: void;
+  }>();
   const player = createTourPlayer(tour, initialStepIndex);
 
   let state = player.getState();
@@ -117,14 +121,23 @@
   function readBoundElement<T extends HTMLElement>(value: T | undefined): T | null {
     return value ?? null;
   }
+
+  function handleTourIdentityClick(): void {
+    dispatch("togglebrowse");
+  }
 </script>
 
 <section class="player-canvas" data-testid="player-canvas">
   <div class="diagram-shell diagram-shell--canvas" data-testid="diagram-shell">
-    <div class="tour-identity" data-testid="tour-identity">
+    <button
+      type="button"
+      class="tour-identity"
+      data-testid="tour-identity"
+      on:click={handleTourIdentityClick}
+    >
       <p class="tour-identity__label">Current tour</p>
       <p class="tour-identity__title">{tour.title}</p>
-    </div>
+    </button>
 
     <div bind:this={diagramContainer} data-testid="diagram-container" class="diagram">
       <div

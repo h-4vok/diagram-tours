@@ -53,6 +53,24 @@ export const resolvedTourCollection: ResolvedDiagramTourCollection = {
   skipped: []
 };
 
+export const nestedTourCollection: ResolvedDiagramTourCollection = {
+  entries: [
+    {
+      slug: "payment-flow",
+      sourcePath: "payments/core/payment-flow/payment-flow.tour.yaml",
+      title: "Payment Flow",
+      tour: resolvedPaymentFlowTour
+    },
+    {
+      slug: "refund-flow",
+      sourcePath: "payments/support/refund-flow/refund-flow.tour.yaml",
+      title: "Refund Flow",
+      tour: resolvedRefundFlowTour
+    }
+  ],
+  skipped: []
+};
+
 export const singleTourCollection: ResolvedDiagramTourCollection = {
   entries: [resolvedTourCollection.entries[0]],
   skipped: []
