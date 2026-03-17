@@ -41,6 +41,8 @@ vi.mock("svelte-sonner", () => ({
 describe("tour-player.svelte", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    setWindowWidth(1280);
   });
 
   it("renders the selected tour, starts on step one, and respects boundaries", async () => {
@@ -120,6 +122,62 @@ describe("tour-player.svelte", () => {
     expect(diagramShell).not.toBeNull();
     expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
     expect(container.querySelector('[data-testid="tour-identity"]')).not.toBeNull();
+  });
+
+  it("renders the minimap on desktop, shows focused nodes, and stacks it below the step overlay", async () => {
+    const { container } = render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    expect(await screen.findByTestId("minimap-shell")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByTestId("minimap-surface")).toBeDefined();
+      expect(screen.getAllByTestId("minimap-node-marker")).toHaveLength(6);
+      expect(screen.getAllByTestId("minimap-focus-marker")).toHaveLength(1);
+    });
+
+    const overlayStack = container.querySelector('[data-testid="canvas-overlay-stack"]');
+
+    expect(overlayStack?.firstElementChild).toBe(screen.getByTestId("step-overlay"));
+    expect(overlayStack?.lastElementChild).toBe(screen.getByTestId("minimap-shell"));
+  });
+
+  it("hides the minimap automatically on small screens", async () => {
+    setWindowWidth(640);
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+
+    expect(screen.queryByTestId("minimap-shell")).toBeNull();
+  });
+
+  it("restores the persisted collapsed minimap state and can be reopened", async () => {
+    window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    expect(await screen.findByTestId("minimap-shell")).toBeDefined();
+    expect(screen.queryByTestId("minimap-surface")).toBeNull();
+    expect(screen.getByTestId("minimap-toggle").getAttribute("aria-expanded")).toBe("false");
+
+    await fireEvent.click(screen.getByTestId("minimap-toggle"));
+
+    expect(screen.getByTestId("minimap-toggle").getAttribute("aria-expanded")).toBe("true");
+    await waitFor(() => {
+      expect(screen.getByTestId("minimap-surface")).toBeDefined();
+    });
+    expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe("false");
   });
 
   it("starts from the deep-linked step and updates the URL when navigating", async () => {
@@ -236,11 +294,59 @@ function renderDiagramForTest(input: {
   container: HTMLElement;
   diagram: typeof resolvedPaymentFlowTour.diagram;
 }): Promise<void> {
-  input.container.innerHTML = input.diagram.nodes
-    .map((node) => `<div data-node-id="${node.id}" data-node-label="${node.label}"></div>`)
-    .join("");
+  const parent = input.container.parentElement as HTMLElement;
+  const positions = createNodePositions();
+
+  input.container.innerHTML = [
+    '<svg data-testid="diagram-svg"></svg>',
+    ...input.diagram.nodes.map(
+      (node) => `<div data-node-id="${node.id}" data-node-label="${node.label}"></div>`
+    )
+  ].join("");
+
+  Object.defineProperties(parent, {
+    clientHeight: { value: 480, writable: true },
+    clientWidth: { value: 720, writable: true },
+    scrollHeight: { value: 480, writable: true },
+    scrollWidth: { value: 720, writable: true }
+  });
+  Object.defineProperties(input.container, {
+    clientHeight: { value: 920, writable: true },
+    clientWidth: { value: 1320, writable: true },
+    scrollHeight: { value: 920, writable: true },
+    scrollWidth: { value: 1320, writable: true }
+  });
+
+  parent.scrollLeft = 0;
+  parent.scrollTop = 0;
+  parent.scrollTo = createScrollToForTest(parent);
+  parent.getBoundingClientRect = () => createDomRect({ height: 480, left: 0, top: 0, width: 720 });
+  input.container.getBoundingClientRect = () =>
+    createDomRect({ height: 920, left: 0, top: 0, width: 1320 });
+
+  const svg = input.container.querySelector("svg") as SVGSVGElement;
+
+  svg.getBoundingClientRect = () => createDomRect({ height: 640, left: 160, top: 140, width: 960 });
+
+  input.container.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+    const nodeId = element.dataset.nodeId ?? "";
+    const rect = positions[nodeId];
+
+    element.getBoundingClientRect = () => createDomRect(rect);
+  });
 
   return Promise.resolve();
+}
+
+function createNodePositions(): Record<string, RectInput> {
+  return {
+    api_gateway: { height: 82, left: 360, top: 290, width: 122 },
+    client: { height: 76, left: 150, top: 292, width: 118 },
+    payment_provider: { height: 84, left: 930, top: 290, width: 136 },
+    payment_service: { height: 84, left: 760, top: 290, width: 126 },
+    response: { height: 76, left: 1120, top: 292, width: 128 },
+    validation_service: { height: 84, left: 560, top: 290, width: 142 }
+  };
 }
 
 function applyFocusStateForTest(input: {
@@ -280,4 +386,78 @@ function readFocusState(container: HTMLElement, nodeId: string): string | null {
   return container
     .querySelector(`[data-node-id="${nodeId}"]`)
     ?.getAttribute("data-focus-state") ?? null;
+}
+
+function setWindowWidth(width: number): void {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: width,
+    writable: true
+  });
+}
+
+interface RectInput {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+}
+
+function createDomRect(input: RectInput): DOMRect {
+  return {
+    bottom: input.top + input.height,
+    height: input.height,
+    left: input.left,
+    right: input.left + input.width,
+    top: input.top,
+    width: input.width
+  } as DOMRect;
+}
+
+function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {
+  return ((options: ScrollToOptions | number, top?: number) => {
+    const position = toScrollPositionForTest(parent, options, top);
+
+    parent.scrollLeft = position.scrollLeft;
+    parent.scrollTop = position.scrollTop;
+  }) as typeof parent.scrollTo;
+}
+
+function toScrollPositionForTest(
+  parent: HTMLElement,
+  options: ScrollToOptions | number,
+  top?: number
+): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return typeof options === "number"
+    ? toNumericScrollPositionForTest(options, top)
+    : toObjectScrollPositionForTest(parent, options);
+}
+
+function toNumericScrollPositionForTest(
+  left: number,
+  top?: number
+): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return {
+    scrollLeft: left,
+    scrollTop: top ?? 0
+  };
+}
+
+function toObjectScrollPositionForTest(
+  parent: HTMLElement,
+  options: ScrollToOptions
+): {
+  scrollLeft: number;
+  scrollTop: number;
+} {
+  return {
+    scrollLeft: options.left ?? parent.scrollLeft,
+    scrollTop: options.top ?? parent.scrollTop
+  };
 }

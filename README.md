@@ -17,6 +17,7 @@ The repository currently provides:
 - step text with `{{node_id}}` label interpolation
 - semantic focus steps, including multi-focus and empty-focus steps
 - a Svelte web player with guided navigation
+- a desktop-first navigation minimap with focus markers and viewport panning
 - theme persistence across reloads and direct links
 - guided recovery for unknown tour routes
 - smoke coverage for viewport behavior and large-diagram scenarios
