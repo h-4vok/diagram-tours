@@ -51,6 +51,8 @@ describe("mermaid diagram helpers", () => {
     expect(container.querySelector('[data-node-id="api_gateway"]')).not.toBeNull();
     expect(container.querySelector('[data-node-label="API Gateway"]')).not.toBeNull();
     expect(container.querySelector('[data-connector-role="label"]')).not.toBeNull();
+    expect(container.querySelector("#diagram-tour-node-focus-gradient")).not.toBeNull();
+    expect(container.querySelector("#diagram-tour-node-hover-gradient")).not.toBeNull();
     expectSvgState(container, {
       height: "960",
       maxWidth: "",
@@ -75,6 +77,30 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "720px",
       width: "100%"
     });
+  });
+
+  it("reuses existing svg defs and gradients when Mermaid already provides them", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 720px;" viewBox="0 0 720 480">',
+        "<defs>",
+        '<linearGradient id="diagram-tour-node-focus-gradient"></linearGradient>',
+        '<linearGradient id="diagram-tour-node-hover-gradient"></linearGradient>',
+        "</defs>",
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: resolvedPaymentFlowTour.diagram
+    });
+
+    expect(container.querySelectorAll("#diagram-tour-node-focus-gradient")).toHaveLength(1);
+    expect(container.querySelectorAll("#diagram-tour-node-hover-gradient")).toHaveLength(1);
   });
 
   it("tolerates Mermaid output that does not contain an svg root", async () => {

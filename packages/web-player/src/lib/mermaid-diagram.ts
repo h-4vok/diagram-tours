@@ -6,6 +6,8 @@ const APP_NODE_CLASS_PREFIX = "diagram_tour_node_";
 const FOCUSED_STATE = "focused";
 const DIMMED_STATE = "dimmed";
 const MERMAID_ERROR_MESSAGE = "Failed to render Mermaid diagram.";
+const NODE_FOCUS_GRADIENT_ID = "diagram-tour-node-focus-gradient";
+const NODE_HOVER_GRADIENT_ID = "diagram-tour-node-hover-gradient";
 
 type MermaidModule = { default: typeof Mermaid };
 
@@ -28,6 +30,7 @@ export async function renderMermaidDiagram(input: {
 
   input.container.innerHTML = renderResult.svg;
   normalizeRenderedSvg(input.container);
+  injectNodeGradients(input.container);
   annotateRenderedNodes(input.container, input.diagram.nodes);
   annotateConnectorLabels(input.container);
 }
@@ -113,6 +116,27 @@ function normalizeRenderedSvg(container: HTMLElement): void {
   svg.style.removeProperty("max-width");
 }
 
+function injectNodeGradients(container: HTMLElement): void {
+  const svg = container.querySelector<SVGSVGElement>("svg");
+
+  if (svg === null) {
+    return;
+  }
+
+  const defs = readOrCreateDefs(svg);
+
+  ensureGradient(defs, {
+    endColor: "var(--color-node-focus-fill-strong)",
+    id: NODE_FOCUS_GRADIENT_ID,
+    startColor: "var(--color-node-focus-fill)"
+  });
+  ensureGradient(defs, {
+    endColor: "var(--color-node-hover-fill-strong)",
+    id: NODE_HOVER_GRADIENT_ID,
+    startColor: "var(--color-node-hover-fill)"
+  });
+}
+
 function setFocusState(input: {
   element: HTMLElement;
   focusGroupMode: FocusGroup["mode"];
@@ -185,6 +209,68 @@ function annotateConnectorLabels(container: HTMLElement): void {
   container.querySelectorAll<HTMLElement>(".edgeLabel").forEach((element) => {
     element.dataset.connectorRole = "label";
   });
+}
+
+function readOrCreateDefs(svg: SVGSVGElement): SVGDefsElement {
+  const existingDefs = svg.querySelector("defs");
+
+  if (isDefsElement(existingDefs)) {
+    return existingDefs;
+  }
+
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+  svg.insertBefore(defs, svg.firstChild);
+
+  return defs;
+}
+
+function ensureGradient(
+  defs: SVGDefsElement,
+  input: { endColor: string; id: string; startColor: string }
+): void {
+  const existingGradient = defs.querySelector(`#${input.id}`);
+
+  if (isLinearGradient(existingGradient)) {
+    return;
+  }
+
+  defs.appendChild(createGradient(input));
+}
+
+function createGradient(input: {
+  endColor: string;
+  id: string;
+  startColor: string;
+}): SVGLinearGradientElement {
+  const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+
+  gradient.id = input.id;
+  gradient.setAttribute("x1", "0%");
+  gradient.setAttribute("y1", "0%");
+  gradient.setAttribute("x2", "100%");
+  gradient.setAttribute("y2", "100%");
+  gradient.appendChild(createGradientStop("0%", input.startColor));
+  gradient.appendChild(createGradientStop("100%", input.endColor));
+
+  return gradient;
+}
+
+function createGradientStop(offset: string, color: string): SVGStopElement {
+  const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+
+  stop.setAttribute("offset", offset);
+  stop.style.stopColor = color;
+
+  return stop;
+}
+
+function isLinearGradient(element: Element | null): element is SVGLinearGradientElement {
+  return element?.tagName.toLowerCase() === "lineargradient";
+}
+
+function isDefsElement(element: Element | null): element is SVGDefsElement {
+  return element?.tagName.toLowerCase() === "defs";
 }
 
 function readViewBoxSize(svg: SVGSVGElement): { width: number; height: number } | null {

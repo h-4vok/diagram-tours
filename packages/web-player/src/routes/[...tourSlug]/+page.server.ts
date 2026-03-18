@@ -4,7 +4,9 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params, parent, url }) => {
   const { collection } = await parent();
   const selectedSlug = params.tourSlug;
-  const entry = collection.entries.find((item) => item.slug === selectedSlug);
+  const entry = collection.entries.find(
+    (item: (typeof collection.entries)[number]) => item.slug === selectedSlug
+  );
 
   if (entry === undefined) {
     throw error(404, `Unknown tour slug "${selectedSlug}".`);

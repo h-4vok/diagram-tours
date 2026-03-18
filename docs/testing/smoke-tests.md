@@ -239,6 +239,19 @@ Why these checks exist:
 
 - they cover real persistence, not just a local toggle change
 
+### Selected steps keep a focused-node contract while dark mode remains usable
+
+- Navigates to `payment-flow`
+- Verifies that the selected-step node is marked as the sole focused node
+- Switches to dark mode
+- Verifies that a clickable non-selected node still advertises step-target behavior
+
+Why these checks exist:
+
+- they protect the restyled visibility model where the full diagram stays legible
+- they confirm that selected-step emphasis does not depend on dimming the rest of the diagram
+- they keep dark-mode navigation contracts covered without depending on brittle SVG style internals
+
 ### Unknown tours show a guided 404 with a single recovery action
 
 - Navigates to an unknown slug
@@ -261,6 +274,47 @@ Why these checks exist:
 
 - they cover a tour semantic already supported by the v1 contract
 - they protect against subtle viewport regressions on neutral steps
+
+## Guided Navigation Additions
+
+File: `packages/web-player/smoke/payment-flow.spec.ts`
+
+### Clicking a node jumps directly to its matching step
+
+- Navigates to `refund-flow`
+- Clicks the `Payment Gateway` node in the diagram
+- Verifies that the player navigates to step 2
+- Verifies that the step text updates to the matching explanation
+
+Why these checks exist:
+
+- they validate the direct node-to-step navigation path
+- they confirm that diagram interaction updates the same route and player state as normal step navigation
+
+### Clicking a repeated node opens a chooser with matching steps
+
+- Navigates to `viewport-stability`
+- Clicks a node that appears in multiple tour steps
+- Verifies that the chooser popover appears
+- Verifies that multiple matching step actions are listed
+- Chooses the later matching step and confirms the route update
+
+Why these checks exist:
+
+- they protect the multi-match branch of node click navigation
+- they confirm that repeated-node tours remain navigable without ambiguous direct jumps
+
+### Timeline pills jump directly between steps
+
+- Navigates to `payment-flow`
+- Clicks a later numbered pill in the step timeline
+- Verifies that the route moves to that step
+- Verifies that the step text updates with the selected step
+
+Why these checks exist:
+
+- they protect the compact direct-jump navigation inside the step overlay
+- they confirm that timeline navigation reuses the same route-driven player flow as next and previous buttons
 
 ## Navigation Minimap
 
@@ -314,3 +368,33 @@ Why these checks exist:
 
 - they protect the desktop-first scope of minimap v1
 - they ensure mobile layouts do not inherit a cramped or accidental minimap UI
+
+## Browse And Diagnostics Additions
+
+File: `packages/web-player/smoke/payment-flow.spec.ts`
+
+### Favorites pin a starred tour above the browse tree
+
+- Navigates to `refund-flow`
+- Opens the browse panel
+- Stars `Refund Flow` from its normal browse row
+- Verifies that a `Favorites` section appears
+- Verifies that the starred tour is pinned there
+
+Why these checks exist:
+
+- they protect the local favorites shortcut flow in the real browse UI
+- they verify the visible result an operator would actually use later
+
+### Issues popover presents a readable diagnostics hierarchy
+
+- Starts a repo-wide dev server where skipped internal fixtures exist
+- Navigates to `parallel-onboarding`
+- Opens the `Issues` trigger in the top bar
+- Verifies that the diagnostics popover appears
+- Verifies that the first item includes a `.tour.yaml` path and the parser error summary
+
+Why these checks exist:
+
+- they protect the topbar diagnostics path independently of the browse panel
+- they validate the hierarchy and scannability of the upgraded diagnostics presentation

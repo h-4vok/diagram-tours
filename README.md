@@ -17,10 +17,14 @@ The repository currently provides:
 - step text with `{{node_id}}` label interpolation
 - semantic focus steps, including multi-focus and empty-focus steps
 - a Svelte web player with guided navigation
+- clickable Mermaid nodes that can jump directly to matching tour steps
+- a compact clickable step timeline inside the player overlay
 - a desktop-first navigation minimap with focus markers and viewport panning
+- browse favorites persisted per browser
+- skipped-tour diagnostics surfaced through an `Issues` popover
 - theme persistence across reloads and direct links
 - guided recovery for unknown tour routes
-- smoke coverage for viewport behavior and large-diagram scenarios
+- smoke coverage for viewport behavior, startup modes, and navigation scenarios
 
 ## Quick Example
 

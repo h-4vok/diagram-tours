@@ -55,19 +55,16 @@
 }
 
 .browse-row {
-  appearance: none;
   align-items: center;
   background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, var(--color-border));
   border-radius: var(--radius-card-tight);
   color: var(--color-text);
-  column-gap: 0.65rem;
   display: grid;
-  grid-template-columns: 0.9rem auto minmax(0, 1fr);
+  gap: 0.45rem;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
-  padding: 0.5rem 0.64rem 0.5rem calc(0.64rem + (var(--browse-depth, 0) * 0.82rem));
-  text-align: left;
-  text-decoration: none;
+  padding: 0.2rem;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -85,6 +82,9 @@
 
 .browse-row--folder {
   cursor: pointer;
+  gap: 0.65rem;
+  grid-template-columns: 0.9rem auto minmax(0, 1fr);
+  padding: 0.5rem 0.64rem 0.5rem calc(0.64rem + (var(--browse-depth, 0) * 0.82rem));
 }
 
 .browse-row--active {
@@ -100,6 +100,18 @@
   font-weight: 700;
   line-height: 1;
   text-align: center;
+}
+
+.browse-row__link {
+  align-items: center;
+  color: inherit;
+  column-gap: 0.65rem;
+  display: grid;
+  grid-template-columns: 0.9rem auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 0.3rem 0.44rem 0.3rem calc(0.44rem + (var(--browse-depth, 0) * 0.82rem));
+  text-align: left;
+  text-decoration: none;
 }
 
 .browse-row__icon {
@@ -150,6 +162,50 @@
   font-family: var(--font-family-mono);
   font-size: 0.84rem;
   font-weight: 500;
+}
+
+.browse-row__favorite {
+  appearance: none;
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 1.9rem;
+  min-width: 1.9rem;
+  padding: 0;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.browse-row__favorite:hover,
+.browse-row__favorite:focus-visible {
+  background: color-mix(in srgb, var(--color-bg-soft) 90%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 32%, var(--color-border));
+  color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+.browse-row__favoriteicon {
+  display: block;
+  fill: currentcolor;
+  height: 0.95rem;
+  stroke: color-mix(in srgb, currentcolor 76%, transparent);
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+  width: 0.95rem;
+}
+
+.browse-row__favorite--active {
+  background: color-mix(in srgb, var(--color-node-focus-fill) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 42%, var(--color-border));
+  color: var(--color-node-focus-stroke);
 }
 
 .browse-empty-state {

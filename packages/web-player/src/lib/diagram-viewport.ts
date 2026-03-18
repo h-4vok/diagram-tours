@@ -66,6 +66,25 @@ export function focusDiagramViewport(input: {
   });
 }
 
+export function createOverviewScrollPosition(
+  metrics: DiagramViewportMetrics
+): { scrollLeft: number; scrollTop: number } | null {
+  if (!hasStableMetrics(metrics)) {
+    return null;
+  }
+
+  return {
+    scrollLeft: clampScrollTarget(
+      (metrics.contentWidth - metrics.viewportWidth) / 2,
+      metrics.contentWidth - metrics.viewportWidth
+    ),
+    scrollTop: clampScrollTarget(
+      (metrics.contentHeight - metrics.viewportHeight) / 2,
+      metrics.contentHeight - metrics.viewportHeight
+    )
+  };
+}
+
 function createFocusInstruction(input: {
   focusedNodeRects: DiagramNodeRect[];
   metrics: DiagramViewportMetrics;

@@ -98,14 +98,62 @@
 [data-node-id] {
   opacity: 1;
   transition:
+    box-shadow 220ms ease,
     filter 400ms ease,
     opacity 400ms ease,
-    transform 400ms ease;
+    transform 260ms ease;
+}
+
+[data-node-id] :is(rect, path, polygon, circle, ellipse) {
+  fill: var(--color-node-base-fill);
+  stroke: var(--color-node-base-stroke);
+  stroke-width: 1.4px;
+  transition:
+    fill 180ms ease,
+    opacity 180ms ease,
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    filter 180ms ease;
+}
+
+[data-node-id] :is(text, foreignObject) {
+  fill: var(--color-node-base-text);
+  opacity: 1;
+  transition:
+    fill 180ms ease,
+    opacity 180ms ease,
+    stroke 180ms ease,
+    stroke-width 180ms ease,
+    filter 180ms ease;
+}
+
+[data-step-target="true"] {
+  cursor: pointer;
+}
+
+[data-step-target="true"]:hover :is(rect, path, polygon, circle, ellipse),
+[data-step-target-active="true"] :is(rect, path, polygon, circle, ellipse) {
+  fill: url("#diagram-tour-node-hover-gradient");
+  filter:
+    drop-shadow(0 0 8px color-mix(in srgb, var(--color-node-hover-stroke) 24%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, var(--color-node-hover-stroke) 16%, transparent));
+  stroke: var(--color-node-hover-stroke);
+  stroke-width: 3.6px;
+}
+
+[data-step-target-active="true"] rect.label-container {
+  fill: url("#diagram-tour-node-hover-gradient");
+}
+
+[data-step-target="true"]:hover :is(text, foreignObject),
+[data-step-target-active="true"] :is(text, foreignObject) {
+  fill: var(--color-node-hover-text);
+  opacity: 1;
 }
 
 [data-focus-state="dimmed"] {
-  filter: saturate(var(--color-node-dim-filter));
-  opacity: var(--diagram-dim-opacity);
+  filter: none;
+  opacity: 1;
 }
 
 [data-focus-state="focused"] {
@@ -113,15 +161,26 @@
 }
 
 [data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
-  filter: drop-shadow(0 0 var(--focus-glow-blur, 8px) var(--color-focus-shadow));
-  fill: var(--color-node-focus-fill);
+  filter:
+    drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.65) color-mix(in srgb, var(--color-focus-shadow) 84%, transparent))
+    drop-shadow(0 0 var(--focus-glow-blur, 8px) color-mix(in srgb, var(--color-node-focus-stroke) 32%, transparent));
+  fill: url("#diagram-tour-node-focus-gradient");
   stroke: var(--color-node-focus-stroke);
-  stroke-width: 2px;
+  stroke-width: 4px;
+}
+
+[data-focus-state="focused"] rect.label-container {
+  fill: url("#diagram-tour-node-focus-gradient");
+}
+
+[data-step-target="true"]:hover rect.label-container {
+  fill: url("#diagram-tour-node-hover-gradient");
 }
 
 [data-focus-state="focused"] text,
 [data-focus-state="focused"] foreignObject {
   fill: var(--color-node-focus-text);
+  opacity: 1;
 }
 
 /* stylelint-disable selector-class-pattern */

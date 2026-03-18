@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { startDevServer } from "./dev-server";
 
 test("docs shell browse navigation changes tours without breaking the player", async ({
   page
@@ -196,6 +197,22 @@ test("dark mode persists across reloads and direct navigation", async ({ page })
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 });
 
+test("selected steps keep a focused-node contract while dark mode remains usable", async ({ page }) => {
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="api_gateway"]')
+  ).toHaveAttribute("data-focus-state", "focused");
+  await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(1);
+
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="validation_service"]')
+  ).toHaveAttribute("data-step-target", "true");
+});
+
 test("unknown tours show a guided 404 with a single recovery action", async ({ page }) => {
   const response = await page.goto("/examples/tuvieja");
 
@@ -240,13 +257,9 @@ test("desktop minimap stays visible and tracks the focused step", async ({ page 
   expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 
-  const initialMarkerStyle = await page.getByTestId("minimap-focus-marker").getAttribute("style");
-
-  await page.getByTestId("next-button").click();
-  await expect(page.getByTestId("step-text")).toContainText("Validation Service");
-  await expect
-    .poll(async () => page.getByTestId("minimap-focus-marker").getAttribute("style"))
-    .not.toBe(initialMarkerStyle);
+  await page.getByTestId("timeline-step-button").nth(2).click();
+  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+  await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
 test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
@@ -285,6 +298,86 @@ test("dragging the minimap viewport rectangle pans the main diagram viewport", a
   await page.mouse.up();
 
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
+});
+
+test("clicking a node jumps directly to its matching step", async ({ page }) => {
+  await page.goto("/refund-flow");
+  await expectDiagramVisible(page);
+
+  await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click({
+    position: {
+      x: 16,
+      y: 16
+    }
+  });
+
+  await expect(page).toHaveURL(/\/refund-flow\?step=2$/);
+  await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");
+});
+
+test("clicking a repeated node opens a chooser with matching steps", async ({ page }) => {
+  await page.goto("/viewport-stability");
+  await expectDiagramVisible(page);
+
+  await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click({
+    position: {
+      x: 16,
+      y: 16
+    }
+  });
+
+  await expect(page.getByTestId("node-step-chooser")).toBeVisible();
+  await expect(page.getByTestId("node-step-choice")).toHaveCount(2);
+  await page.getByTestId("node-step-choice").nth(1).click();
+
+  await expect(page).toHaveURL(/\/viewport-stability\?step=3$/);
+});
+
+test("favorites pin a starred tour above the browse tree", async ({ page }) => {
+  await page.goto("/refund-flow");
+  await expectDiagramVisible(page);
+
+  await page.getByTestId("browse-trigger").click();
+  await page
+    .locator('[data-testid="browse-tour-row"][data-tour-slug="refund-flow"]')
+    .getByTestId("favorite-toggle")
+    .click();
+
+  await expect(page.getByTestId("browse-favorites")).toBeVisible();
+  await expect(page.getByTestId("browse-favorite-row")).toContainText("Refund Flow");
+});
+
+test("timeline pills jump directly between steps", async ({ page }) => {
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+
+  await page.getByTestId("timeline-step-button").nth(2).click();
+
+  await expect(page).toHaveURL(/\/payment-flow\?step=3$/);
+  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+});
+
+test("issues popover presents a readable diagnostics hierarchy", async ({ page }) => {
+  const server = await startDevServer({
+    port: 4181,
+    script: "dev"
+  });
+
+  try {
+    await page.goto(`${server.baseUrl}/parallel-onboarding`);
+    await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
+
+    await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();
+    await page.getByTestId("diagnostics-trigger").evaluate((element) => {
+      (element as HTMLButtonElement).click();
+    });
+
+    await expect(page.getByTestId("diagnostics-panel")).toBeVisible();
+    await expect(page.getByTestId("diagnostics-item").first()).toContainText(".tour.yaml");
+    await expect(page.getByTestId("diagnostics-item").first()).toContainText("unknown Mermaid node id");
+  } finally {
+    await server.stop();
+  }
 });
 
 test("small screens hide the minimap automatically", async ({ page }) => {
@@ -429,6 +522,8 @@ async function readNodeAxisSize(
 
   return nodeBox[axis];
 }
+
+
 
 async function readDiagramScrollPosition(page: Page): Promise<{
   scrollLeft: number;

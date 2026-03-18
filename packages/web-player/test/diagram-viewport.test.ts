@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createOverviewScrollPosition,
   createViewportInstruction,
   focusDiagramViewport
 } from "../src/lib/diagram-viewport";
@@ -59,6 +60,15 @@ describe("diagram viewport helpers", () => {
     ).toEqual({
       mode: "preserve"
     });
+  });
+
+  it("creates a centered overview scroll position for zoom-to-fit", () => {
+    expect(createOverviewScrollPosition(createMetrics())).toEqual({
+      scrollLeft: 160,
+      scrollTop: 160
+    });
+
+    expect(createOverviewScrollPosition(createMetrics({ contentWidth: 0 }))).toBeNull();
   });
 
   it("preserves the viewport when focus bounds or metrics are invalid", () => {
