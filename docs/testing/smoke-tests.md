@@ -239,6 +239,19 @@ Why these checks exist:
 
 - they cover real persistence, not just a local toggle change
 
+### Selected steps keep a focused-node contract while dark mode remains usable
+
+- Navigates to `payment-flow`
+- Verifies that the selected-step node is marked as the sole focused node
+- Switches to dark mode
+- Verifies that a clickable non-selected node still advertises step-target behavior
+
+Why these checks exist:
+
+- they protect the restyled visibility model where the full diagram stays legible
+- they confirm that selected-step emphasis does not depend on dimming the rest of the diagram
+- they keep dark-mode navigation contracts covered without depending on brittle SVG style internals
+
 ### Unknown tours show a guided 404 with a single recovery action
 
 - Navigates to an unknown slug
@@ -343,19 +356,6 @@ Why these checks exist:
 
 - they protect the higher-precision navigation mode of the minimap
 - they ensure the minimap is not just a passive indicator
-
-### Zoom-to-fit returns a displaced diagram toward a centered overview
-
-- Navigates to `huge-system`
-- First displaces the canvas by clicking near the far edge of the minimap
-- Verifies that the diagram scroll moved away from the origin
-- Uses `Zoom to fit`
-- Verifies that the canvas returns close to the centered overview position
-
-Why these checks exist:
-
-- they protect the explicit overview control that complements minimap panning
-- they verify the visible outcome of the control instead of internal viewport math
 
 ### Small screens hide the minimap automatically
 

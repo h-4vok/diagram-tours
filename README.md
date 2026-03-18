@@ -20,7 +20,6 @@ The repository currently provides:
 - clickable Mermaid nodes that can jump directly to matching tour steps
 - a compact clickable step timeline inside the player overlay
 - a desktop-first navigation minimap with focus markers and viewport panning
-- an in-player `Zoom to fit` overview control
 - browse favorites persisted per browser
 - skipped-tour diagnostics surfaced through an `Issues` popover
 - theme persistence across reloads and direct links

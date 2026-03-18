@@ -273,6 +273,12 @@
 .browse-favorites {
   display: grid;
   gap: 0.45rem;
+  padding-bottom: 0.8rem;
+}
+
+.browse-favorites + .browse-tree {
+  border-top: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, transparent);
+  padding-top: 0.85rem;
 }
 
 .browse-favorites__label {
@@ -286,8 +292,12 @@
 }
 
 .browse-favorites__list {
+  background: color-mix(in srgb, var(--color-bg-soft) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 24%, transparent);
+  border-radius: var(--radius-card-tight);
   display: grid;
   gap: 0.32rem;
+  padding: 0.42rem;
 }
 
 .browse-panel__noticemark {

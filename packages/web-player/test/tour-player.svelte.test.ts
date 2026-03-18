@@ -217,10 +217,11 @@ describe("tour-player.svelte", () => {
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const responseNode = diagramContainer.querySelector('[data-node-id="response"]') as HTMLElement;
+    const responseNode = diagramContainer.querySelector('[data-node-id="response"]') as SVGGElement;
+    const responseShape = responseNode.querySelector("rect") as SVGRectElement;
 
     expect(responseNode.dataset.stepTarget).toBe("true");
-    await fireEvent.click(responseNode);
+    await fireEvent.click(responseShape);
 
     await waitFor(() => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
@@ -239,9 +240,10 @@ describe("tour-player.svelte", () => {
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const gatewayNode = diagramContainer.querySelector('[data-node-id="api_gateway"]') as HTMLElement;
+    const gatewayNode = diagramContainer.querySelector('[data-node-id="api_gateway"]') as SVGGElement;
+    const gatewayShape = gatewayNode.querySelector("rect") as SVGRectElement;
 
-    await fireEvent.click(gatewayNode);
+    await fireEvent.click(gatewayShape);
 
     expect(await screen.findByTestId("node-step-chooser")).toBeDefined();
     expect(screen.getAllByTestId("node-step-choice")).toHaveLength(2);
@@ -265,31 +267,14 @@ describe("tour-player.svelte", () => {
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const clientNode = diagramContainer.querySelector('[data-node-id="client"]') as HTMLElement;
+    const clientNode = diagramContainer.querySelector('[data-node-id="client"]') as SVGGElement;
+    const clientShape = clientNode.querySelector("rect") as SVGRectElement;
 
     expect(clientNode.dataset.stepTarget).toBeUndefined();
-    await fireEvent.click(clientNode);
+    await fireEvent.click(clientShape);
 
     expect(screen.queryByTestId("node-step-chooser")).toBeNull();
     expect(gotoMock).not.toHaveBeenCalled();
-  });
-
-  it("renders zoom-to-fit and recenters the overview when pressed", async () => {
-    render(TourPlayer, {
-      initialStepIndex: 0,
-      selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
-    });
-
-    const diagramContainer = (await screen.findByTestId("diagram-container")) as HTMLDivElement;
-
-    diagramContainer.scrollLeft = 30;
-    diagramContainer.scrollTop = 20;
-
-    await fireEvent.click(screen.getByTestId("zoom-to-fit"));
-
-    expect(diagramContainer.scrollLeft).toBe(300);
-    expect(diagramContainer.scrollTop).toBe(220);
   });
 
   it("starts from the deep-linked step and updates the URL when navigating", async () => {
@@ -409,12 +394,16 @@ function renderDiagramForTest(input: {
   const parent = input.container.parentElement as HTMLElement;
   const positions = createNodePositions();
 
-  input.container.innerHTML = [
-    '<svg data-testid="diagram-svg"></svg>',
-    ...input.diagram.nodes.map(
-      (node) => `<div data-node-id="${node.id}" data-node-label="${node.label}"></div>`
+  input.container.innerHTML = `<svg data-testid="diagram-svg">${input.diagram.nodes
+    .map(
+      (node) => `
+        <g data-node-id="${node.id}" data-node-label="${node.label}">
+          <rect width="120" height="72"></rect>
+          <text>${node.label}</text>
+        </g>
+      `
     )
-  ].join("");
+    .join("")}</svg>`;
 
   Object.defineProperties(parent, {
     clientHeight: { value: 480, writable: true },
@@ -440,7 +429,7 @@ function renderDiagramForTest(input: {
 
   svg.getBoundingClientRect = () => createDomRect({ height: 640, left: 160, top: 140, width: 960 });
 
-  input.container.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+  input.container.querySelectorAll<SVGGElement>("[data-node-id]").forEach((element) => {
     const nodeId = element.dataset.nodeId ?? "";
     const rect = positions[nodeId];
 

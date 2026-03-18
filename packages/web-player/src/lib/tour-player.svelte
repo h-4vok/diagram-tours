@@ -22,11 +22,7 @@
     type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
-  import {
-    createOverviewScrollPosition,
-    focusDiagramViewport,
-    type DiagramViewportMetrics
-  } from "$lib/diagram-viewport";
+  import { focusDiagramViewport } from "$lib/diagram-viewport";
   import { createFocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import {
@@ -67,6 +63,8 @@
     x: number;
     y: number;
   };
+
+  type DiagramNodeElement = HTMLElement | SVGElement;
 
   type ViewportDragInput = {
     dragState: ViewportDragState;
@@ -216,10 +214,6 @@
   function toggleMinimap(): void {
     isMinimapCollapsed = !isMinimapCollapsed;
     persistMinimapState();
-  }
-
-  function handleZoomToFit(): void {
-    writeDiagramScrollPosition(readOverviewScrollPosition());
   }
 
   async function renderInitialDiagram(): Promise<void> {
@@ -416,12 +410,6 @@
         });
   }
 
-  function readOverviewScrollPosition(): { scrollLeft: number; scrollTop: number } | null {
-    const metrics = readCurrentMinimapMetrics();
-
-    return metrics === null ? null : createOverviewScrollPosition(metrics as DiagramViewportMetrics);
-  }
-
   function readMinimapPoint(event: MouseEvent | PointerEvent): { x: number; y: number } | null {
     const surface = readBoundElement(minimapSurface);
 
@@ -512,12 +500,12 @@
       return;
     }
 
-    content.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+    content.querySelectorAll<DiagramNodeElement>("[data-node-id]").forEach((element) => {
       applyNodeStepTargetState(element);
     });
   }
 
-  function applyNodeStepTargetState(element: HTMLElement): void {
+  function applyNodeStepTargetState(element: DiagramNodeElement): void {
     const nodeId = element.dataset.nodeId ?? "";
 
     if (!hasNodeStepMatches(nodeStepIndex, nodeId)) {
@@ -530,12 +518,12 @@
     setNodeStepTargetActiveState(element, nodeId);
   }
 
-  function clearNodeStepTargetState(element: HTMLElement): void {
+  function clearNodeStepTargetState(element: DiagramNodeElement): void {
     element.removeAttribute("data-step-target");
     element.removeAttribute("data-step-target-active");
   }
 
-  function setNodeStepTargetActiveState(element: HTMLElement, nodeId: string): void {
+  function setNodeStepTargetActiveState(element: DiagramNodeElement, nodeId: string): void {
     if (nodeStepChooser?.nodeId === nodeId) {
       element.dataset.stepTargetActive = "true";
 
@@ -648,16 +636,16 @@
     };
   }
 
-  function readClickedNodeElement(event: MouseEvent): HTMLElement | null {
+  function readClickedNodeElement(event: MouseEvent): DiagramNodeElement | null {
     const target = event.target;
 
-    return target instanceof HTMLElement ? target.closest<HTMLElement>("[data-node-id]") : null;
+    return target instanceof Element ? target.closest<DiagramNodeElement>("[data-node-id]") : null;
   }
 
   function createNodeStepChooser(
     input: {
       matchingSteps: number[];
-      nodeElement: HTMLElement;
+      nodeElement: DiagramNodeElement;
     }
   ): NodeStepChooser | null {
     const shell = readBoundElement(diagramShell);
@@ -674,13 +662,13 @@
     };
   }
 
-  function readChooserNodeLabel(nodeElement: HTMLElement): string {
+  function readChooserNodeLabel(nodeElement: DiagramNodeElement): string {
     return nodeElement.dataset.nodeLabel ?? nodeElement.dataset.nodeId ?? "Node";
   }
 
   function readNodeChooserPosition(
     shell: HTMLDivElement,
-    nodeElement: HTMLElement
+    nodeElement: DiagramNodeElement
   ): { left: number; top: number } {
     const shellRect = shell.getBoundingClientRect();
     const nodeRect = nodeElement.getBoundingClientRect();
@@ -713,7 +701,7 @@
 
     const target = event.target;
 
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof Element)) {
       return true;
     }
 
@@ -721,8 +709,8 @@
   }
 
   function readNodeClickInput(
-    nodeElement: HTMLElement | null
-  ): { matchingSteps: number[]; nodeElement: HTMLElement } | null {
+    nodeElement: DiagramNodeElement | null
+  ): { matchingSteps: number[]; nodeElement: DiagramNodeElement } | null {
     if (nodeElement === null) {
       return null;
     }
@@ -738,14 +726,14 @@
     await goToStepIndex(matchingSteps[0]);
   }
 
-  function readNodeStepMatchesForElement(nodeElement: HTMLElement): number[] {
+  function readNodeStepMatchesForElement(nodeElement: DiagramNodeElement): number[] {
     return readNodeStepMatches(nodeStepIndex, nodeElement.dataset.nodeId ?? "");
   }
 
   function createNodeClickInputPayload(
-    nodeElement: HTMLElement,
+    nodeElement: DiagramNodeElement,
     matchingSteps: number[]
-  ): { matchingSteps: number[]; nodeElement: HTMLElement } | null {
+  ): { matchingSteps: number[]; nodeElement: DiagramNodeElement } | null {
     return matchingSteps.length === 0 ? null : { matchingSteps, nodeElement };
   }
 
@@ -902,14 +890,6 @@
           <div class="minimap-shell__header">
             <p class="minimap-shell__label">Navigation minimap</p>
             <div class="minimap-shell__actions">
-              <button
-                type="button"
-                class="minimap-shell__toggle"
-                data-testid="zoom-to-fit"
-                on:click={handleZoomToFit}
-              >
-                Zoom to fit
-              </button>
               <button
                 type="button"
                 class="minimap-shell__toggle"

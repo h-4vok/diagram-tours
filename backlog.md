@@ -55,9 +55,6 @@ Cutoff date: 2026-03-17
 - Node click navigation to jump to associated steps
   - Current state: clickable Mermaid nodes jump directly when they map to one step, or open a chooser popover when they map to multiple steps
   - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/lib/tour-step-links.ts`, `packages/web-player/test/tour-player.svelte.test.ts`
-- Optional zoom-to-fit
-  - Current state: the player exposes a `Zoom to fit` control beside the minimap to recenter the canvas on a full-diagram overview
-  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/lib/diagram-viewport.ts`, `packages/web-player/test/diagram-viewport.test.ts`
 - Visual step timeline
   - Current state: the step overlay includes compact numbered pills for direct step jumps with current/completed/upcoming states
   - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/test/tour-player.svelte.test.ts`
@@ -65,7 +62,7 @@ Cutoff date: 2026-03-17
   - Current state: supports `bun run dev <target>` for either a directory or a tour file, plus `bun run dev:interactive` for console-driven source-target selection
   - Note: the runtime source of truth remains `DIAGRAM_TOUR_SOURCE_TARGET`, but startup scripts now provide a friendlier developer workflow
   - Evidence: `package.json`, `scripts/dev-web-player.ts`, `scripts/dev-web-player-interactive.ts`, `scripts/dev-web-player-lib.ts`, `packages/web-player/src/lib/source-target.ts`
-- Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, timeline, and zoom-to-fit
+- Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
   - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
 
 ### Partial
@@ -90,6 +87,10 @@ Cutoff date: 2026-03-17
 - Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
   - Note: we want to treat this as a unified initiative later, rather than mixing it into the initial browse explorer work
   - Pending: define a shared shortcuts model, focus behavior, discoverability, and key-conflict handling
+- Zoom controls
+  - Note: the current player supports minimap panning, but does not yet expose true zoom in the product surface
+- True zoom-to-fit
+  - Note: a simple overview recentering helper exists internally, but it is currently hidden because it does not provide actual zoom semantics
 - Animated viewport transitions
   - Note: no current implementation was found in the repository
 - Step-overlay redesign after minimap integration

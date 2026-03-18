@@ -166,16 +166,14 @@
 
 .browse-row__favorite {
   appearance: none;
+  align-items: center;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 999px;
   color: var(--color-muted);
   cursor: pointer;
-  font: inherit;
-  font-family: var(--font-family-mono);
-  font-size: 0.88rem;
-  font-weight: 700;
-  line-height: 1;
+  display: inline-flex;
+  justify-content: center;
   min-height: 1.9rem;
   min-width: 1.9rem;
   padding: 0;
@@ -192,6 +190,16 @@
   border-color: color-mix(in srgb, var(--color-node-focus-stroke) 32%, var(--color-border));
   color: var(--color-text);
   transform: translateY(-1px);
+}
+
+.browse-row__favoriteicon {
+  display: block;
+  fill: currentcolor;
+  height: 0.95rem;
+  stroke: color-mix(in srgb, currentcolor 76%, transparent);
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+  width: 0.95rem;
 }
 
 .browse-row__favorite--active {

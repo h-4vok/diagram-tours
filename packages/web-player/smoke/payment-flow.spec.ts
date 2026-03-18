@@ -197,6 +197,22 @@ test("dark mode persists across reloads and direct navigation", async ({ page })
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 });
 
+test("selected steps keep a focused-node contract while dark mode remains usable", async ({ page }) => {
+  await page.goto("/payment-flow");
+  await expectDiagramVisible(page);
+
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="api_gateway"]')
+  ).toHaveAttribute("data-focus-state", "focused");
+  await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(1);
+
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="validation_service"]')
+  ).toHaveAttribute("data-step-target", "true");
+});
+
 test("unknown tours show a guided 404 with a single recovery action", async ({ page }) => {
   const response = await page.goto("/examples/tuvieja");
 
@@ -241,13 +257,9 @@ test("desktop minimap stays visible and tracks the focused step", async ({ page 
   expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 
-  const initialMarkerStyle = await page.getByTestId("minimap-focus-marker").getAttribute("style");
-
-  await page.getByTestId("next-button").click();
-  await expect(page.getByTestId("step-text")).toContainText("Validation Service");
-  await expect
-    .poll(async () => page.getByTestId("minimap-focus-marker").getAttribute("style"))
-    .not.toBe(initialMarkerStyle);
+  await page.getByTestId("timeline-step-button").nth(2).click();
+  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+  await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
 test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
@@ -267,40 +279,6 @@ test("clicking the minimap pans the main diagram viewport", async ({ page }) => 
   });
 
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
-});
-
-test("zoom-to-fit returns a displaced diagram toward a centered overview", async ({ page }) => {
-  await page.goto("/huge-system");
-  await expectDiagramVisible(page);
-
-  const minimapBox = await page.getByTestId("minimap-surface").boundingBox();
-
-  assertLayoutBox(minimapBox);
-  await page.getByTestId("minimap-surface").click({
-    position: {
-      x: minimapBox.width - 10,
-      y: minimapBox.height - 10
-    }
-  });
-
-  await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual({
-    scrollLeft: 0,
-    scrollTop: 0
-  });
-
-  const displacedDistance = {
-    x: await readDiagramScrollDistanceFromCenter(page, "x"),
-    y: await readDiagramScrollDistanceFromCenter(page, "y")
-  };
-
-  await page.getByTestId("zoom-to-fit").click();
-
-  await expect.poll(async () => readDiagramScrollDistanceFromCenter(page, "x")).toBeLessThan(
-    displacedDistance.x
-  );
-  await expect.poll(async () => readDiagramScrollDistanceFromCenter(page, "y")).toBeLessThan(
-    displacedDistance.y
-  );
 });
 
 test("dragging the minimap viewport rectangle pans the main diagram viewport", async ({ page }) => {
@@ -326,7 +304,12 @@ test("clicking a node jumps directly to its matching step", async ({ page }) => 
   await page.goto("/refund-flow");
   await expectDiagramVisible(page);
 
-  await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click();
+  await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click({
+    position: {
+      x: 16,
+      y: 16
+    }
+  });
 
   await expect(page).toHaveURL(/\/refund-flow\?step=2$/);
   await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");
@@ -336,7 +319,12 @@ test("clicking a repeated node opens a chooser with matching steps", async ({ pa
   await page.goto("/viewport-stability");
   await expectDiagramVisible(page);
 
-  await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click();
+  await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click({
+    position: {
+      x: 16,
+      y: 16
+    }
+  });
 
   await expect(page.getByTestId("node-step-chooser")).toBeVisible();
   await expect(page.getByTestId("node-step-choice")).toHaveCount(2);
@@ -535,6 +523,8 @@ async function readNodeAxisSize(
   return nodeBox[axis];
 }
 
+
+
 async function readDiagramScrollPosition(page: Page): Promise<{
   scrollLeft: number;
   scrollTop: number;
@@ -543,21 +533,6 @@ async function readDiagramScrollPosition(page: Page): Promise<{
     scrollLeft: element.scrollLeft,
     scrollTop: element.scrollTop
   }));
-}
-
-async function readDiagramScrollDistanceFromCenter(
-  page: Page,
-  axis: "x" | "y"
-): Promise<number> {
-  return page.getByTestId("diagram-container").evaluate((element, targetAxis) => {
-    const maxScroll =
-      targetAxis === "x"
-        ? element.scrollWidth - element.clientWidth
-        : element.scrollHeight - element.clientHeight;
-    const currentScroll = targetAxis === "x" ? element.scrollLeft : element.scrollTop;
-
-    return Math.abs(currentScroll - Math.max(0, maxScroll / 2));
-  }, axis);
 }
 
 function assertLayoutBox(input: {

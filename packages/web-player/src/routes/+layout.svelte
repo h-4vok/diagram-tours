@@ -408,7 +408,11 @@
                       aria-label={`Toggle favorite for ${favorite.title}`}
                       on:click|preventDefault|stopPropagation={() => toggleFavorite(favorite.slug)}
                     >
-                      *
+                      <svg viewBox="0 0 24 24" aria-hidden="true" class="browse-row__favoriteicon">
+                        <path
+                          d="M12 3.25 14.7 8.72l6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6L3.27 9.6l6.03-.88L12 3.25Z"
+                        />
+                      </svg>
                     </button>
                   </div>
                 {/each}
@@ -482,7 +486,11 @@
                       aria-label={`Toggle favorite for ${tourNode.title}`}
                       on:click|preventDefault|stopPropagation={() => toggleFavorite(tourNode.slug)}
                     >
-                      *
+                      <svg viewBox="0 0 24 24" aria-hidden="true" class="browse-row__favoriteicon">
+                        <path
+                          d="M12 3.25 14.7 8.72l6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6L3.27 9.6l6.03-.88L12 3.25Z"
+                        />
+                      </svg>
                     </button>
                   </div>
                 {/if}
