@@ -214,7 +214,7 @@ function annotateConnectorLabels(container: HTMLElement): void {
 function readOrCreateDefs(svg: SVGSVGElement): SVGDefsElement {
   const existingDefs = svg.querySelector("defs");
 
-  if (existingDefs instanceof SVGDefsElement) {
+  if (isDefsElement(existingDefs)) {
     return existingDefs;
   }
 
@@ -267,6 +267,10 @@ function createGradientStop(offset: string, color: string): SVGStopElement {
 
 function isLinearGradient(element: Element | null): element is SVGLinearGradientElement {
   return element?.tagName.toLowerCase() === "lineargradient";
+}
+
+function isDefsElement(element: Element | null): element is SVGDefsElement {
+  return element?.tagName.toLowerCase() === "defs";
 }
 
 function readViewBoxSize(svg: SVGSVGElement): { width: number; height: number } | null {
