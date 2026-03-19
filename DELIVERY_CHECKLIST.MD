@@ -67,6 +67,10 @@ Verify:
 - repository-facing documentation added or changed in the delivery is written in English
 - README/runtime-loading docs are updated if CLI commands, startup flows, or source-target behavior changed
 
+If a pull request is opened as part of the task, the delivery is not complete until the relevant PR CI checks have finished and are green.
+
+If the PR checks fail, Codex must investigate the failure, apply the fix, and push the follow-up changes before reporting the task as complete.
+
 ## Final Delivery Summary
 
 Every delivery summary should include:
