@@ -1,5 +1,7 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import type { ResolvedDiagramTourCollection } from "@diagram-tour/core";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -97,6 +99,86 @@ describe("+layout.server", () => {
       path: target
     });
   });
+
+  it("loads a generated fallback collection from a diagram file target", async () => {
+    const target = resolve(process.cwd(), "../../examples/payment-flow/payment-flow.mmd");
+    const result = await loadForTarget(target);
+
+    expectGeneratedDiagramPreview(result, target);
+  });
+
+  it("loads multiple generated entries from a markdown file target", async () => {
+    const target = await createTempMarkdownTarget([
+      "# Overview",
+      "",
+      "```mermaid",
+      "flowchart TD",
+      "  start[Start] --> review[Review]",
+      "```",
+      "",
+      "# Details",
+      "",
+      "```mermaid",
+      "flowchart TD",
+      "  detail[Detail] --> done[Done]",
+      "```"
+    ].join("\n"));
+    const result = await loadForTarget(target);
+
+    expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
+      "markdown-preview/overview",
+      "markdown-preview/details"
+    ]);
+    expect(result.collection.entries.map((entry) => entry.title)).toEqual(["Overview", "Details"]);
+    expect(result.sourceTarget.label).toBe("markdown-preview.md");
+  });
+
+  it("loads an authored markdown fragment target through the layout", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "diagram-tour-layout-server-"));
+    const markdownPath = join(directory, "checklist.md");
+    const tourPath = join(directory, "checklist.tour.yaml");
+
+    await writeFile(
+      markdownPath,
+      [
+        "# Overview",
+        "",
+        "```mermaid",
+        "flowchart TD",
+        "  start[Start] --> review[Review]",
+        "```",
+        "",
+        "# Details",
+        "",
+        "```mermaid",
+        "flowchart TD",
+        "  detail[Detail] --> done[Done]",
+        "```"
+      ].join("\n")
+    );
+    await writeFile(
+      tourPath,
+      [
+        "version: 1",
+        "title: Markdown Tour",
+        "diagram: ./checklist.md#details",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - detail",
+        "    text: >",
+        "      Focus on {{detail}}."
+      ].join("\n")
+    );
+
+    const result = await loadForTarget(tourPath);
+
+    expect(result.collection.entries).toHaveLength(1);
+    expect(result.collection.entries[0]?.tour.diagram.path).toBe("./checklist.md#details");
+    expect(result.collection.entries[0]?.tour.diagram.source).toBe(
+      "flowchart TD\n  detail[Detail] --> done[Done]"
+    );
+  });
 });
 
 async function loadExamplesCollection(): Promise<{
@@ -109,6 +191,27 @@ async function loadExamplesCollection(): Promise<{
     collection: ResolvedDiagramTourCollection;
     sourceTarget: SourceTargetInfo;
   };
+}
+
+async function loadForTarget(target: string): Promise<{
+  collection: ResolvedDiagramTourCollection;
+  sourceTarget: SourceTargetInfo;
+}> {
+  process.env.DIAGRAM_TOUR_SOURCE_TARGET = target;
+
+  return (await load({} as never)) as {
+    collection: ResolvedDiagramTourCollection;
+    sourceTarget: SourceTargetInfo;
+  };
+}
+
+async function createTempMarkdownTarget(source: string): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), "diagram-tour-layout-server-"));
+  const target = join(directory, "markdown-preview.md");
+
+  await writeFile(target, source);
+
+  return target;
 }
 
 async function loadExampleEntry(slug: string) {
@@ -177,4 +280,25 @@ function readNodeCount(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ): number {
   return entry?.tour.diagram.nodes.length ?? 0;
+}
+
+function expectGeneratedDiagramPreview(
+  result: {
+    collection: ResolvedDiagramTourCollection;
+    sourceTarget: SourceTargetInfo;
+  },
+  target: string
+): void {
+  const entry = result.collection.entries[0];
+
+  expect(result.collection.entries).toHaveLength(1);
+  expect(entry).toBeDefined();
+  expect(entry!.slug).toBe("payment-flow");
+  expect(entry!.tour.sourceKind).toBe("generated");
+  expect(entry!.tour.steps[0]!.text).toBe("Overview of Payment Flow.");
+  expect(result.sourceTarget).toEqual({
+    kind: "file",
+    label: "payment-flow.mmd",
+    path: target
+  });
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { startDevServer } from "./dev-server";
+import { expectDevServerToFail, startDevServer } from "./dev-server";
 
 test("docs shell browse navigation changes tours without breaking the player", async ({
   page
@@ -360,7 +360,7 @@ test("timeline pills jump directly between steps", async ({ page }) => {
 test("issues popover presents a readable diagnostics hierarchy", async ({ page }) => {
   const server = await startDevServer({
     port: 4181,
-    script: "dev"
+    promptInputs: ["1", "n", "", ""]
   });
 
   try {
@@ -386,6 +386,61 @@ test("small screens hide the minimap automatically", async ({ page }) => {
   await expectDiagramVisible(page);
   await expect(page.getByTestId("step-overlay")).toBeVisible();
   await expect(page.getByTestId("minimap-shell")).toHaveCount(0);
+});
+
+test("generated fallback tours render a minimal overview and node-by-node walkthrough", async ({
+  page
+}) => {
+  const server = await startDevServer({
+    args: ["./examples/payment-flow/payment-flow.mmd"],
+    port: 4183
+  });
+
+  try {
+    await page.goto(server.baseUrl);
+    await expectDiagramVisible(page);
+    await expect(page.getByTestId("step-text")).toContainText("Overview of Payment Flow.");
+
+    await page.getByTestId("next-button").click();
+
+    await expect(page.getByTestId("step-text")).toContainText("Focus on Client.");
+    await expect(
+      page.locator('[data-testid="diagram-container"] [data-node-id="client"]')
+    ).toHaveAttribute("data-focus-state", "focused");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("authored tours can target a markdown diagram block by fragment", async ({ page }) => {
+  const server = await startDevServer({
+    args: ["./fixtures/markdown-mermaid/checklist.tour.yaml"],
+    port: 4185
+  });
+
+  try {
+    await page.goto(server.baseUrl);
+    await expectDiagramVisible(page);
+    await expect(page.getByTestId("step-text")).toContainText("Focus on Detail.");
+    await expect(
+      page.locator('[data-testid="diagram-container"] [data-node-id="detail"]')
+    ).toHaveAttribute("data-focus-state", "focused");
+    await expect(
+      page.locator('[data-testid="diagram-container"] [data-node-id="start"]')
+    ).toHaveCount(0);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("markdown files without Mermaid blocks fail cleanly before startup", async () => {
+  const result = await expectDevServerToFail({
+    args: ["./fixtures/markdown-mermaid/empty.md"],
+    port: 4186
+  });
+
+  expect(result.output).toContain("does not contain any Mermaid fenced blocks");
+  expect(result.output).not.toContain("[500] GET /");
 });
 
 async function expectDiagramVisible(page: Page): Promise<void> {

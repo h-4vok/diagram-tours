@@ -9,7 +9,7 @@ export default defineConfig({
     headless: true
   },
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1 --port 4173",
+    command: "node ../../packages/cli/dist/bin/diagram-tours.js ../../examples --host 127.0.0.1 --port 4173 --no-open",
     port: 4173,
     reuseExistingServer: false,
     timeout: 120000

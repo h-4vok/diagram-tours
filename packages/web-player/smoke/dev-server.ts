@@ -5,13 +5,16 @@ export interface StartDevServerOptions {
   args?: string[];
   port: number;
   promptInputs?: string[];
-  script: "dev" | "dev:interactive";
 }
 
 export interface StartedDevServer {
   baseUrl: string;
   output: string;
   stop: () => Promise<void>;
+}
+
+export interface FailedDevServerStart {
+  output: string;
 }
 
 export async function startDevServer(options: StartDevServerOptions): Promise<StartedDevServer> {
@@ -45,23 +48,35 @@ export async function startDevServer(options: StartDevServerOptions): Promise<St
 }
 
 function spawnDevServer(options: StartDevServerOptions): ChildProcessWithoutNullStreams {
-  return spawn(readBunCommand(), readCommandArgs(options), {
+  return spawn(process.execPath, readCommandArgs(options), {
     cwd: readRepositoryRoot(),
-    shell: process.platform === "win32",
     stdio: "pipe"
   });
 }
 
-function readBunCommand(): string {
-  return "bun";
+export async function expectDevServerToFail(options: StartDevServerOptions): Promise<FailedDevServerStart> {
+  const child = spawnDevServer(options);
+  let output = "";
+
+  child.stdout.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+
+  child.stderr.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+
+  await waitForExit(child);
+
+  return {
+    output
+  };
 }
 
 function readCommandArgs(options: StartDevServerOptions): string[] {
   return [
-    "run",
-    options.script,
+    "packages/cli/dist/bin/diagram-tours.js",
     ...(options.args ?? []),
-    "--",
     "--host",
     "127.0.0.1",
     "--port",
@@ -90,11 +105,9 @@ function writePromptInput(
 }
 
 function includesPrompt(text: string): boolean {
-  return (
-    text.includes("Select an option:") ||
-    text.includes("Directory path:") ||
-    text.includes("Tour file path:")
-  );
+  return PROMPT_MARKERS.some((marker) => {
+    return text.includes(marker);
+  });
 }
 
 async function waitForServer(baseUrl: string, readOutput: () => string): Promise<void> {
@@ -151,3 +164,13 @@ function delay(milliseconds: number): Promise<void> {
     setTimeout(resolveDelay, milliseconds);
   });
 }
+
+const PROMPT_MARKERS = [
+  "Select an option:",
+  "Directory path:",
+  "Diagram or tour file path:",
+  "Tour file path:",
+  "Open the browser now?",
+  "Host override",
+  "Port override"
+];

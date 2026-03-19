@@ -1,0 +1,14 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "diagram-tours": "0.1.0-alpha.1",
+    "@diagram-tour/core": "0.1.0",
+    "@diagram-tour/parser": "0.1.0",
+    "@diagram-tour/web-player": "0.1.0"
+  },
+  "changesets": [
+    "fuzzy-pandas-laugh",
+    "silly-geese-doubt"
+  ]
+}

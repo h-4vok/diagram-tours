@@ -29,6 +29,7 @@ export interface ResolvedTourStep {
 }
 
 export interface ResolvedDiagramTour {
+  sourceKind: "authored" | "generated";
   version: number;
   title: string;
   diagram: ResolvedDiagram;
