@@ -1,6 +1,7 @@
 import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
 export const resolvedPaymentFlowTour: ResolvedDiagramTour = {
+  sourceKind: "authored",
   version: 1,
   title: "Payment Flow",
   diagram: {

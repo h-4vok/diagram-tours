@@ -2,6 +2,10 @@
 
 This guide describes the current best practices for writing Diagram Tour examples and product tours.
 
+`diagram-tours` can open a raw Mermaid diagram without a tour file. Author a `*.tour.yaml` when you want to enrich that default generated walkthrough with curated steps and prose.
+
+It also supports Markdown files that contain fenced ```mermaid blocks. This is especially useful when AI tools place diagrams inside `.md` files instead of standalone `.mmd` files.
+
 ## Start with Stable Mermaid IDs
 
 Every node that may appear in `focus` or `{{references}}` needs an explicit Mermaid ID.
@@ -86,6 +90,32 @@ examples/payment-flow/
 
 That layout produces a clean slug and keeps related files together.
 
+If you only have a diagram at first, this is still valid:
+
+```text
+examples/payment-flow/
+  payment-flow.mmd
+```
+
+The runtime will generate an overview step plus one step per Mermaid node until you add an authored tour file.
+
+Markdown-backed diagrams are also valid:
+
+````md
+# Country Implementation Checklist
+
+```mermaid
+flowchart TD
+  start[Start] --> review[Review]
+```
+````
+
+If a Markdown file contains more than one Mermaid block, `diagram-tours` will generate one entry per block. An authored tour that targets one of those blocks should use a fragment:
+
+```yaml
+diagram: ./country-implementation-checklist.md#review
+```
+
 ## Validate Common Failure Cases
 
 The parser rejects:
@@ -108,15 +138,26 @@ A practical local loop is:
 3. run `bun run test`
 4. run `bun run smoke` if viewport or interaction behavior changed
 
-Common startup options:
+For the published product flow, use the global CLI:
+
+```bash
+diagram-tours ./examples/payment-flow/payment-flow.tour.yaml
+diagram-tours ./examples/payment-flow/payment-flow.mmd
+diagram-tours ./fixtures/markdown-mermaid/checklist.md
+diagram-tours ./examples
+diagram-tours
+```
+
+For repository contributor work, the Bun helpers still exist:
 
 ```bash
 bun run dev ./examples/payment-flow/payment-flow.tour.yaml
+bun run dev ./examples/payment-flow/payment-flow.mmd
 bun run dev ./examples
 bun run dev:interactive
 ```
 
-The legacy environment-variable flow still works when you want to drive the runtime directly:
+The environment-variable flow still works when you want to drive the runtime directly:
 
 PowerShell example:
 

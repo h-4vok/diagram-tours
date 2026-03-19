@@ -1,3 +1,4 @@
+import type { ResolvedDiagramTourCollectionEntry } from "@diagram-tour/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +15,7 @@ const entries = [
     title: "Payment Flow",
     tour: {
       diagram: { nodes: [], path: "./payment-flow.mmd", source: "" },
+      sourceKind: "authored",
       steps: [],
       title: "Payment Flow",
       version: 1
@@ -25,6 +27,7 @@ const entries = [
     title: "Refund Flow",
     tour: {
       diagram: { nodes: [], path: "./refund-flow.mmd", source: "" },
+      sourceKind: "authored",
       steps: [],
       title: "Refund Flow",
       version: 1
@@ -36,12 +39,13 @@ const entries = [
     title: "Release Pipeline",
     tour: {
       diagram: { nodes: [], path: "./release-pipeline.mmd", source: "" },
+      sourceKind: "authored",
       steps: [],
       title: "Release Pipeline",
       version: 1
     }
   }
-];
+] satisfies ResolvedDiagramTourCollectionEntry[];
 
 describe("browse-tree", () => {
   it("builds a folder and tour hierarchy from flat source paths", () => {
@@ -268,17 +272,18 @@ describe("browse-tree", () => {
     const tree = buildBrowseTree(
       [
         ...entries,
-        {
+        createEntry({
           slug: "overview",
           sourcePath: "overview.tour.yaml",
           title: "Overview",
           tour: {
             diagram: { nodes: [], path: "./overview.mmd", source: "" },
+            sourceKind: "authored",
             steps: [],
             title: "Overview",
             version: 1
           }
-        }
+        })
       ],
       null
     );
@@ -293,28 +298,30 @@ describe("browse-tree", () => {
   it("sorts root-level tours alphabetically when no folders are involved", () => {
     const tree = buildBrowseTree(
       [
-        {
+        createEntry({
           slug: "zeta",
           sourcePath: "zeta.tour.yaml",
           title: "Zeta Tour",
           tour: {
             diagram: { nodes: [], path: "./zeta.mmd", source: "" },
+            sourceKind: "authored",
             steps: [],
             title: "Zeta Tour",
             version: 1
           }
-        },
-        {
+        }),
+        createEntry({
           slug: "alpha",
           sourcePath: "alpha.tour.yaml",
           title: "Alpha Tour",
           tour: {
             diagram: { nodes: [], path: "./alpha.mmd", source: "" },
+            sourceKind: "authored",
             steps: [],
             title: "Alpha Tour",
             version: 1
           }
-        }
+        })
       ],
       null
     );
@@ -325,17 +332,18 @@ describe("browse-tree", () => {
   it("still keeps folders ahead of tours when a root-level tour is inserted first", () => {
     const tree = buildBrowseTree(
       [
-        {
+        createEntry({
           slug: "overview",
           sourcePath: "overview.tour.yaml",
           title: "Overview",
           tour: {
             diagram: { nodes: [], path: "./overview.mmd", source: "" },
+            sourceKind: "authored",
             steps: [],
             title: "Overview",
             version: 1
           }
-        },
+        }),
         ...entries
       ],
       null
@@ -345,3 +353,7 @@ describe("browse-tree", () => {
     expect(tree.at(-1)?.id).toBe("tour:overview");
   });
 });
+
+function createEntry(entry: ResolvedDiagramTourCollectionEntry): ResolvedDiagramTourCollectionEntry {
+  return entry;
+}

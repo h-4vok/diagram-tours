@@ -4,6 +4,8 @@ This document defines version 1 of the Diagram Tour contract.
 
 A tour is a guided walkthrough over a Mermaid diagram. Version 1 is intentionally small, linear, and predictable.
 
+This document describes the authored YAML contract. The runtime can also generate fallback tours directly from Mermaid diagrams when no YAML tour is present, but that generation behavior is not part of the `tour.yaml` schema itself.
+
 Changes to this contract must be accompanied by updated tests and synchronized documentation.
 
 ## Goals
@@ -17,7 +19,7 @@ Version 1 prioritizes:
 
 ## File Format
 
-Tours are authored as YAML.
+Tours are authored as YAML when you want to enrich a Mermaid diagram with curated steps.
 
 Example:
 
@@ -68,7 +70,18 @@ Required.
 diagram: ./payment-flow.mmd
 ```
 
-Must be a non-empty string path to a Mermaid diagram file.
+Must be a non-empty string path to a Mermaid diagram source.
+
+Supported authored targets include:
+
+- standalone Mermaid files such as `./payment-flow.mmd`
+- Markdown files with fenced Mermaid blocks such as `./country-checklist.md`
+
+If a Markdown file contains multiple Mermaid blocks, the path must include a fragment that selects one block:
+
+```yaml
+diagram: ./country-checklist.md#details
+```
 
 The referenced diagram must contain explicit Mermaid node IDs such as:
 

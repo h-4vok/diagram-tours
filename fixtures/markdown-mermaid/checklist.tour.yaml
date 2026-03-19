@@ -1,0 +1,9 @@
+version: 1
+title: Checklist Details
+diagram: ./checklist.md#details
+
+steps:
+  - focus:
+      - detail
+    text: >
+      Focus on {{detail}}.

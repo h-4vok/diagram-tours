@@ -1,36 +1,41 @@
 # Architecture
 
-Diagram Tour is a Bun monorepo split into a small number of focused packages.
+Diagram Tour is a workspace monorepo split into a small number of focused packages.
 
 ## Package Responsibilities
 
+- `packages/cli` publishes the global `diagram-tours` command and owns startup orchestration
 - `packages/core` defines the shared domain model used by the rest of the system
 - `packages/parser` loads Mermaid and YAML inputs, validates them, resolves node references, discovers tours, and returns runtime-ready collections
-- `packages/web-player` provides the Svelte application that loads a collection, selects a tour by slug, and renders the interactive tour UI
+- `packages/web-player` provides the packaged SvelteKit Node server that loads a collection, selects a tour by slug, and renders the interactive tour UI
 
 This split keeps parsing, domain modeling, and presentation concerns separate.
 
 ## Current Runtime Shape
 
-The repository currently behaves like a small documentation shell for tours.
+The published product is a global CLI that launches a local web runtime for diagrams and tours.
 
 At runtime, the system:
 
-1. reads a source target from environment
-2. loads either a directory-backed tour collection or a single tour file
-3. exposes collection metadata through layout load functions
-4. selects a route entry by slug
-5. derives the initial step from the URL query
-6. renders the selected tour in the web player
+1. resolves a source target, host, port, and browser-open policy in `packages/cli`
+2. launches the packaged `packages/web-player` Node server
+3. reads the source target from environment
+4. loads either a directory-backed collection or a single file target
+5. exposes collection metadata through layout load functions
+6. selects a route entry by slug
+7. derives the initial step from the URL query
+8. renders the selected tour in the web player
 
 ## Data Flow
 
 The end-to-end flow is:
 
 ```text
-DIAGRAM_TOUR_SOURCE_TARGET
+CLI target + host + port + browser policy
+  -> packaged Node web-player launch
+  -> DIAGRAM_TOUR_SOURCE_TARGET
   -> parser source-target resolution
-  -> tour discovery or single-file load
+  -> authored-tour discovery, generated fallback discovery, or single-file load
   -> Mermaid node extraction + YAML validation
   -> resolved collection entries with slugs
   -> SvelteKit layout data
@@ -48,9 +53,10 @@ The runtime supports two loading modes.
 If the source target is a directory:
 
 - the parser walks the tree recursively
-- each `*.tour.yaml` file is considered a candidate tour
-- valid tours become collection entries
-- invalid tours are recorded as skipped entries
+- each `*.tour.yaml`, `.mmd`, and `.mermaid` file is considered a candidate input
+- valid authored tours and generated fallback tours become collection entries
+- invalid authored tours are recorded as skipped entries
+- fallback entries are suppressed when an authored tour already owns the same diagram
 
 This mode powers the default examples shell.
 
@@ -58,7 +64,7 @@ This mode powers the default examples shell.
 
 If the source target is a file:
 
-- the parser loads exactly one tour
+- the parser loads exactly one tour or one diagram
 - the layout returns a one-entry collection
 - the web player behaves like a focused author preview
 

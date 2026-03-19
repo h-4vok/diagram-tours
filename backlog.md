@@ -17,6 +17,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- Diagram-first fallback tours for raw Mermaid inputs
+  - Current state: directories and direct file targets can now load `.mmd` and `.mermaid` diagrams without authored YAML, with generated overview-plus-node walkthroughs and duplicate suppression when a tour file already owns the same diagram
+  - Testing expectation: parser, CLI, web-player, and smoke coverage validate generated fallback discovery, direct diagram startup, mixed authored/generated collections, and clear failure when no supported inputs exist
+  - Evidence: `packages/parser/src/index.ts`, `packages/cli/src/lib/target.ts`, `packages/cli/src/lib/cli.ts`, `packages/web-player/smoke/startup-modes.spec.ts`
 - Mermaid + YAML parser, including node resolution and `{{node_id}}` references
   - Evidence: `packages/parser/src/index.ts`
 - Tour validation, focus-node validation, and text-reference validation
@@ -62,6 +66,10 @@ Cutoff date: 2026-03-17
   - Current state: supports `bun run dev <target>` for either a directory or a tour file, plus `bun run dev:interactive` for console-driven source-target selection
   - Note: the runtime source of truth remains `DIAGRAM_TOUR_SOURCE_TARGET`, but startup scripts now provide a friendlier developer workflow
   - Evidence: `package.json`, `scripts/dev-web-player.ts`, `scripts/dev-web-player-interactive.ts`, `scripts/dev-web-player-lib.ts`, `packages/web-player/src/lib/source-target.ts`
+- Global `diagram-tours` npm/Bun CLI
+  - Current state: the repository now includes a publishable `packages/cli` package named `diagram-tours`, a no-arg wizard, direct directory/file startup, localhost-first port selection, browser-open controls, and a packaged Node web-player runtime
+  - Testing expectation: CLI unit coverage, packaged-runtime smoke coverage, and build validation all exercise the publishable path rather than only the repo-local Bun dev flow
+  - Evidence: `packages/cli/package.json`, `packages/cli/src/lib/cli.ts`, `packages/web-player/package.json`, `packages/web-player/playwright.config.ts`
 - Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
   - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
 
@@ -81,9 +89,6 @@ Cutoff date: 2026-03-17
 - Support for more complex diagram types, including Mermaid sequence diagrams
   - Note: the documented and supported scope is still centered on Mermaid flowcharts
   - Pending: investigate Mermaid's sequence-diagram model and define the impact on parser, validation, references, and player behavior
-- Support for operating `diagram-tours` through globally installed npm or Bun commands
-  - Note: even if the current use is local on this machine, we want to plan for an installable and reusable CLI experience
-  - Pending: define distribution, entrypoints, command ergonomics, Bun/npm compatibility, and authoring/preview expectations before implementation
 - Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
   - Note: we want to treat this as a unified initiative later, rather than mixing it into the initial browse explorer work
   - Pending: define a shared shortcuts model, focus behavior, discoverability, and key-conflict handling

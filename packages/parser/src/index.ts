@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 
@@ -15,31 +16,68 @@ import { parse as parseYaml } from "yaml";
 
 const MERMAID_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
+const DIAGRAM_FILE_SUFFIXES = [".mmd", ".md", ".mermaid"];
+const MARKDOWN_DIAGRAM_FILE_SUFFIX = ".md";
 const TOUR_FILE_SUFFIX = ".tour.yaml";
-const NO_VALID_TOURS_MESSAGE = "No valid tours were discovered";
+const NO_VALID_TOURS_MESSAGE = "No valid tours or diagrams were discovered";
+const NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE = "does not contain any Mermaid fenced blocks.";
 
 type NodeIndex = Map<string, MermaidNode>;
 type ReferenceKind = "focus" | "text";
+type DiagramReference = {
+  fragment: string | null;
+  path: string;
+};
+type LoadedAuthoredTour = {
+  ownedDiagramSourceId: string;
+  tour: ResolvedDiagramTour;
+};
+type LoadedCollectionEntry = {
+  entry: ResolvedDiagramTourCollectionEntry;
+  sourceId: string;
+};
+type MarkdownBlock = {
+  id: string;
+  source: string;
+  title: string;
+};
+type MarkdownFence = {
+  character: "`" | "~";
+  info: string;
+  length: number;
+};
+type MarkdownFenceState = MarkdownFence & {
+  block: MarkdownBlockIdentity;
+  lines: string[];
+  mermaid: boolean;
+};
+type MarkdownBlockIdentity = {
+  baseId: string;
+  baseTitle: string;
+};
+type MarkdownHeading = MarkdownBlockIdentity;
+type MarkdownFallback = {
+  id: string;
+  title: string;
+};
+type MarkdownBlockAccumulator = {
+  blocks: MarkdownBlock[];
+  counts: Map<string, number>;
+};
+type SourcePaths = {
+  diagramPaths: string[];
+  tourPaths: string[];
+};
 
 export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagramTour> {
   const absoluteTourPath = resolve(tourPath);
   const context = createTourContext(absoluteTourPath);
 
   return runWithContext(context, async () => {
-    const rawTour = await readRawTourDocument({
+    return (await loadAuthoredTourDocument({
       absoluteTourPath,
       context
-    });
-    const diagramSource = await readDiagramSource({
-      absoluteTourPath,
-      diagramPath: rawTour.diagram
-    });
-
-    return resolveLoadedTour({
-      context,
-      diagramSource,
-      rawTour
-    });
+    })).tour;
   });
 }
 
@@ -50,22 +88,22 @@ export async function loadResolvedTourCollection(
   const targetStats = await stat(absoluteTarget);
 
   if (targetStats.isFile()) {
-    return createSingleTourCollection(absoluteTarget);
+    return createSingleEntryCollection(absoluteTarget);
   }
 
   return createDiscoveredTourCollection(absoluteTarget);
 }
 
-async function createSingleTourCollection(
-  absoluteTourPath: string
+async function createSingleEntryCollection(
+  absolutePath: string
 ): Promise<ResolvedDiagramTourCollection> {
-  const entry = await createCollectionEntry({
-    absoluteTourPath,
-    sourceRoot: dirname(absoluteTourPath)
+  const entries = await createCollectionEntries({
+    absolutePath,
+    sourceRoot: dirname(absolutePath)
   });
 
   return {
-    entries: [entry],
+    entries: entries.map((item) => item.entry),
     skipped: []
   };
 }
@@ -73,55 +111,58 @@ async function createSingleTourCollection(
 async function createDiscoveredTourCollection(
   sourceRoot: string
 ): Promise<ResolvedDiagramTourCollection> {
-  const tourPaths = await collectTourPaths(sourceRoot);
+  const discoveredPaths = await collectSourcePaths(sourceRoot);
   const result = createDiscoveredCollectionResult();
+  const authoredDiagramPaths = await appendAuthoredDiscoveryResults({
+    result,
+    sourceRoot,
+    tourPaths: discoveredPaths.tourPaths
+  });
 
-  for (const absoluteTourPath of tourPaths) {
-    await appendDiscoveredTourResult({
-      absoluteTourPath,
-      result,
-      sourceRoot
-    });
-  }
-
-  invariant(
-    result.entries.length > 0,
-    `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(sourceRoot)}".`
-  );
+  await appendGeneratedDiscoveryResults({
+    authoredDiagramPaths,
+    diagramPaths: discoveredPaths.diagramPaths,
+    result,
+    sourceRoot
+  });
+  result.entries.sort((left, right) => left.slug.localeCompare(right.slug));
+  assertDiscoveredEntries(result.entries.length, sourceRoot);
 
   return result;
 }
 
-async function createCollectionEntry(input: {
-  absoluteTourPath: string;
+async function createCollectionEntries(input: {
+  absolutePath: string;
   sourceRoot: string;
-}): Promise<ResolvedDiagramTourCollectionEntry> {
-  const sourcePath = normalizePath(relative(input.sourceRoot, input.absoluteTourPath));
-  const tour = await loadResolvedTour(input.absoluteTourPath);
+}): Promise<LoadedCollectionEntry[]> {
+  return input.absolutePath.endsWith(TOUR_FILE_SUFFIX)
+    ? [await createAuthoredCollectionEntry(input)]
+    : await loadGeneratedCollectionEntries(input);
+}
+
+async function collectSourcePaths(sourceRoot: string): Promise<SourcePaths> {
+  const entries = await readdir(sourceRoot, { withFileTypes: true });
+  const nestedPaths = await Promise.all(entries.map((entry) => collectNestedSourcePaths(sourceRoot, entry)));
+
+  return sortSourcePaths(mergeSourcePaths(nestedPaths));
+}
+
+function collectSourceFilePath(sourceRoot: string, name: string): SourcePaths {
+  if (!name.endsWith(TOUR_FILE_SUFFIX)) {
+    return {
+      diagramPaths: collectDiagramFilePath(sourceRoot, name),
+      tourPaths: []
+    };
+  }
 
   return {
-    slug: createSlug(sourcePath),
-    sourcePath,
-    title: tour.title,
-    tour
+    diagramPaths: [],
+    tourPaths: [resolve(sourceRoot, name)]
   };
 }
 
-async function collectTourPaths(sourceRoot: string): Promise<string[]> {
-  const entries = await readdir(sourceRoot, { withFileTypes: true });
-  const nestedPaths = await Promise.all(
-    entries.map((entry) =>
-      entry.isDirectory()
-        ? collectTourPaths(resolve(sourceRoot, entry.name))
-        : collectTourFilePath(sourceRoot, entry.name)
-    )
-  );
-
-  return nestedPaths.flat().sort();
-}
-
-function collectTourFilePath(sourceRoot: string, name: string): string[] {
-  if (!name.endsWith(TOUR_FILE_SUFFIX)) {
+function collectDiagramFilePath(sourceRoot: string, name: string): string[] {
+  if (!DIAGRAM_FILE_SUFFIXES.some((suffix) => name.endsWith(suffix))) {
     return [];
   }
 
@@ -139,22 +180,26 @@ function createDiscoveredCollectionResult(): {
 }
 
 async function appendDiscoveredTourResult(input: {
-  absoluteTourPath: string;
+  absolutePath: string;
   result: {
     entries: ResolvedDiagramTourCollectionEntry[];
     skipped: SkippedResolvedDiagramTour[];
   };
   sourceRoot: string;
-}): Promise<void> {
+}): Promise<string[] | null> {
   try {
-    input.result.entries.push(
-      await createCollectionEntry({
-        absoluteTourPath: input.absoluteTourPath,
-        sourceRoot: input.sourceRoot
-      })
-    );
+    const loadedEntries = await createCollectionEntries({
+      absolutePath: input.absolutePath,
+      sourceRoot: input.sourceRoot
+    });
+
+    input.result.entries.push(...loadedEntries.map((item) => item.entry));
+
+    return loadedEntries.map((item) => item.sourceId);
   } catch (error) {
-    input.result.skipped.push(createSkippedTourEntry(input.absoluteTourPath, input.sourceRoot, error));
+    input.result.skipped.push(createSkippedTourEntry(input.absolutePath, input.sourceRoot, error));
+
+    return null;
   }
 }
 
@@ -207,10 +252,29 @@ function createTourContext(sourcePath: string): TourContext {
 async function readDiagramSource(input: {
   absoluteTourPath: string;
   diagramPath: string;
-}): Promise<string> {
-  const absoluteDiagramPath = resolve(dirname(input.absoluteTourPath), input.diagramPath);
+  context: TourContext;
+}): Promise<{
+  ownedDiagramSourceId: string;
+  source: string;
+}> {
+  const reference = parseDiagramReference(input.diagramPath);
+  const absoluteDiagramPath = resolve(dirname(input.absoluteTourPath), reference.path);
 
-  return readTextFile(absoluteDiagramPath);
+  if (!absoluteDiagramPath.endsWith(MARKDOWN_DIAGRAM_FILE_SUFFIX)) {
+    assertDiagramFragmentAllowed(reference, input.context);
+
+    return {
+      ownedDiagramSourceId: createDiagramSourceId(absoluteDiagramPath),
+      source: await readTextFile(absoluteDiagramPath)
+    };
+  }
+
+  return readMarkdownDiagramSource({
+    absoluteDiagramPath,
+    context: input.context,
+    diagramPath: input.diagramPath,
+    reference
+  });
 }
 
 function resolveLoadedTour(input: {
@@ -221,11 +285,153 @@ function resolveLoadedTour(input: {
   const nodeIndex = createNodeIndex(input.diagramSource);
 
   return {
+    sourceKind: "authored",
     version: input.rawTour.version,
     title: input.rawTour.title,
     diagram: createResolvedDiagram(input.rawTour.diagram, input.diagramSource, nodeIndex),
     steps: resolveLoadedTourSteps(input.rawTour.steps, nodeIndex, input.context)
   };
+}
+
+async function loadGeneratedDiagramTour(absoluteDiagramPath: string): Promise<ResolvedDiagramTour> {
+  const diagramSource = await readTextFile(absoluteDiagramPath);
+
+  return createGeneratedDiagramTour({
+    diagramPath: normalizePath(basename(absoluteDiagramPath)),
+    diagramSource,
+    title: createGeneratedTitle(absoluteDiagramPath)
+  });
+}
+
+async function appendAuthoredDiscoveryResults(input: {
+  result: {
+    entries: ResolvedDiagramTourCollectionEntry[];
+    skipped: SkippedResolvedDiagramTour[];
+  };
+  sourceRoot: string;
+  tourPaths: string[];
+}): Promise<Set<string>> {
+  const authoredDiagramPaths = new Set<string>();
+
+  for (const absoluteTourPath of input.tourPaths) {
+    const ownedDiagramSourceIds = await appendDiscoveredTourResult({
+      absolutePath: absoluteTourPath,
+      result: input.result,
+      sourceRoot: input.sourceRoot
+    });
+
+    addOwnedDiagramPath(authoredDiagramPaths, ownedDiagramSourceIds);
+  }
+
+  return authoredDiagramPaths;
+}
+
+async function appendGeneratedDiscoveryResults(input: {
+  authoredDiagramPaths: Set<string>;
+  diagramPaths: string[];
+  result: {
+    entries: ResolvedDiagramTourCollectionEntry[];
+    skipped: SkippedResolvedDiagramTour[];
+  };
+  sourceRoot: string;
+}): Promise<void> {
+  for (const absoluteDiagramPath of input.diagramPaths) {
+    const loadedEntries = await tryLoadGeneratedDiscoveryEntries({
+      absoluteDiagramPath,
+      sourceRoot: input.sourceRoot
+    });
+
+    if (loadedEntries === null) {
+      continue;
+    }
+
+    input.result.entries.push(
+      ...loadedEntries
+        .filter((item) => !input.authoredDiagramPaths.has(item.sourceId))
+        .map((item) => item.entry)
+    );
+  }
+}
+
+async function tryLoadGeneratedDiscoveryEntries(input: {
+  absoluteDiagramPath: string;
+  sourceRoot: string;
+}): Promise<LoadedCollectionEntry[] | null> {
+  try {
+    return await loadGeneratedCollectionEntries({
+      absolutePath: input.absoluteDiagramPath,
+      sourceRoot: input.sourceRoot
+    });
+  } catch (error) {
+    if (shouldIgnoreGeneratedDiscoveryError(input.absoluteDiagramPath, error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+function assertDiscoveredEntries(count: number, sourceRoot: string): void {
+  invariant(count > 0, `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(sourceRoot)}".`);
+}
+
+async function collectNestedSourcePaths(sourceRoot: string, entry: Dirent): Promise<SourcePaths> {
+  return entry.isDirectory()
+    ? collectSourcePaths(resolve(sourceRoot, entry.name))
+    : collectSourceFilePath(sourceRoot, entry.name);
+}
+
+function mergeSourcePaths(items: SourcePaths[]): SourcePaths {
+  return items.reduce(
+    (result, item) => {
+      result.diagramPaths.push(...item.diagramPaths);
+      result.tourPaths.push(...item.tourPaths);
+
+      return result;
+    },
+    {
+      diagramPaths: [],
+      tourPaths: []
+    } satisfies SourcePaths
+  );
+}
+
+function sortSourcePaths(paths: SourcePaths): SourcePaths {
+  paths.diagramPaths.sort();
+  paths.tourPaths.sort();
+
+  return paths;
+}
+
+function addOwnedDiagramPath(
+  authoredDiagramPaths: Set<string>,
+  ownedDiagramSourceIds: string[] | null
+): void {
+  if (ownedDiagramSourceIds === null) {
+    return;
+  }
+
+  for (const ownedDiagramSourceId of ownedDiagramSourceIds) {
+    authoredDiagramPaths.add(ownedDiagramSourceId);
+  }
+}
+
+function createGeneratedSteps(
+  nodeIndex: NodeIndex,
+  title: string
+): ResolvedDiagramTour["steps"] {
+  return [
+    {
+      focus: [],
+      index: 1,
+      text: `Overview of ${title}.`
+    },
+    ...Array.from(nodeIndex.values()).map((node, index) => ({
+      focus: [node],
+      index: index + 2,
+      text: `Focus on ${node.label}.`
+    }))
+  ];
 }
 
 function createResolvedDiagram(
@@ -416,14 +622,522 @@ function createUnknownNodeMessage(input: {
 
 function createSlug(sourcePath: string): string {
   const normalizedPath = normalizePath(sourcePath);
-  const fileStem = basename(normalizedPath, TOUR_FILE_SUFFIX);
+  const fileStem = readFileStem(normalizedPath);
   const directoryPath = normalizePath(dirname(normalizedPath));
 
   if (directoryPath === "." || basename(directoryPath) !== fileStem) {
-    return normalizedPath.replace(TOUR_FILE_SUFFIX, "");
+    return removeKnownSuffix(normalizedPath);
   }
 
   return directoryPath;
+}
+
+async function createAuthoredCollectionEntry(input: {
+  absolutePath: string;
+  sourceRoot: string;
+}): Promise<LoadedCollectionEntry> {
+  const sourcePath = normalizePath(relative(input.sourceRoot, input.absolutePath));
+  const loadedTour = await loadAuthoredTourDocument({
+    absoluteTourPath: input.absolutePath,
+    context: createTourContext(input.absolutePath)
+  });
+
+  return {
+    entry: {
+      slug: createSlug(sourcePath),
+      sourcePath,
+      title: loadedTour.tour.title,
+      tour: loadedTour.tour
+    },
+    sourceId: loadedTour.ownedDiagramSourceId
+  };
+}
+
+async function loadGeneratedCollectionEntries(input: {
+  absolutePath: string;
+  sourceRoot: string;
+}): Promise<LoadedCollectionEntry[]> {
+  return input.absolutePath.endsWith(MARKDOWN_DIAGRAM_FILE_SUFFIX)
+    ? createGeneratedMarkdownCollectionEntries(input)
+    : [await createGeneratedRawCollectionEntry(input)];
+}
+
+async function createGeneratedRawCollectionEntry(input: {
+  absolutePath: string;
+  sourceRoot: string;
+}): Promise<LoadedCollectionEntry> {
+  const sourcePath = normalizePath(relative(input.sourceRoot, input.absolutePath));
+  const tour = await loadGeneratedDiagramTour(input.absolutePath);
+
+  return {
+    entry: {
+      slug: createSlug(sourcePath),
+      sourcePath,
+      title: tour.title,
+      tour
+    },
+    sourceId: createDiagramSourceId(input.absolutePath)
+  };
+}
+
+async function createGeneratedMarkdownCollectionEntries(input: {
+  absolutePath: string;
+  sourceRoot: string;
+}): Promise<LoadedCollectionEntry[]> {
+  const source = await readTextFile(input.absolutePath);
+  const relativePath = normalizePath(relative(input.sourceRoot, input.absolutePath));
+  const blockEntries = readMarkdownBlocks(source, input.absolutePath);
+
+  invariant(
+    blockEntries.length > 0,
+    `Markdown diagram "${normalizePath(input.absolutePath)}" ${NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE}`
+  );
+
+  return blockEntries.map((block) =>
+    createGeneratedMarkdownCollectionEntry({
+      absolutePath: input.absolutePath,
+      block,
+      fileSlug: createSlug(relativePath),
+      relativePath,
+      useBlockSuffix: blockEntries.length > 1
+    })
+  );
+}
+
+function parseDiagramReference(diagramPath: string): DiagramReference {
+  const hashIndex = diagramPath.lastIndexOf("#");
+
+  if (hashIndex === -1) {
+    return {
+      fragment: null,
+      path: diagramPath
+    };
+  }
+
+  return {
+    fragment: diagramPath.slice(hashIndex + 1),
+    path: diagramPath.slice(0, hashIndex)
+  };
+}
+
+function assertDiagramFragmentAllowed(reference: DiagramReference, context: TourContext): void {
+  invariant(
+    reference.fragment === null,
+    createTourMessage(context, `diagram fragment "${reference.fragment}" is only supported for Markdown diagrams`)
+  );
+}
+
+async function readMarkdownDiagramSource(input: {
+  absoluteDiagramPath: string;
+  context: TourContext;
+  diagramPath: string;
+  reference: DiagramReference;
+}): Promise<{
+  ownedDiagramSourceId: string;
+  source: string;
+}> {
+  const source = await readTextFile(input.absoluteDiagramPath);
+  const blocks = readMarkdownBlocks(source, input.absoluteDiagramPath);
+
+  invariant(
+    blocks.length > 0,
+    createTourMessage(
+      input.context,
+      `diagram markdown file "${normalizePath(input.reference.path)}" does not contain any Mermaid fenced blocks`
+    )
+  );
+
+  return readSelectedMarkdownDiagramBlock({
+    absoluteDiagramPath: input.absoluteDiagramPath,
+    blocks,
+    context: input.context,
+    diagramPath: input.diagramPath,
+    reference: input.reference
+  });
+}
+
+function readSelectedMarkdownDiagramBlock(input: {
+  absoluteDiagramPath: string;
+  blocks: MarkdownBlock[];
+  context: TourContext;
+  diagramPath: string;
+  reference: DiagramReference;
+}): {
+  ownedDiagramSourceId: string;
+  source: string;
+} {
+  if (input.reference.fragment === null) {
+    return readDefaultMarkdownDiagramBlock(input);
+  }
+
+  return readFragmentMarkdownDiagramBlock(input);
+}
+
+function readDefaultMarkdownDiagramBlock(input: {
+  absoluteDiagramPath: string;
+  blocks: MarkdownBlock[];
+  context: TourContext;
+  diagramPath: string;
+}): {
+  ownedDiagramSourceId: string;
+  source: string;
+} {
+  invariant(
+    input.blocks.length === 1,
+    createTourMessage(
+      input.context,
+      `diagram markdown file "${normalizePath(input.diagramPath)}" contains multiple Mermaid blocks; use a #fragment to select one`
+    )
+  );
+
+  return {
+    ownedDiagramSourceId: createDiagramSourceId(input.absoluteDiagramPath, input.blocks[0]!.id),
+    source: input.blocks[0]!.source
+  };
+}
+
+function readFragmentMarkdownDiagramBlock(input: {
+  absoluteDiagramPath: string;
+  blocks: MarkdownBlock[];
+  context: TourContext;
+  diagramPath: string;
+  reference: DiagramReference;
+}): {
+  ownedDiagramSourceId: string;
+  source: string;
+} {
+  const block = input.blocks.find((candidate) => candidate.id === input.reference.fragment);
+
+  invariant(
+    block !== undefined,
+    createTourMessage(
+      input.context,
+      `diagram markdown fragment "${input.reference.fragment}" was not found in "${normalizePath(input.reference.path)}"`
+    )
+  );
+
+  return {
+    ownedDiagramSourceId: createDiagramSourceId(input.absoluteDiagramPath, block.id),
+    source: block.source
+  };
+}
+
+function readMarkdownBlocks(source: string, absolutePath: string): MarkdownBlock[] {
+  const fallback = createMarkdownFallback(absolutePath);
+  const lines = source.split("\n");
+  const accumulator = createMarkdownBlockAccumulator();
+  let currentHeading: MarkdownHeading | null = null;
+  let fenceState: MarkdownFenceState | null = null;
+
+  for (const line of lines) {
+    if (fenceState === null) {
+      currentHeading = updateMarkdownHeading(currentHeading, line);
+      fenceState = readMarkdownFenceState(line, currentHeading, fallback);
+      continue;
+    }
+
+    fenceState = readNextMarkdownFenceState(line, fenceState, accumulator);
+  }
+
+  return accumulator.blocks;
+}
+
+function readMarkdownFenceState(
+  line: string,
+  currentHeading: MarkdownHeading | null,
+  fallback: MarkdownFallback
+): MarkdownFenceState | null {
+  const fence = readMarkdownFence(line);
+
+  if (fence === null) {
+    return null;
+  }
+
+  return {
+    ...fence,
+    block: readMarkdownBlockIdentity(currentHeading, fallback.id, fallback.title),
+    lines: [],
+    mermaid: readMarkdownFenceInfoToken(fence.info) === "mermaid"
+  };
+}
+
+function readMarkdownHeading(line: string): MarkdownHeading | null {
+  const match = line.match(/^\s*#{1,6}\s+(.+?)\s*$/u);
+
+  if (match === null) {
+    return null;
+  }
+
+  const title = match[1].replace(/\s+#+\s*$/u, "").trim();
+
+  return title.length === 0
+    ? null
+    : {
+        baseId: createHeadingSlug(title),
+        baseTitle: title
+      };
+}
+
+function readMarkdownFence(line: string): MarkdownFence | null {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^(`{3,}|~{3,})(.*)$/u);
+
+  if (match === null) {
+    return null;
+  }
+
+  return {
+    character: match[1][0] as "`" | "~",
+    info: match[2].trim(),
+    length: match[1].length
+  };
+}
+
+function isMarkdownFenceClose(line: string, fence: MarkdownFence): boolean {
+  const trimmed = line.trim();
+
+  return trimmed.length >= fence.length && hasOnlyMarkdownFenceCharacters(trimmed, fence.character);
+}
+
+function hasOnlyMarkdownFenceCharacters(input: string, character: "`" | "~"): boolean {
+  return Array.from(input).every((value) => value === character);
+}
+
+function createMarkdownFallback(absolutePath: string): MarkdownFallback {
+  const title = createGeneratedTitle(absolutePath);
+
+  return {
+    id: createHeadingSlug(title),
+    title
+  };
+}
+
+function createMarkdownBlockAccumulator(): MarkdownBlockAccumulator {
+  return {
+    blocks: [],
+    counts: new Map<string, number>()
+  };
+}
+
+function updateMarkdownHeading(
+  currentHeading: MarkdownHeading | null,
+  line: string
+): MarkdownHeading | null {
+  return readMarkdownHeading(line) ?? currentHeading;
+}
+
+function readNextMarkdownFenceState(
+  line: string,
+  fenceState: MarkdownFenceState,
+  accumulator: MarkdownBlockAccumulator
+): MarkdownFenceState | null {
+  if (tryCloseMarkdownFence(line, fenceState, accumulator)) {
+    return null;
+  }
+
+  appendMarkdownFenceLine(fenceState, line);
+
+  return fenceState;
+}
+
+function tryCloseMarkdownFence(
+  line: string,
+  fenceState: MarkdownFenceState,
+  accumulator: MarkdownBlockAccumulator
+): boolean {
+  if (!isMarkdownFenceClose(line, fenceState)) {
+    return false;
+  }
+
+  if (fenceState.mermaid) {
+    accumulator.blocks.push(createMarkdownBlock(fenceState, accumulator.counts));
+  }
+
+  return true;
+}
+
+function appendMarkdownFenceLine(fenceState: MarkdownFenceState, line: string): void {
+  if (fenceState.mermaid) {
+    fenceState.lines.push(line);
+  }
+}
+
+function createMarkdownBlock(
+  fenceState: MarkdownFenceState,
+  counts: Map<string, number>
+): MarkdownBlock {
+  const count = (counts.get(fenceState.block.baseId) ?? 0) + 1;
+
+  counts.set(fenceState.block.baseId, count);
+
+  return {
+    id: createMarkdownBlockId(fenceState.block.baseId, count),
+    source: fenceState.lines.join("\n").trim(),
+    title: createMarkdownBlockTitle(fenceState.block.baseTitle, count)
+  };
+}
+
+function createMarkdownBlockId(baseId: string, count: number): string {
+  return count === 1 ? baseId : `${baseId}-${count}`;
+}
+
+function createMarkdownBlockTitle(baseTitle: string, count: number): string {
+  return count === 1 ? baseTitle : `${baseTitle} (${count})`;
+}
+
+function readMarkdownBlockIdentity(
+  heading: MarkdownHeading | null,
+  fallbackId: string,
+  fallbackTitle: string
+): MarkdownBlockIdentity {
+  return heading ?? {
+    baseId: fallbackId,
+    baseTitle: fallbackTitle
+  };
+}
+
+function readMarkdownFenceInfoToken(info: string): string {
+  const [token] = info.split(/\s+/u);
+
+  return token;
+}
+
+function createHeadingSlug(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+
+  return slug.length > 0 ? slug : "diagram";
+}
+
+function createDiagramSourceId(absoluteDiagramPath: string, blockId: string | null = null): string {
+  return blockId === null
+    ? normalizePath(absoluteDiagramPath)
+    : `${normalizePath(absoluteDiagramPath)}#${blockId}`;
+}
+
+function createGeneratedMarkdownSlug(fileSlug: string, blockId: string, useBlockSuffix: boolean): string {
+  return useBlockSuffix ? `${fileSlug}/${blockId}` : fileSlug;
+}
+
+function createGeneratedMarkdownSourcePath(
+  relativePath: string,
+  blockId: string,
+  useBlockSuffix: boolean
+): string {
+  return useBlockSuffix ? `${relativePath}#${blockId}` : relativePath;
+}
+
+function createGeneratedMarkdownDiagramPath(
+  fileName: string,
+  blockId: string,
+  useBlockSuffix: boolean
+): string {
+  return useBlockSuffix ? `${normalizePath(fileName)}#${blockId}` : normalizePath(fileName);
+}
+
+function createGeneratedMarkdownCollectionEntry(input: {
+  absolutePath: string;
+  block: MarkdownBlock;
+  fileSlug: string;
+  relativePath: string;
+  useBlockSuffix: boolean;
+}): LoadedCollectionEntry {
+  return {
+    entry: {
+      slug: createGeneratedMarkdownSlug(input.fileSlug, input.block.id, input.useBlockSuffix),
+      sourcePath: createGeneratedMarkdownSourcePath(
+        input.relativePath,
+        input.block.id,
+        input.useBlockSuffix
+      ),
+      title: input.block.title,
+      tour: createGeneratedDiagramTour({
+        diagramPath: createGeneratedMarkdownDiagramPath(
+          basename(input.absolutePath),
+          input.block.id,
+          input.useBlockSuffix
+        ),
+        diagramSource: input.block.source,
+        title: input.block.title
+      })
+    },
+    sourceId: createDiagramSourceId(input.absolutePath, input.block.id)
+  };
+}
+
+async function loadAuthoredTourDocument(input: {
+  absoluteTourPath: string;
+  context: TourContext;
+}): Promise<LoadedAuthoredTour> {
+  const rawTour = await readRawTourDocument(input);
+  const loadedDiagram = await readDiagramSource({
+    absoluteTourPath: input.absoluteTourPath,
+    context: input.context,
+    diagramPath: rawTour.diagram
+  });
+
+  return {
+    ownedDiagramSourceId: loadedDiagram.ownedDiagramSourceId,
+    tour: resolveLoadedTour({
+      context: input.context,
+      diagramSource: loadedDiagram.source,
+      rawTour
+    })
+  };
+}
+
+function createGeneratedDiagramTour(input: {
+  diagramPath: string;
+  diagramSource: string;
+  title: string;
+}): ResolvedDiagramTour {
+  const nodeIndex = createNodeIndex(input.diagramSource);
+
+  return {
+    sourceKind: "generated",
+    version: SUPPORTED_TOUR_VERSION,
+    title: input.title,
+    diagram: createResolvedDiagram(input.diagramPath, input.diagramSource, nodeIndex),
+    steps: createGeneratedSteps(nodeIndex, input.title)
+  };
+}
+
+function readFileStem(sourcePath: string): string {
+  return removeKnownSuffix(basename(sourcePath));
+}
+
+function removeKnownSuffix(sourcePath: string): string {
+  if (sourcePath.endsWith(TOUR_FILE_SUFFIX)) {
+    return sourcePath.replace(TOUR_FILE_SUFFIX, "");
+  }
+
+  return DIAGRAM_FILE_SUFFIXES.reduce((result, suffix) => {
+    return result.endsWith(suffix) ? result.slice(0, -suffix.length) : result;
+  }, sourcePath);
+}
+
+function createGeneratedTitle(absoluteDiagramPath: string): string {
+  const words = readFileStem(basename(absoluteDiagramPath))
+    .split(/[-_]+/u)
+    .filter((word) => word.length > 0)
+    .map(capitalizeWord)
+    .join(" ");
+
+  return words.length > 0 ? words : "Diagram";
+}
+
+function shouldIgnoreGeneratedDiscoveryError(absoluteDiagramPath: string, error: unknown): boolean {
+  return (
+    absoluteDiagramPath.endsWith(MARKDOWN_DIAGRAM_FILE_SUFFIX) &&
+    error instanceof Error &&
+    error.message.includes(NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE)
+  );
+}
+
+function capitalizeWord(input: string): string {
+  return input.replace(/^./u, (character) => character.toUpperCase());
 }
 
 function asNonEmptyString(value: unknown, message: string): string {

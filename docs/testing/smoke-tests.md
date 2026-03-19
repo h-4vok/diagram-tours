@@ -17,23 +17,28 @@ File: `packages/web-player/smoke/startup-modes.spec.ts`
 
 ### Startup modes -- repo-wide startup exposes repo-only tours in browse
 
-- Starts the server in `dev` mode without parameters
+- Starts the built `diagram-tours` CLI with no positional target
+- Uses the wizard to select `Open current directory`
+- Chooses not to open the browser from the wizard
 - Navigates to the `payment-flow` tour
 - Opens the browse panel
 - Verifies that `preview target notice` is not shown
 - Verifies that search can find `Alpha Tour`
 - Verifies that search can find `Beta Tour`
 - Verifies that search can find `Release Pipeline`
+- Verifies that the printed URL matches the launched port
 
 Why these checks exist:
 
+- they confirm that the no-arg wizard loads the current working directory
 - they confirm the source target is repo-wide and not just `examples`
 - they use tours from different parts of the repo to avoid a weak test
 - they validate the collection through the browser itself, not through loader internals
+- they confirm that the CLI prints the final runtime URL clearly
 
 ### Startup modes -- explicit examples directory keeps browse scoped to shipped examples
 
-- Starts the server with `bun run dev ./examples`
+- Starts the built CLI with `diagram-tours ./examples`
 - Navigates to the `payment-flow` tour
 - Opens the browse panel
 - Verifies that `preview target notice` is not shown
@@ -51,7 +56,7 @@ Why these checks exist:
 
 ### Startup modes -- explicit single-file startup limits browse to one tour
 
-- Starts the server with `bun run dev ./examples/payment-flow/payment-flow.tour.yaml`
+- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.tour.yaml`
 - Opens the browse panel from the root route
 - Verifies that `preview target notice` mentions `payment-flow.tour.yaml`
 - Verifies that browse shows `Payment Flow`
@@ -65,8 +70,8 @@ Why these checks exist:
 
 ### Startup modes -- interactive open-all matches repo-wide startup
 
-- Starts the server with `bun run dev:interactive`
-- Chooses `Open all tours` in the console
+- Starts the built CLI with no positional target
+- Chooses `Open current directory` in the console wizard
 - Navigates to the `payment-flow` tour
 - Opens the browse panel
 - Repeats the same checks as the repo-wide startup case
@@ -78,9 +83,10 @@ Why these checks exist:
 
 ### Startup modes -- interactive directory selection matches examples-only startup
 
-- Starts the server with `bun run dev:interactive`
+- Starts the built CLI with no positional target
 - Chooses `Open a directory`
 - Enters `./examples`
+- Chooses not to open the browser
 - Navigates to the `refund-flow` tour
 - Opens the browse panel
 - Repeats the same checks as the `./examples` case
@@ -92,9 +98,10 @@ Why these checks exist:
 
 ### Startup modes -- interactive file selection matches single-file startup
 
-- Starts the server with `bun run dev:interactive`
-- Chooses `Open a .tour.yaml file`
+- Starts the built CLI with no positional target
+- Chooses `Open a diagram or tour file`
 - Enters `./examples/payment-flow/payment-flow.tour.yaml`
+- Chooses not to open the browser
 - Opens the browse panel
 - Repeats the same checks as the single-file case
 
@@ -104,7 +111,7 @@ Why these checks exist:
 
 ### Startup modes -- interactive startup skips the prompt when a target is explicit
 
-- Starts the server with `bun run dev:interactive ./examples/refund-flow/refund-flow.tour.yaml`
+- Starts the built CLI with `diagram-tours ./examples/refund-flow/refund-flow.tour.yaml`
 - Opens the browse panel
 - Verifies the same visible shape as a single-file preview for `Refund Flow`
 - Verifies that the process output does not include interactive prompts
@@ -112,7 +119,33 @@ Why these checks exist:
 Why these checks exist:
 
 - they guarantee the precedence of an explicit argument over the wizard
-- they cover the case where the interactive CLI must behave like a direct command
+- they cover the case where the global CLI must behave like a direct command
+
+### Startup modes -- explicit diagram startup generates a fallback walkthrough
+
+- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.mmd`
+- Opens the browse panel from the root route
+- Verifies that `preview target notice` mentions `payment-flow.mmd`
+- Verifies that browse shows `Payment Flow`
+- Verifies that the first step is the generated overview step
+
+Why these checks exist:
+
+- they validate direct diagram-file startup without any authored YAML
+- they confirm that generated fallback tours are visible through the same product surface
+
+### Startup modes -- explicit markdown startup generates multiple fallback entries
+
+- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/checklist.md`
+- Opens the browse panel from the root route
+- Verifies that `preview target notice` mentions `checklist.md`
+- Verifies that browse shows both `Overview` and `Details`
+- Verifies that the initial step is a generated overview step
+
+Why these checks exist:
+
+- they validate `.md` as a first-class diagram target
+- they confirm that a single Markdown file can surface multiple generated entries
 
 ## Docs Shell And Navigation
 
@@ -133,6 +166,40 @@ Why these checks exist:
 
 - they exercise the shell, browse panel, deep links, and cross-tour navigation in the same smoke test
 - they verify that the player and diagram remain coherent during navigation
+
+### Generated fallback tours render overview and node-by-node steps
+
+- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.mmd`
+- Verifies that the first step text is `Overview of Payment Flow.`
+- Advances to the next step
+- Verifies that the step text becomes `Focus on Client.`
+
+Why these checks exist:
+
+- they protect the default generated-tour contract for raw Mermaid inputs
+- they confirm that fallback tours reuse the same player flow as authored tours
+
+### Authored tours can target a Markdown Mermaid block by fragment
+
+- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/checklist.tour.yaml`
+- Verifies that the player renders only the `Details` Mermaid block
+- Verifies that the authored step text resolves node labels from the selected block
+
+Why these checks exist:
+
+- they protect the `file.md#fragment` authored-tour contract
+- they prove Markdown-backed authored tours work in the packaged runtime, not just parser tests
+
+### Markdown files without Mermaid blocks fail cleanly before startup
+
+- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/empty.md`
+- Verifies that startup fails with a clear CLI-visible error
+- Verifies that the output does not degrade into repeated runtime `500` noise
+
+Why these checks exist:
+
+- they protect the fail-fast UX for invalid Markdown inputs
+- they keep the new Markdown support aligned with the no-spam startup policy
 
 ### Browse search keeps long queries strict enough to avoid unrelated fuzzy matches
 

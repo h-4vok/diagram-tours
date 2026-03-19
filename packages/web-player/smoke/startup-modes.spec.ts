@@ -9,13 +9,14 @@ test.describe("startup modes", () => {
   test("repo-wide startup exposes repo-only tours in browse", async ({ page }) => {
     const server = await startDevServer({
       port: 4174,
-      script: "dev"
+      promptInputs: ["1", "n", "", ""]
     });
 
     try {
       await openBrowse(page, `${server.baseUrl}/payment-flow`);
 
       await expectRepoWideBrowse(page);
+      expect(server.output).toContain(server.baseUrl);
     } finally {
       await server.stop();
     }
@@ -24,8 +25,7 @@ test.describe("startup modes", () => {
   test("explicit examples directory keeps browse scoped to shipped examples", async ({ page }) => {
     const server = await startDevServer({
       args: ["./examples"],
-      port: 4175,
-      script: "dev"
+      port: 4175
     });
 
     try {
@@ -40,8 +40,7 @@ test.describe("startup modes", () => {
   test("explicit single-file startup limits browse to one tour", async ({ page }) => {
     const server = await startDevServer({
       args: ["./examples/payment-flow/payment-flow.tour.yaml"],
-      port: 4176,
-      script: "dev"
+      port: 4176
     });
 
     try {
@@ -62,8 +61,7 @@ test.describe("startup modes", () => {
   }) => {
     const server = await startDevServer({
       port: 4177,
-      promptInputs: ["1"],
-      script: "dev:interactive"
+      promptInputs: ["1", "n", "", ""]
     });
 
     try {
@@ -78,8 +76,7 @@ test.describe("startup modes", () => {
   test("interactive directory selection matches examples-only startup", async ({ page }) => {
     const server = await startDevServer({
       port: 4178,
-      promptInputs: ["2", "./examples"],
-      script: "dev:interactive"
+      promptInputs: ["2", "./examples", "n", "", ""]
     });
 
     try {
@@ -94,8 +91,7 @@ test.describe("startup modes", () => {
   test("interactive file selection matches single-file startup", async ({ page }) => {
     const server = await startDevServer({
       port: 4179,
-      promptInputs: ["3", "./examples/payment-flow/payment-flow.tour.yaml"],
-      script: "dev:interactive"
+      promptInputs: ["3", "./examples/payment-flow/payment-flow.tour.yaml", "n", "", ""]
     });
 
     try {
@@ -114,8 +110,7 @@ test.describe("startup modes", () => {
   test("interactive startup skips the prompt when a target is explicit", async ({ page }) => {
     const server = await startDevServer({
       args: ["./examples/refund-flow/refund-flow.tour.yaml"],
-      port: 4180,
-      script: "dev:interactive"
+      port: 4180
     });
 
     try {
@@ -126,8 +121,43 @@ test.describe("startup modes", () => {
         filename: "refund-flow.tour.yaml",
         unexpectedTitle: "Payment Flow"
       });
-      expect(server.output).not.toContain("Choose what to preview:");
+      expect(server.output).not.toContain("Choose what to open:");
       expect(server.output).not.toContain("Select an option:");
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test("explicit diagram startup generates a fallback tour preview", async ({ page }) => {
+    const server = await startDevServer({
+      args: ["./examples/payment-flow/payment-flow.mmd"],
+      port: 4182
+    });
+
+    try {
+      await openBrowse(page, server.baseUrl);
+
+      await expect(page.getByTestId("preview-target-notice")).toContainText("payment-flow.mmd");
+      await expect(readBrowsePanel(page).getByText("Payment Flow", { exact: true })).toBeVisible();
+      await expect(page.getByTestId("step-text")).toContainText("Overview of Payment Flow.");
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test("explicit markdown startup generates multiple fallback entries from one file", async ({ page }) => {
+    const server = await startDevServer({
+      args: ["./fixtures/markdown-mermaid/checklist.md"],
+      port: 4184
+    });
+
+    try {
+      await openBrowse(page, server.baseUrl);
+
+      await expect(page.getByTestId("preview-target-notice")).toContainText("checklist.md");
+      await expect(readBrowsePanel(page).getByText("Overview", { exact: true })).toBeVisible();
+      await expect(readBrowsePanel(page).getByText("Details", { exact: true })).toBeVisible();
+      await expect(page.getByTestId("step-text")).toContainText("Overview of Overview.");
     } finally {
       await server.stop();
     }

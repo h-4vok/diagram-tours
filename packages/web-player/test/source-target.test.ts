@@ -38,4 +38,14 @@ describe("source-target", () => {
       path: target
     });
   });
+
+  it("describes markdown preview targets explicitly", () => {
+    const target = resolve(process.cwd(), "../../fixtures/markdown-mermaid/checklist.md");
+
+    expect(describeSourceTarget(target)).toEqual({
+      kind: "file",
+      label: "checklist.md",
+      path: target
+    });
+  });
 });

@@ -1,12 +1,19 @@
 {
   "name": "@diagram-tour/web-player",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
+  "main": "./build/index.js",
+  "exports": {
+    ".": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
   "scripts": {
     "dev": "vite dev",
     "build": "svelte-kit sync && vite build",
-    "preview": "vite preview",
+    "preview": "node build",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "svelte-kit sync && vitest run --config ./vitest.config.ts --coverage",
     "smoke": "playwright test --config ./playwright.config.ts",
@@ -20,7 +27,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.53.2",
-    "@sveltejs/adapter-auto": "6.1.1",
+    "@sveltejs/adapter-node": "5.3.2",
     "@sveltejs/kit": "2.53.4",
     "@testing-library/svelte": "^5.2.8",
     "jsdom": "^26.1.0",

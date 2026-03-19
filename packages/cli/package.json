@@ -1,0 +1,22 @@
+{
+  "name": "diagram-tours",
+  "version": "0.1.0-alpha.3",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "diagram-tours": "./dist/bin/diagram-tours.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config ./vitest.config.ts --coverage",
+    "lint": "eslint src/**/*.ts test/**/*.ts --max-warnings 0"
+  },
+  "dependencies": {
+    "@diagram-tour/parser": "workspace:*",
+    "@diagram-tour/web-player": "workspace:*"
+  }
+}
