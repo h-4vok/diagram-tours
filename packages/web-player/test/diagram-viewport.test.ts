@@ -349,6 +349,77 @@ describe("diagram viewport helpers", () => {
       scrollTop: 270
     });
   });
+
+  it("preserves the current viewport when selector helpers cannot find any diagram elements", () => {
+    const container = document.createElement("div");
+    const content = {
+      getBoundingClientRect: () => createDomRect({ height: 960, left: 0, top: 0, width: 1180 })
+    } as HTMLElement;
+    Object.defineProperty(content, "querySelector", {
+      value: () => null,
+      writable: true
+    });
+
+    Object.defineProperties(container, {
+      clientHeight: { value: 400, writable: true },
+      clientWidth: { value: 600, writable: true },
+      scrollHeight: { value: 960, writable: true },
+      scrollLeft: { value: 22, writable: true },
+      scrollTop: { value: 18, writable: true },
+      scrollWidth: { value: 1180, writable: true }
+    });
+
+    focusDiagramViewport({
+      container,
+      content,
+      focusGroup: createFocusGroup(["missing"])
+    });
+
+    expect(readScrollPosition(container)).toEqual({
+      scrollLeft: 22,
+      scrollTop: 18
+    });
+  });
+
+  it("falls back to querySelector when querySelectorAll is unavailable", () => {
+    const fixture = createViewportFixture();
+
+    setStageMarkup(fixture, '<svg></svg><div data-diagram-element-id="focus"></div>');
+    mockStageRect(fixture, { height: 960, left: 0, top: 0, width: 1180 });
+    mockElementRect(fixture, "svg", { height: 720, left: 130, top: 120, width: 920 });
+    mockRect(
+      fixture.content.querySelector('[data-diagram-element-id="focus"]') as Element,
+      { height: 80, left: 590, top: 430, width: 100 }
+    );
+    Object.defineProperty(fixture.content, "querySelectorAll", {
+      value: undefined,
+      writable: true
+    });
+
+    focusDiagramViewport({
+      container: fixture.container,
+      content: fixture.content,
+      focusGroup: createFocusGroup(["focus"])
+    });
+
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 340,
+      scrollTop: 270
+    });
+
+    assignScrollPosition(fixture.container, { scrollLeft: 21, scrollTop: 19 });
+
+    focusDiagramViewport({
+      container: fixture.container,
+      content: fixture.content,
+      focusGroup: createFocusGroup(["missing"])
+    });
+
+    expect(readScrollPosition(fixture.container)).toEqual({
+      scrollLeft: 21,
+      scrollTop: 19
+    });
+  });
 });
 
 function createViewportFixture(input?: {

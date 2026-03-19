@@ -32,6 +32,14 @@ describe("@diagram-tour/parser", () => {
       sourceKind: "authored",
       title: "Payment Flow",
       diagram: {
+        elements: [
+          { id: "client", kind: "node", label: "Client" },
+          { id: "api_gateway", kind: "node", label: "API Gateway" },
+          { id: "validation_service", kind: "node", label: "Validation Service" },
+          { id: "payment_service", kind: "node", label: "Payment Service" },
+          { id: "payment_provider", kind: "node", label: "Payment Provider" },
+          { id: "response", kind: "node", label: "Response" }
+        ],
         path: "./payment-flow.mmd",
         source: [
           "flowchart LR",
@@ -41,40 +49,33 @@ describe("@diagram-tour/parser", () => {
           "  payment_service --> payment_provider[Payment Provider]",
           "  payment_provider --> response[Response]"
         ].join("\n"),
-        nodes: [
-          { id: "client", label: "Client" },
-          { id: "api_gateway", label: "API Gateway" },
-          { id: "validation_service", label: "Validation Service" },
-          { id: "payment_service", label: "Payment Service" },
-          { id: "payment_provider", label: "Payment Provider" },
-          { id: "response", label: "Response" }
-        ]
+        type: "flowchart"
       },
       steps: [
         {
           index: 1,
-          focus: [{ id: "api_gateway", label: "API Gateway" }],
+          focus: [{ id: "api_gateway", kind: "node", label: "API Gateway" }],
           text:
             "The API Gateway is the public edge of the checkout system. It receives untrusted traffic from Client and normalizes the request before any payment work begins.\n"
         },
         {
           index: 2,
-          focus: [{ id: "validation_service", label: "Validation Service" }],
+          focus: [{ id: "validation_service", kind: "node", label: "Validation Service" }],
           text:
             "The Validation Service protects the payment path by rejecting malformed amounts, expired intents, and requests that do not match business rules before they reach Payment Service.\n"
         },
         {
           index: 3,
           focus: [
-            { id: "payment_service", label: "Payment Service" },
-            { id: "payment_provider", label: "Payment Provider" }
+            { id: "payment_service", kind: "node", label: "Payment Service" },
+            { id: "payment_provider", kind: "node", label: "Payment Provider" }
           ],
           text:
             "The Payment Service owns the merchant-side transaction state while Payment Provider talks to the banking network. This split lets the product keep internal business logic separate from external settlement concerns.\n"
         },
         {
           index: 4,
-          focus: [{ id: "response", label: "Response" }],
+          focus: [{ id: "response", kind: "node", label: "Response" }],
           text:
             "Once the provider result is known, the platform turns it into a stable Response that the client can render without needing to understand provider-specific outcomes.\n"
         }
@@ -102,9 +103,10 @@ describe("@diagram-tour/parser", () => {
       sourceKind: "authored",
       title: "Empty Focus",
       diagram: {
+        elements: [{ id: "api_gateway", kind: "node", label: "API Gateway" }],
         path: "./diagram.mmd",
         source: "flowchart LR\n  api_gateway[API Gateway]",
-        nodes: [{ id: "api_gateway", label: "API Gateway" }]
+        type: "flowchart"
       },
       steps: [
         {
@@ -229,6 +231,169 @@ describe("@diagram-tour/parser", () => {
     );
   });
 
+  it("loads a valid sequence tour with participant and message references", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sequenceDiagram",
+        "  participant user as User",
+        "  participant api as API Gateway",
+        "  user->>api: [request_sent] Send request"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Sequence Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - user",
+        "      - request_sent",
+        "    text: >",
+        "      {{user}} triggers {{request_sent}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toEqual({
+      version: 1,
+      sourceKind: "authored",
+      title: "Sequence Tour",
+      diagram: {
+        elements: [
+          { id: "user", kind: "participant", label: "User" },
+          { id: "api", kind: "participant", label: "API Gateway" },
+          { id: "request_sent", kind: "message", label: "Send request" }
+        ],
+        path: "./diagram.mmd",
+        source: [
+          "sequenceDiagram",
+          "  participant user as User",
+          "  participant api as API Gateway",
+          "  user->>api: Send request"
+        ].join("\n"),
+        type: "sequence"
+      },
+      steps: [
+        {
+          focus: [
+            { id: "user", kind: "participant", label: "User" },
+            { id: "request_sent", kind: "message", label: "Send request" }
+          ],
+          index: 1,
+          text: "User triggers Send request.\n"
+        }
+      ]
+    });
+  });
+
+  it("uses the participant id as the label when a sequence participant has no alias", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sequenceDiagram",
+        "  participant api",
+        "  api->>api: [self_check] Self check"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Bare Participant",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - api",
+        "    text: >",
+        "      {{api}} owns {{self_check}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        elements: [
+          { id: "api", kind: "participant", label: "api" },
+          { id: "self_check", kind: "message", label: "Self check" }
+        ]
+      },
+      steps: [
+        {
+          text: "api owns Self check.\n"
+        }
+      ]
+    });
+  });
+
+  it("fails when a sequence focus reference uses an unknown participant or message id", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sequenceDiagram",
+        "  participant user as User",
+        "  participant api as API Gateway"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Broken Sequence Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - missing_message",
+        "    text: >",
+        "      Overview."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid participant or message id "missing_message"`
+    );
+  });
+
+  it("fails when a sequence text reference uses an unknown participant or message id", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sequenceDiagram",
+        "  participant user as User",
+        "  participant api as API Gateway"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Broken Sequence Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - user",
+        "    text: >",
+        "      {{missing_message}} is not valid."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid participant or message id "missing_message"`
+    );
+  });
+
+  it("fails when a sequence diagram reuses a participant or message id", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sequenceDiagram",
+        "  participant user as User",
+        "  user->>user: [user] Recursive"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Duplicate Sequence Id",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      Overview."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": diagram contains duplicate Mermaid sequence id "user"`
+    );
+  });
+
   it("wraps underlying file-system errors with tour context", async () => {
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
@@ -285,6 +450,31 @@ describe("@diagram-tour/parser", () => {
       "Focus on Response."
     ]);
     expect(collection.skipped).toHaveLength(0);
+  });
+
+  it("builds generated fallback steps from a raw sequence diagram file target", async () => {
+    const sequenceRoot = await createTempDiagramDirectory({
+      "diagrams/order-sequence.mmd": [
+        "sequenceDiagram",
+        "  participant user as User",
+        "  participant api as API Gateway",
+        "  user->>api: [request_sent] Send request",
+        "  api-->>user: Untagged response"
+      ].join("\n")
+    });
+
+    const collection = await loadResolvedTourCollection(resolve(sequenceRoot, "./diagrams/order-sequence.mmd"));
+
+    expect(collection.entries).toHaveLength(1);
+    expect(collection.entries[0]?.tour.diagram.type).toBe("sequence");
+    expect(collection.entries[0]?.tour.steps.map((step) => step.text)).toEqual([
+      "Overview of Order Sequence.",
+      "Focus on User.",
+      "Focus on API Gateway.",
+      "Focus on Send request."
+    ]);
+    expect(collection.entries[0]?.tour.diagram.source).toContain("user->>api: Send request");
+    expect(collection.entries[0]?.tour.diagram.source).not.toContain("[request_sent]");
   });
 
   it("builds a generated collection from a single markdown diagram file target", async () => {
@@ -579,6 +769,52 @@ describe("@diagram-tour/parser", () => {
     });
   });
 
+  it("loads an authored tour that selects a markdown sequence block by fragment", async () => {
+    const tourPath = await createTempTour({
+      diagramPath: "diagram.md",
+      mermaid: [
+        "# Overview",
+        "",
+        "```mermaid",
+        "flowchart TD",
+        "  start[Start] --> finish[Finish]",
+        "```",
+        "",
+        "# Sequence",
+        "",
+        "```mermaid",
+        "sequenceDiagram",
+        "  participant user as User",
+        "  participant api as API Gateway",
+        "  user->>api: [request_sent] Send request",
+        "```"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Markdown Sequence Tour",
+        "diagram: ./diagram.md#sequence",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - request_sent",
+        "    text: >",
+        "      Focus on {{request_sent}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        path: "./diagram.md#sequence",
+        type: "sequence"
+      },
+      steps: [
+        {
+          text: "Focus on Send request.\n"
+        }
+      ]
+    });
+  });
+
   it("fails when a markdown fragment does not exist", async () => {
     const tourPath = await createTempTour({
       diagramPath: "diagram.md",
@@ -782,11 +1018,13 @@ describe("@diagram-tour/parser", () => {
       "decision-flow",
       "huge-system",
       "incident-response",
+      "order-sequence",
       "parallel-onboarding",
       "payment-flow",
       "refund-flow",
       "release-pipeline",
       "support-decision-tree",
+      "support-handoff",
       "viewport-centering",
       "viewport-stability"
     ]);

@@ -17,6 +17,7 @@
     "coverage": "bun run test",
     "smoke": "bun run build && bun run --cwd packages/web-player smoke",
     "dev": "bun run ./scripts/dev-web-player.ts",
+    "dev:open": "bun run ./scripts/dev-web-player.ts --open",
     "dev:interactive": "bun run ./scripts/dev-web-player-interactive.ts",
     "install:cli": "bun run --cwd packages/cli build && npm install -g ./packages/cli",
     "changeset": "changeset",

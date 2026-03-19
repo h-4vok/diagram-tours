@@ -4,8 +4,9 @@ import { basename, dirname, relative, resolve } from "node:path";
 
 import {
   SUPPORTED_TOUR_VERSION,
+  type DiagramElement,
   type DiagramTour,
-  type MermaidNode,
+  type DiagramType,
   type ResolvedDiagramTour,
   type ResolvedDiagramTourCollection,
   type ResolvedDiagramTourCollectionEntry,
@@ -14,15 +15,20 @@ import {
 } from "@diagram-tour/core";
 import { parse as parseYaml } from "yaml";
 
-const MERMAID_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
+const FLOWCHART_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
+const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
+const SEQUENCE_PARTICIPANT_PATTERN =
+  /^\s*(?:create\s+)?(participant|actor)\s+([A-Za-z][A-Za-z0-9_]*)(?:\s+as\s+(.+?))?\s*$/u;
+const SEQUENCE_MESSAGE_PATTERN =
+  /:\s*\[([A-Za-z][A-Za-z0-9_]*)\]\s+(.+?)\s*(?:;+\s*)?$/u;
 const DIAGRAM_FILE_SUFFIXES = [".mmd", ".md", ".mermaid"];
 const MARKDOWN_DIAGRAM_FILE_SUFFIX = ".md";
 const TOUR_FILE_SUFFIX = ".tour.yaml";
 const NO_VALID_TOURS_MESSAGE = "No valid tours or diagrams were discovered";
 const NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE = "does not contain any Mermaid fenced blocks.";
 
-type NodeIndex = Map<string, MermaidNode>;
+type ElementIndex = Map<string, DiagramElement>;
 type ReferenceKind = "focus" | "text";
 type DiagramReference = {
   fragment: string | null;
@@ -67,6 +73,16 @@ type MarkdownBlockAccumulator = {
 type SourcePaths = {
   diagramPaths: string[];
   tourPaths: string[];
+};
+type DiagramModel = {
+  elements: DiagramElement[];
+  renderSource: string;
+  type: DiagramType;
+};
+type SequenceDiagramModel = {
+  messages: DiagramElement[];
+  participants: DiagramElement[];
+  renderSource: string;
 };
 
 export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagramTour> {
@@ -279,17 +295,23 @@ async function readDiagramSource(input: {
 
 function resolveLoadedTour(input: {
   context: TourContext;
+  diagramPath: string;
   diagramSource: string;
   rawTour: DiagramTour;
 }): ResolvedDiagramTour {
-  const nodeIndex = createNodeIndex(input.diagramSource);
+  const diagramModel = createDiagramModel(input.diagramSource, input.context);
+  const elementIndex = createElementIndex(diagramModel.elements);
 
   return {
     sourceKind: "authored",
     version: input.rawTour.version,
     title: input.rawTour.title,
-    diagram: createResolvedDiagram(input.rawTour.diagram, input.diagramSource, nodeIndex),
-    steps: resolveLoadedTourSteps(input.rawTour.steps, nodeIndex, input.context)
+    diagram: createResolvedDiagram(input.diagramPath, diagramModel),
+    steps: resolveLoadedTourSteps(input.rawTour.steps, {
+      context: input.context,
+      diagramType: diagramModel.type,
+      elementIndex
+    })
   };
 }
 
@@ -417,7 +439,7 @@ function addOwnedDiagramPath(
 }
 
 function createGeneratedSteps(
-  nodeIndex: NodeIndex,
+  elements: DiagramElement[],
   title: string
 ): ResolvedDiagramTour["steps"] {
   return [
@@ -426,37 +448,41 @@ function createGeneratedSteps(
       index: 1,
       text: `Overview of ${title}.`
     },
-    ...Array.from(nodeIndex.values()).map((node, index) => ({
-      focus: [node],
+    ...elements.map((element, index) => ({
+      focus: [element],
       index: index + 2,
-      text: `Focus on ${node.label}.`
+      text: `Focus on ${element.label}.`
     }))
   ];
 }
 
 function createResolvedDiagram(
   diagramPath: string,
-  diagramSource: string,
-  nodeIndex: NodeIndex
+  model: DiagramModel
 ): ResolvedDiagramTour["diagram"] {
   return {
+    elements: model.elements,
     path: normalizePath(diagramPath),
-    source: diagramSource,
-    nodes: Array.from(nodeIndex.values())
+    source: model.renderSource,
+    type: model.type
   };
 }
 
 function resolveLoadedTourSteps(
   steps: TourStep[],
-  nodeIndex: NodeIndex,
-  context: TourContext
+  input: {
+    context: TourContext;
+    diagramType: DiagramType;
+    elementIndex: ElementIndex;
+  }
 ): ResolvedDiagramTour["steps"] {
   return steps.map((step, index) =>
     resolveTourStep({
+      context: input.context,
+      diagramType: input.diagramType,
+      elementIndex: input.elementIndex,
       step,
-      stepIndex: index + 1,
-      nodeIndex,
-      context
+      stepIndex: index + 1
     })
   );
 }
@@ -514,110 +540,299 @@ function toTourStep(input: {
     focus: asArray(
       input.value.focus,
       createStepFieldMessage(input, "focus", "must be an array")
-    ).map((value) => toFocusNodeId(value, input)),
+    ).map((value) => toFocusElementId(value, input)),
     text: asNonEmptyString(input.value.text, createStepFieldMessage(input, "text", "is required"))
   };
 }
 
-function toFocusNodeId(
+function toFocusElementId(
   value: unknown,
   input: { stepIndex: number; context: TourContext }
 ): string {
   return asNonEmptyString(
     value,
-    createStepFieldMessage(input, "focus", "must contain only non-empty node ids")
+    createStepFieldMessage(input, "focus", "must contain only non-empty diagram element ids")
   );
 }
 
-function createNodeIndex(source: string): NodeIndex {
-  const nodes = new Map<string, MermaidNode>();
+function createDiagramModel(source: string, context: TourContext): DiagramModel {
+  const type = detectDiagramType(source);
 
-  for (const match of source.matchAll(MERMAID_NODE_PATTERN)) {
-    nodes.set(match[1], {
+  return type === "sequence"
+    ? createSequenceDiagramModel(source, context)
+    : createFlowchartDiagramModel(source);
+}
+
+function detectDiagramType(source: string): DiagramType {
+  return SEQUENCE_DIAGRAM_PATTERN.test(source) ? "sequence" : "flowchart";
+}
+
+function createFlowchartDiagramModel(source: string): DiagramModel {
+  return {
+    elements: extractFlowchartElements(source),
+    renderSource: source,
+    type: "flowchart"
+  };
+}
+
+function createSequenceDiagramModel(source: string, context: TourContext): DiagramModel {
+  const sequenceModel = extractSequenceDiagramModel(source, context);
+
+  return {
+    elements: [...sequenceModel.participants, ...sequenceModel.messages],
+    renderSource: sequenceModel.renderSource,
+    type: "sequence"
+  };
+}
+
+function extractFlowchartElements(source: string): DiagramElement[] {
+  const elements = new Map<string, DiagramElement>();
+
+  for (const match of source.matchAll(FLOWCHART_NODE_PATTERN)) {
+    elements.set(match[1], {
       id: match[1],
+      kind: "node",
       label: match[2].trim()
     });
   }
 
-  return nodes;
+  return Array.from(elements.values());
+}
+
+function extractSequenceDiagramModel(source: string, context: TourContext): SequenceDiagramModel {
+  const elements = new Map<string, DiagramElement>();
+  const participants: DiagramElement[] = [];
+  const messages: DiagramElement[] = [];
+  const renderLines = source.split("\n").map((line) =>
+    readSequenceRenderLine({
+      context,
+      elements,
+      line,
+      messages,
+      participants
+    })
+  );
+
+  return {
+    messages,
+    participants,
+    renderSource: renderLines.join("\n")
+  };
+}
+
+function readSequenceRenderLine(input: {
+  context: TourContext;
+  elements: Map<string, DiagramElement>;
+  line: string;
+  messages: DiagramElement[];
+  participants: DiagramElement[];
+}): string {
+  const participant = readSequenceParticipant(input.line);
+
+  if (participant !== null) {
+    return registerSequenceParticipantLine(input, participant);
+  }
+
+  const message = readSequenceMessage(input.line);
+
+  if (message === null) {
+    return input.line;
+  }
+
+  return registerSequenceMessageLine(input, message);
+}
+
+function registerSequenceParticipantLine(
+  input: {
+    context: TourContext;
+    elements: Map<string, DiagramElement>;
+    line: string;
+    participants: DiagramElement[];
+  },
+  participant: DiagramElement
+): string {
+  registerSequenceElement({
+    context: input.context,
+    element: participant,
+    elements: input.elements
+  });
+  input.participants.push(participant);
+
+  return input.line;
+}
+
+function registerSequenceMessageLine(
+  input: {
+    context: TourContext;
+    elements: Map<string, DiagramElement>;
+    line: string;
+    messages: DiagramElement[];
+  },
+  message: { element: DiagramElement; label: string }
+): string {
+  registerSequenceElement({
+    context: input.context,
+    element: message.element,
+    elements: input.elements
+  });
+  input.messages.push(message.element);
+
+  return replaceSequenceMessageLabel(input.line, message.label);
+}
+
+function readSequenceParticipant(line: string): DiagramElement | null {
+  const match = line.match(SEQUENCE_PARTICIPANT_PATTERN);
+
+  if (match === null) {
+    return null;
+  }
+
+  return {
+    id: match[2],
+    kind: "participant",
+    label: readSequenceParticipantLabel(match)
+  };
+}
+
+function readSequenceParticipantLabel(match: RegExpMatchArray): string {
+  const alias = match.at(3);
+
+  return alias === undefined ? match[2]! : alias.trim();
+}
+
+function readSequenceMessage(line: string): { element: DiagramElement; label: string } | null {
+  const match = line.match(SEQUENCE_MESSAGE_PATTERN);
+
+  if (match === null) {
+    return null;
+  }
+
+  const label = match[2].trim();
+
+  return {
+    element: {
+      id: match[1],
+      kind: "message",
+      label
+    },
+    label
+  };
+}
+
+function replaceSequenceMessageLabel(line: string, label: string): string {
+  return line.replace(SEQUENCE_MESSAGE_PATTERN, `: ${label}`);
+}
+
+function registerSequenceElement(input: {
+  context: TourContext;
+  element: DiagramElement;
+  elements: Map<string, DiagramElement>;
+}): void {
+  const existing = input.elements.get(input.element.id);
+
+  invariant(
+    existing === undefined,
+    createTourMessage(
+      input.context,
+      `diagram contains duplicate Mermaid sequence id "${input.element.id}"`
+    )
+  );
+  input.elements.set(input.element.id, input.element);
+}
+
+function createElementIndex(elements: DiagramElement[]): ElementIndex {
+  return new Map(elements.map((element) => [element.id, element]));
 }
 
 function resolveTourStep(input: {
+  context: TourContext;
+  diagramType: DiagramType;
+  elementIndex: ElementIndex;
   step: TourStep;
   stepIndex: number;
-  nodeIndex: NodeIndex;
-  context: TourContext;
 }) {
   return {
     index: input.stepIndex,
-    focus: resolveFocusNodes(input),
+    focus: resolveFocusElements(input),
     text: resolveTextReferences(input)
   };
 }
 
-function resolveFocusNodes(input: {
+function resolveFocusElements(input: {
+  context: TourContext;
+  diagramType: DiagramType;
+  elementIndex: ElementIndex;
   step: TourStep;
   stepIndex: number;
-  nodeIndex: NodeIndex;
-  context: TourContext;
-}): MermaidNode[] {
-  return input.step.focus.map((nodeId) =>
-    resolveNode({
-      id: nodeId,
-      nodeIndex: input.nodeIndex,
-      message: createUnknownNodeMessage({
-        nodeId,
-        stepIndex: input.stepIndex,
+}): DiagramElement[] {
+  return input.step.focus.map((elementId) =>
+    resolveElement({
+      diagramType: input.diagramType,
+      elementId,
+      elementIndex: input.elementIndex,
+      message: createUnknownElementMessage({
+        context: input.context,
+        diagramType: input.diagramType,
+        elementId,
         kind: "focus",
-        context: input.context
+        stepIndex: input.stepIndex
       })
     })
   );
 }
 
 function resolveTextReferences(input: {
+  context: TourContext;
+  diagramType: DiagramType;
+  elementIndex: ElementIndex;
   step: TourStep;
   stepIndex: number;
-  nodeIndex: NodeIndex;
-  context: TourContext;
 }): string {
-  return input.step.text.replaceAll(NODE_REFERENCE_PATTERN, (_match, nodeId: string) =>
-    resolveNode({
-      id: nodeId,
-      nodeIndex: input.nodeIndex,
-      message: createUnknownNodeMessage({
-        nodeId,
-        stepIndex: input.stepIndex,
+  return input.step.text.replaceAll(NODE_REFERENCE_PATTERN, (_match, elementId: string) =>
+    resolveElement({
+      diagramType: input.diagramType,
+      elementId,
+      elementIndex: input.elementIndex,
+      message: createUnknownElementMessage({
+        context: input.context,
+        diagramType: input.diagramType,
+        elementId,
         kind: "text",
-        context: input.context
+        stepIndex: input.stepIndex
       })
     }).label
   );
 }
 
-function resolveNode(input: {
-  id: string;
-  nodeIndex: NodeIndex;
+function resolveElement(input: {
+  diagramType: DiagramType;
+  elementId: string;
+  elementIndex: ElementIndex;
   message: string;
-}): MermaidNode {
-  const node = input.nodeIndex.get(input.id);
+}): DiagramElement {
+  const element = input.elementIndex.get(input.elementId);
 
-  invariant(node !== undefined, input.message);
+  invariant(element !== undefined, input.message);
 
-  return node;
+  return element;
 }
 
-function createUnknownNodeMessage(input: {
-  nodeId: string;
-  stepIndex: number;
-  kind: ReferenceKind;
+function createUnknownElementMessage(input: {
   context: TourContext;
+  diagramType: DiagramType;
+  elementId: string;
+  kind: ReferenceKind;
+  stepIndex: number;
 }): string {
   return createStepFieldMessage(
     input,
     input.kind,
-    `references unknown Mermaid node id "${input.nodeId}"`
+    `references unknown Mermaid ${readUnknownElementTarget(input.diagramType)} "${input.elementId}"`
   );
+}
+
+function readUnknownElementTarget(diagramType: DiagramType): string {
+  return diagramType === "sequence" ? "participant or message id" : "node id";
 }
 
 function createSlug(sourcePath: string): string {
@@ -1082,6 +1297,7 @@ async function loadAuthoredTourDocument(input: {
     ownedDiagramSourceId: loadedDiagram.ownedDiagramSourceId,
     tour: resolveLoadedTour({
       context: input.context,
+      diagramPath: rawTour.diagram,
       diagramSource: loadedDiagram.source,
       rawTour
     })
@@ -1093,14 +1309,17 @@ function createGeneratedDiagramTour(input: {
   diagramSource: string;
   title: string;
 }): ResolvedDiagramTour {
-  const nodeIndex = createNodeIndex(input.diagramSource);
+  const diagramModel = createDiagramModel(
+    input.diagramSource,
+    createTourContext(normalizePath(input.diagramPath))
+  );
 
   return {
     sourceKind: "generated",
     version: SUPPORTED_TOUR_VERSION,
     title: input.title,
-    diagram: createResolvedDiagram(input.diagramPath, input.diagramSource, nodeIndex),
-    steps: createGeneratedSteps(nodeIndex, input.title)
+    diagram: createResolvedDiagram(input.diagramPath, diagramModel),
+    steps: createGeneratedSteps(diagramModel.elements, input.title)
   };
 }
 

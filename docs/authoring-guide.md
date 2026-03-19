@@ -8,11 +8,12 @@ It also supports Markdown files that contain fenced ```mermaid blocks. This is e
 
 ## Start with Stable Mermaid IDs
 
-Every node that may appear in `focus` or `{{references}}` needs an explicit Mermaid ID.
+Every diagram element that may appear in `focus` or `{{references}}` needs a stable, addressable Mermaid ID.
 
 Use readable, stable IDs:
 
 ```mermaid
+flowchart LR
 api_gateway[API Gateway]
 validation_service[Validation Service]
 ```
@@ -29,9 +30,25 @@ Avoid:
 - IDs that depend on presentation wording
 - renaming IDs just because the label changed
 
+For sequence diagrams, participants must be declared explicitly and addressable messages must start with `[message_id] ` inside the message text:
+
+```mermaid
+sequenceDiagram
+  participant customer as Customer
+  participant api as API Gateway
+
+  customer->>api: [submit_order] Submit order
+```
+
+In that example:
+
+- `customer` and `api` are participant IDs
+- `submit_order` is the message ID
+- the user-facing label for `submit_order` is `Submit order`
+
 ## Keep Tour Text Label-Friendly
 
-Step text can interpolate Mermaid labels with `{{node_id}}`.
+Step text can interpolate Mermaid labels with `{{diagram_element_id}}`.
 
 Example:
 
@@ -41,6 +58,13 @@ text: >
 ```
 
 That keeps the authored copy tied to the diagram label without repeating display names manually.
+
+The same pattern works for sequence participants and tagged messages:
+
+```yaml
+text: >
+  {{submit_order}} is the first request that leaves {{customer}} and reaches {{api}}.
+```
 
 ## Use Focus Intentionally
 
@@ -65,6 +89,13 @@ Use `focus: []` when the step should reset attention, summarize, or let the read
 
 ```yaml
 focus: []
+```
+
+For sequence diagrams, `focus` may contain participant IDs or tagged message IDs:
+
+```yaml
+focus:
+  - submit_order
 ```
 
 ## Write Linear, Readable Steps
@@ -97,7 +128,9 @@ examples/payment-flow/
   payment-flow.mmd
 ```
 
-The runtime will generate an overview step plus one step per Mermaid node until you add an authored tour file.
+The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
+
+For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message.
 
 Markdown-backed diagrams are also valid:
 
@@ -116,6 +149,20 @@ If a Markdown file contains more than one Mermaid block, `diagram-tours` will ge
 diagram: ./country-implementation-checklist.md#review
 ```
 
+Markdown fences can contain sequence diagrams too:
+
+````md
+# Support Sequence
+
+```mermaid
+sequenceDiagram
+  participant user as User
+  participant api as API
+
+  user->>api: [request_access] Request access
+```
+````
+
 ## Validate Common Failure Cases
 
 The parser rejects:
@@ -123,9 +170,10 @@ The parser rejects:
 - missing required root fields
 - empty `steps`
 - non-array `focus`
-- empty or invalid node IDs in `focus`
-- unknown node references in `focus`
-- unknown node references in `text`
+- empty or invalid diagram-element IDs in `focus`
+- unknown diagram-element references in `focus`
+- unknown diagram-element references in `text`
+- duplicate sequence participant/message IDs inside one sequence diagram
 
 Error messages include the source path and step number when possible, so keep steps small enough for that context to stay useful.
 
@@ -154,6 +202,7 @@ For repository contributor work, the Bun helpers still exist:
 bun run dev ./examples/payment-flow/payment-flow.tour.yaml
 bun run dev ./examples/payment-flow/payment-flow.mmd
 bun run dev ./examples
+bun run dev:open
 bun run dev:interactive
 ```
 
@@ -171,6 +220,8 @@ bun run dev
 Use the repository examples as references:
 
 - `payment-flow` for a simple baseline tour
+- `order-sequence` for authored Mermaid sequence diagrams
+- `support-handoff` for generated fallback on a raw sequence diagram
 - `viewport-stability` for empty-focus behavior
 - `viewport-centering` for grouped and edge-position focus behavior
 - `huge-system` for large diagrams and dense label conditions

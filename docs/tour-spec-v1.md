@@ -83,11 +83,18 @@ If a Markdown file contains multiple Mermaid blocks, the path must include a fra
 diagram: ./country-checklist.md#details
 ```
 
-The referenced diagram must contain explicit Mermaid node IDs such as:
+The referenced diagram must contain addressable Mermaid element IDs.
+
+For flowcharts, that means explicit node IDs such as:
 
 ```mermaid
 api_gateway[API Gateway]
 ```
+
+For sequence diagrams, that means:
+
+- explicit participant or actor declarations such as `participant api as API Gateway`
+- explicit message IDs inside the message text such as `api->>db: [validate_request] Validate request`
 
 ### `steps`
 
@@ -131,7 +138,7 @@ focus:
 Rules:
 
 - must be an array
-- may contain zero or more node IDs
+- may contain zero or more diagram-element IDs
 - each entry must be a non-empty string
 - each ID must exist in the Mermaid diagram
 
@@ -152,7 +159,7 @@ focus:
   - payment_provider
 ```
 
-`focus: []` is valid and represents a step with no specific node emphasis. A player may use that for an overview, neutral state, or context reset.
+`focus: []` is valid and represents a step with no specific diagram-element emphasis. A player may use that for an overview, neutral state, or context reset.
 
 ### `text`
 
@@ -165,11 +172,11 @@ text: >
 
 Must be a non-empty string.
 
-The text may reference diagram nodes through inline references.
+The text may reference diagram elements through inline references.
 
-## Node References
+## Diagram Element References
 
-Inside step text, node references use this syntax:
+Inside step text, diagram-element references use this syntax:
 
 ```text
 {{node_id}}
@@ -183,8 +190,8 @@ The {{api_gateway}} sends the request to {{validation_service}}.
 
 Resolution behavior:
 
-1. locate the referenced node ID in the Mermaid diagram
-2. read the node label
+1. locate the referenced diagram-element ID in the Mermaid diagram
+2. read the element label
 3. replace the reference with that label
 
 Example:
@@ -216,10 +223,10 @@ A tour is invalid if any of the following are true:
 - a step is not an object
 - `focus` is not an array
 - a `focus` entry is empty or not a string
-- a `focus` entry references an unknown Mermaid node ID
+- a `focus` entry references an unknown Mermaid diagram element ID
 - `text` is missing
 - `text` is not a non-empty string
-- `text` references an unknown Mermaid node ID
+- `text` references an unknown Mermaid diagram element ID
 
 Errors should be descriptive and actionable.
 
@@ -233,9 +240,9 @@ Tour "examples/payment-flow/payment-flow.tour.yaml": step 2 focus references unk
 
 ## Mermaid Requirements
 
-Version 1 supports Mermaid flowcharts.
+Version 1 supports Mermaid flowcharts and Mermaid sequence diagrams.
 
-Nodes must use explicit IDs:
+Flowchart nodes must use explicit IDs:
 
 ```mermaid
 flowchart LR
@@ -251,15 +258,43 @@ api_gateway
 validation_service
 ```
 
+Sequence diagrams support two addressable element kinds:
+
+- participants declared with `participant` or `actor`
+- messages whose labels begin with `[message_id] `
+
+Example:
+
+```mermaid
+sequenceDiagram
+  participant customer as Customer
+  participant api as API Gateway
+
+  customer->>api: [submit_order] Submit order
+```
+
+In this example, the usable IDs are:
+
+```text
+customer
+api
+submit_order
+```
+
+The user-facing label for `submit_order` is `Submit order`.
+
+Within one sequence diagram, addressable participant IDs and message IDs must be unique across the whole diagram.
+
 ## Focus Semantics
 
 The `focus` field is semantic, not a strict UI instruction.
 
-The contract says which nodes matter for a step. The player decides how to render that meaning.
+The contract says which diagram elements matter for a step. The player decides how to render that meaning.
 
 Typical UI behavior may include:
 
 - highlighting focused nodes
+- highlighting focused participants or messages
 - dimming non-focused nodes
 - centering the viewport
 - keeping an overview when focus is empty
@@ -271,10 +306,11 @@ The specification intentionally does not mandate one rendering strategy.
 Supported:
 
 - Mermaid flowcharts
+- Mermaid sequence diagrams with addressable participants and tagged messages
 - YAML tour files
 - sequential tours
-- node highlighting or other player-defined focus rendering
-- inline node references in text
+- element highlighting or other player-defined focus rendering
+- inline diagram-element references in text
 - empty-focus steps
 
 Not supported:
@@ -284,6 +320,7 @@ Not supported:
 - audio narration
 - conditional steps
 - player-specific viewport instructions in the tour file
+- Mermaid notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs
 
 ## Future Directions
 

@@ -6,17 +6,19 @@ export interface NodeStepChoice {
   stepNumber: number;
 }
 
-export function createNodeStepIndex(tour: ResolvedDiagramTour): Record<string, number[]> {
+export function createDiagramElementStepIndex(tour: ResolvedDiagramTour): Record<string, number[]> {
   return tour.steps.reduce<Record<string, number[]>>((index, step, stepIndex) => {
-    step.focus.forEach((node) => {
-      const matches = index[node.id] ?? [];
+    step.focus.forEach((element) => {
+      const matches = index[element.id] ?? [];
 
-      index[node.id] = [...matches, stepIndex];
+      index[element.id] = [...matches, stepIndex];
     });
 
     return index;
   }, {});
 }
+
+export const createNodeStepIndex = createDiagramElementStepIndex;
 
 export function createNodeStepChoices(
   tour: ResolvedDiagramTour,
@@ -31,17 +33,19 @@ export function createNodeStepChoices(
 
 export function hasNodeStepMatches(
   nodeStepIndex: Record<string, number[]>,
-  nodeId: string
+  elementId: string
 ): boolean {
-  return readNodeStepMatches(nodeStepIndex, nodeId).length > 0;
+  return readDiagramElementStepMatches(nodeStepIndex, elementId).length > 0;
 }
 
-export function readNodeStepMatches(
+export function readDiagramElementStepMatches(
   nodeStepIndex: Record<string, number[]>,
-  nodeId: string
+  elementId: string
 ): number[] {
-  return nodeStepIndex[nodeId] ?? [];
+  return nodeStepIndex[elementId] ?? [];
 }
+
+export const readNodeStepMatches = readDiagramElementStepMatches;
 
 function createStepPreview(text: string): string {
   return normalizeStepPreview(text).slice(0, 88).trimEnd() + readPreviewSuffix(text);

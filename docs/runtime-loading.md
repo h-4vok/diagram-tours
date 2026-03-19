@@ -38,6 +38,7 @@ The CLI is responsible for browser policy, host/port selection, and launching th
 Repository contributors still have Bun-first helper scripts:
 
 - `bun run dev`
+- `bun run dev:open`
 - `bun run dev <target>`
 - `bun run dev:interactive`
 

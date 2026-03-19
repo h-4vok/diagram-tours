@@ -39,6 +39,20 @@ describe("mermaid diagram helpers", () => {
     );
   });
 
+  it("keeps sequence-diagram source unchanged", () => {
+    const source = createRenderableDiagramSource({
+      elements: [
+        { id: "user", kind: "participant", label: "User" },
+        { id: "request_sent", kind: "message", label: "Send request" }
+      ],
+      path: "./sequence.mmd",
+      source: "sequenceDiagram\n  participant user as User\n  user->>user: Send request",
+      type: "sequence"
+    });
+
+    expect(source).toBe("sequenceDiagram\n  participant user as User\n  user->>user: Send request");
+  });
+
   it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
     const container = document.createElement("div");
 
@@ -55,6 +69,8 @@ describe("mermaid diagram helpers", () => {
     expect(container.querySelector("#diagram-tour-node-hover-gradient")).not.toBeNull();
     expectSvgState(container, {
       height: "960",
+      intrinsicHeight: "960",
+      intrinsicWidth: "1440",
       maxWidth: "",
       width: "1440"
     });
@@ -74,6 +90,8 @@ describe("mermaid diagram helpers", () => {
 
     expectSvgState(container, {
       height: null,
+      intrinsicHeight: undefined,
+      intrinsicWidth: undefined,
       maxWidth: "720px",
       width: "100%"
     });
@@ -137,6 +155,8 @@ describe("mermaid diagram helpers", () => {
 
     expectSvgState(container, {
       height: null,
+      intrinsicHeight: undefined,
+      intrinsicWidth: undefined,
       maxWidth: "720px",
       width: "100%"
     });
@@ -160,6 +180,8 @@ describe("mermaid diagram helpers", () => {
 
     expectSvgState(container, {
       height: null,
+      intrinsicHeight: undefined,
+      intrinsicWidth: undefined,
       maxWidth: "720px",
       width: "100%"
     });
@@ -183,6 +205,8 @@ describe("mermaid diagram helpers", () => {
 
     expectSvgState(container, {
       height: null,
+      intrinsicHeight: undefined,
+      intrinsicWidth: undefined,
       maxWidth: "720px",
       width: "100%"
     });
@@ -233,6 +257,126 @@ describe("mermaid diagram helpers", () => {
     expect(container.hasAttribute("data-focus-group-size")).toBe(false);
     expect(container.querySelector('[data-connector-state="context"]')).toBeNull();
   });
+
+  it("renders a sequence diagram and annotates participant and message elements", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        "<defs>",
+        '<marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker>',
+        "</defs>",
+        '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
+        '<text class="messageText">Send request</text>',
+        '<line class="messageLine1"></line>',
+        '<text class="messageText">Untagged response</text>',
+        "</svg>",
+        '<div class="actor-top" name="user"></div>',
+        '<div class="actor-bottom"><span name="user">User</span></div>',
+        '<div class="actor-top" name="api"></div>',
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: createSequenceDiagram()
+    });
+
+    expectAnnotatedSequenceParticipant(container, "user");
+    expectAnnotatedSequenceMessage(container);
+  });
+
+  it("prefers exact participant header matches when Mermaid exposes them directly", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640"></svg>',
+        '<div class="actor-top" name="user"></div>',
+        '<div class="actor-bottom" name="user"></div>'
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [{ id: "user", kind: "participant", label: "User" }],
+        path: "./sequence.mmd",
+        source: "sequenceDiagram",
+        type: "sequence"
+      }
+    });
+
+    expect(container.querySelectorAll('[data-diagram-element-id="user"]')).toHaveLength(2);
+  });
+
+  it("skips unmatched sequence messages and falls back when no exact participant header match exists", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640"></svg>',
+        '<div class="actor-top"><span name="user">User</span></div>',
+        '<div class="messageLine0"></div>',
+        '<div class="messageText"></div>'
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "user", kind: "participant", label: "User" },
+          { id: "missing_message", kind: "message", label: "Missing message" }
+        ],
+        path: "./sequence.mmd",
+        source: "sequenceDiagram",
+        type: "sequence"
+      }
+    });
+
+    const messageText = container.querySelector(".messageText") as HTMLDivElement;
+
+    Object.defineProperty(messageText, "textContent", {
+      configurable: true,
+      get: () => null
+    });
+
+    applyFocusState({
+      container,
+      focusGroup: createFocusGroup(["user"])
+    });
+
+    expect(container.querySelector('[data-diagram-element-id="user"]')).not.toBeNull();
+    expect(container.querySelector('[data-diagram-element-id="missing_message"]')).toBeNull();
+  });
+
+  it("skips sequence message annotations when no later message text matches the label", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640"></svg>',
+        '<div class="messageText">First message</div>',
+        '<div class="messageLine0"></div>',
+        '<div class="messageText">Second message</div>',
+        '<div class="messageLine1"></div>'
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [{ id: "missing_message", kind: "message", label: "Missing message" }],
+        path: "./sequence.mmd",
+        source: "sequenceDiagram",
+        type: "sequence"
+      }
+    });
+
+    expect(container.querySelector('[data-diagram-element-id="missing_message"]')).toBeNull();
+  });
 });
 
 function readFocusState(container: HTMLElement, nodeId: string): string | null {
@@ -247,12 +391,20 @@ function hasFocusState(container: HTMLElement, nodeId: string): boolean {
 
 function expectSvgState(
   container: HTMLElement,
-  expected: { width: string | null; height: string | null; maxWidth: string }
+  expected: {
+    height: string | null;
+    intrinsicHeight: string | undefined;
+    intrinsicWidth: string | undefined;
+    maxWidth: string;
+    width: string | null;
+  }
 ): void {
   const svg = readRenderedSvg(container);
 
   expect(svg.getAttribute("width")).toBe(expected.width);
   expect(svg.getAttribute("height")).toBe(expected.height);
+  expect(svg.dataset.intrinsicWidth).toBe(expected.intrinsicWidth);
+  expect(svg.dataset.intrinsicHeight).toBe(expected.intrinsicHeight);
   expect(svg.style.maxWidth).toBe(expected.maxWidth);
 }
 
@@ -262,4 +414,52 @@ function readRenderedSvg(container: HTMLElement): SVGSVGElement {
   expect(svg).not.toBeNull();
 
   return svg as SVGSVGElement;
+}
+
+function createSequenceDiagram() {
+  return {
+    elements: [
+      { id: "user", kind: "participant" as const, label: "User" },
+      { id: "api", kind: "participant" as const, label: "API Gateway" },
+      { id: "request_sent", kind: "message" as const, label: "Send request" }
+    ],
+    path: "./sequence.mmd",
+    source: "sequenceDiagram",
+    type: "sequence" as const
+  };
+}
+
+function expectAnnotatedSequenceParticipant(container: HTMLElement, participantId: string): void {
+  expect(container.querySelector(`[data-diagram-element-id="${participantId}"]`)).not.toBeNull();
+  expect(container.querySelectorAll(`[data-diagram-element-id="${participantId}"]`)).toHaveLength(2);
+}
+
+function expectAnnotatedSequenceMessage(container: HTMLElement): void {
+  expectAnnotatedSequenceMessageElements(container);
+  expectAnnotatedSequenceMarker(container);
+}
+
+function expectAnnotatedSequenceMessageElements(container: HTMLElement): void {
+  expect(
+    container.querySelectorAll(
+      '.messageText[data-diagram-element-id="request_sent"], .messageLine0[data-diagram-element-id="request_sent"]'
+    )
+  ).toHaveLength(2);
+  expect(container.querySelector('[data-diagram-element-label="Send request"]')).not.toBeNull();
+}
+
+function expectAnnotatedSequenceMarker(container: HTMLElement): void {
+  expect(container.querySelector('#arrowhead-request_sent')).not.toBeNull();
+  expect(container.querySelector('#arrowhead-request_sent')?.getAttribute("data-diagram-element-auxiliary")).toBe(
+    "true"
+  );
+  expect(container.querySelector('#arrowhead-request_sent path')?.getAttribute("data-diagram-element-id")).toBe(
+    "request_sent"
+  );
+  expect(
+    container.querySelector('#arrowhead-request_sent path')?.getAttribute("data-diagram-element-auxiliary")
+  ).toBe("true");
+  expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
+    "url(#arrowhead-request_sent)"
+  );
 }

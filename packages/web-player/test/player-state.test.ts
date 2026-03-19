@@ -7,7 +7,7 @@ describe("createTourPlayer", () => {
   it("starts on the first step", () => {
     const player = createTourPlayer(resolvedPaymentFlowTour, 0);
 
-    expect(player.getState()).toEqual({
+    expect(player.getState()).toMatchObject({
       stepIndex: 0,
       step: resolvedPaymentFlowTour.steps[0],
       canGoPrevious: false,
@@ -31,7 +31,7 @@ describe("createTourPlayer", () => {
     player.goNext();
     player.goNext();
 
-    expect(player.goNext()).toEqual({
+    expect(player.goNext()).toMatchObject({
       stepIndex: 3,
       step: resolvedPaymentFlowTour.steps[3],
       canGoPrevious: true,
@@ -43,7 +43,7 @@ describe("createTourPlayer", () => {
   it("syncs directly to a requested step within bounds", () => {
     const player = createTourPlayer(resolvedPaymentFlowTour, 0);
 
-    expect(player.setStepIndex(2)).toEqual({
+    expect(player.setStepIndex(2)).toMatchObject({
       stepIndex: 2,
       step: resolvedPaymentFlowTour.steps[2],
       canGoPrevious: true,

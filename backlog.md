@@ -17,6 +17,19 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- Default dark mode for first-time users
+  - Current state: the web player now boots into dark mode until a stored preference exists, while still honoring explicit light/dark selections across hydration and subsequent navigation
+  - Testing expectation: theme helper coverage, layout coverage, and smoke coverage validate the first-load default plus persistence behavior
+  - Evidence: `packages/web-player/src/lib/theme.ts`, `packages/web-player/src/app.html`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/smoke/payment-flow.spec.ts`
+- Zoom controls
+  - Current state: the player now exposes overlay zoom controls with bounded zoom-in, zoom-out, and reset actions, preserving the current viewport position while resizing the rendered Mermaid SVG
+  - Testing expectation: zoom helper coverage, player component coverage, and smoke coverage validate zoom math, control state, and visible diagram resizing
+  - Evidence: `packages/web-player/src/lib/diagram-zoom.ts`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/test/diagram-zoom.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
+- Animated viewport transitions
+  - Current state: zoom changes now animate both the SVG resize and the viewport recentering pass, extending the existing smooth step-focus motion into explicit user-driven viewport transitions
+  - Testing expectation: player and smoke coverage validate zoom-triggered viewport updates without breaking navigation state
+  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
+
 - Diagram-first fallback tours for raw Mermaid inputs
   - Current state: directories and direct file targets can now load `.mmd` and `.mermaid` diagrams without authored YAML, with generated overview-plus-node walkthroughs and duplicate suppression when a tour file already owns the same diagram
   - Testing expectation: parser, CLI, web-player, and smoke coverage validate generated fallback discovery, direct diagram startup, mixed authored/generated collections, and clear failure when no supported inputs exist
@@ -76,6 +89,10 @@ Cutoff date: 2026-03-17
   - Evidence: `package.json`, `scripts/build-coverage-dashboard.ts`, `scripts/vitest.config.ts`, `docs/testing/coverage.md`
 - Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
   - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
+- Support for more complex diagram types, including Mermaid sequence diagrams
+  - Current state: version 1 now supports Mermaid flowcharts plus Mermaid sequence diagrams with addressable participants and tagged messages, generated fallback steps, `focus`/`{{ref}}` resolution, minimap markers, viewport centering, and click-to-step navigation
+  - Scope note: notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs still remain out of scope
+  - Evidence: `packages/core/src/index.ts`, `packages/parser/src/index.ts`, `packages/web-player/src/lib/mermaid-diagram.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
 
 ### Partial
 
@@ -94,27 +111,27 @@ Cutoff date: 2026-03-17
 
 ### Todo
 
+- Rebalance smoke coverage into core smoke vs extended pre-push coverage
+  - Note: the current smoke suite has grown large enough that it no longer fits the original fast-signal intent of smoke testing
+  - Pending: define which runtime checks are truly core smoke coverage for every task, and move slower or broader browser scenarios into a separate suite that runs for `bun run prepush` and before merging PRs
 - Another theme pass
   - Note: the current palette is serviceable, but the overall color choices still need another intentional design pass
-- Default to dark mode until the user has already chosen a preference
-  - Note: the current default startup still lands in light mode for first-time users
 - Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
+- `diagram-tours init` scaffolding for new authored tours
+  - Note: add a CLI command that can create a new `*.tour.yaml` from scratch, or inspect an existing Mermaid source and scaffold a starter tour with the right `diagram` target and step structure
+- Installable authoring reference for AI agents and repository tooling
+  - Note: add a command that installs a reusable Markdown reference describing the `tour.yaml` standard so files like `AGENTS.md` or other agent instructions can point to one stable doc for Codex, Claude Code, and similar tools
+- Standalone `tour.yaml` validation command with author-friendly diagnostics
+  - Note: add a CLI validation command that checks whether a tour file is valid and reports detailed, actionable errors including source locations such as line information when available
 - Adoption and onboarding strategy for people and AI assistants
   - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
   - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work
-- Support for more complex diagram types, including Mermaid sequence diagrams
-  - Note: the documented and supported scope is still centered on Mermaid flowcharts
-  - Pending: investigate Mermaid's sequence-diagram model and define the impact on parser, validation, references, and player behavior
 - Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
   - Note: we want to treat this as a unified initiative later, rather than mixing it into the initial browse explorer work
   - Pending: define a shared shortcuts model, focus behavior, discoverability, and key-conflict handling
-- Zoom controls
-  - Note: the current player supports minimap panning, but does not yet expose true zoom in the product surface
 - True zoom-to-fit
   - Note: a simple overview recentering helper exists internally, but it is currently hidden because it does not provide actual zoom semantics
-- Animated viewport transitions
-  - Note: no current implementation was found in the repository
 - Step-overlay redesign after minimap integration
   - Note: the current step overlay now stacks above the minimap and is good enough for v1, but it should be revisited as part of a more intentional navigation/stepper layout
 - Smarter group centering

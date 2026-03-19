@@ -115,13 +115,49 @@ export function readDiagramMinimapMetrics(input: {
 
 export function readDiagramMinimapNodeRects(input: {
   content: HTMLElement;
-  focusedNodeIds: string[];
+  focusedElementIds?: string[];
+  focusedNodeIds?: string[];
 }): DiagramMinimapNodeRect[] {
   const contentRect = input.content.getBoundingClientRect();
+  const focusedElementIds = input.focusedElementIds ?? input.focusedNodeIds ?? [];
 
-  return input.focusedNodeIds
-    .map((nodeId) => input.content.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
-    .flatMap((element) => (element === null ? [] : [toNodeRect(contentRect, element)]));
+  return focusedElementIds.flatMap((elementId) =>
+    readMatchingDiagramElements(input.content, elementId).map((element) => toNodeRect(contentRect, element))
+  );
+}
+
+function readMatchingDiagramElements(content: HTMLElement, elementId: string): HTMLElement[] {
+  const selector = createDiagramElementSelector(elementId);
+
+  return readMatchingDiagramElementsFromList(content, selector) ?? readSingleMatchingDiagramElement(content, elementId);
+}
+
+function createDiagramElementSelector(elementId: string): string {
+  return [
+    `[data-diagram-element-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`,
+    `[data-node-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+  ].join(", ");
+}
+
+function readMatchingDiagramElementsFromList(
+  content: HTMLElement,
+  selector: string
+): HTMLElement[] | null {
+  return typeof content.querySelectorAll === "function"
+    ? Array.from(content.querySelectorAll<HTMLElement>(selector))
+    : null;
+}
+
+function readSingleMatchingDiagramElement(content: HTMLElement, elementId: string): HTMLElement[] {
+  const element =
+    content.querySelector<HTMLElement>(
+      `[data-diagram-element-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+    ) ??
+    content.querySelector<HTMLElement>(
+      `[data-node-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+    );
+
+  return element === null ? [] : [element];
 }
 
 function createBoundsRect(

@@ -35,6 +35,7 @@ async function expandFolder(label: string): Promise<HTMLElement> {
 describe("+layout.svelte", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
   });
 
   it("renders the top bar and a browse entry point for navigation", async () => {
@@ -78,12 +79,24 @@ describe("+layout.svelte", () => {
       "support/refund-flow"
     );
     expect(screen.getAllByTestId("browse-folder-icon")).toHaveLength(3);
-    expect(screen.getByTestId("theme-toggle").textContent).toContain("Dark mode");
+    expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
 
     await fireEvent.click(screen.getByTestId("theme-toggle"));
 
-    expect(screen.getByTestId("theme-root").getAttribute("data-theme")).toBe("dark");
-    expect(window.localStorage.getItem("diagram-tour-theme")).toBe("dark");
+    expect(screen.getByTestId("theme-root").getAttribute("data-theme")).toBe("light");
+    expect(window.localStorage.getItem("diagram-tour-theme")).toBe("light");
+  });
+
+  it("defaults to dark mode when no preference has been stored", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    expect((await screen.findByTestId("theme-root")).getAttribute("data-theme")).toBe("dark");
+    expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
   });
 
   it("toggles folder branches open and closed", async () => {

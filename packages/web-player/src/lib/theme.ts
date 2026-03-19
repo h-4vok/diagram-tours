@@ -7,7 +7,7 @@ type ThemeDocumentLike = {
   };
 };
 
-export const DEFAULT_THEME: ThemeName = "light";
+export const DEFAULT_THEME: ThemeName = "dark";
 export const THEME_STORAGE_KEY = "diagram-tour-theme";
 
 export function toggleTheme(theme: ThemeName): ThemeName {

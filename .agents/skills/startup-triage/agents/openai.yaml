@@ -1,0 +1,3 @@
+interface:
+  display_name: "Startup Triage"
+  short_description: "Debug CLI-to-runtime startup issues"

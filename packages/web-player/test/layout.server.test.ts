@@ -29,11 +29,13 @@ describe("+layout.server", () => {
       "decision-flow",
       "huge-system",
       "incident-response",
+      "order-sequence",
       "parallel-onboarding",
       "payment-flow",
       "refund-flow",
       "release-pipeline",
       "support-decision-tree",
+      "support-handoff",
       "viewport-centering",
       "viewport-stability"
     ]);
@@ -52,11 +54,13 @@ describe("+layout.server", () => {
       "Decision Flow",
       "Huge System Stress Test",
       "Incident Response",
+      "Order Sequence",
       "Parallel Onboarding",
       "Payment Flow",
       "Refund Flow",
       "Release Pipeline",
       "Support Decision Tree",
+      "Support Handoff",
       "Viewport Centering",
       "Viewport Stability"
     ]);
@@ -76,10 +80,22 @@ describe("+layout.server", () => {
     expectHugeSystemExample(entry);
   });
 
+  it("loads the authored sequence example with participant and message focus", async () => {
+    const entry = await loadExampleEntry("order-sequence");
+
+    expectOrderSequenceExample(entry);
+  });
+
   it("loads the viewport centering example with top, bottom, grouped, and empty focus steps", async () => {
     const entry = await loadExampleEntry("viewport-centering");
 
     expectViewportCenteringExample(entry);
+  });
+
+  it("loads a generated fallback sequence example from the examples directory", async () => {
+    const entry = await loadExampleEntry("support-handoff");
+
+    expectSupportHandoffExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
@@ -255,12 +271,49 @@ function expectHugeSystemExample(
   expect(steps[6]?.focus).toEqual([]);
 }
 
+function expectOrderSequenceExample(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): void {
+  const steps = readSteps(entry);
+
+  expect(readTitle(entry)).toBe("Order Sequence");
+  expect(entry?.tour.diagram.type).toBe("sequence");
+  expect(steps).toHaveLength(3);
+  expect(readPrimaryFocusIds(steps)).toEqual(["customer", "submit_order", "enqueue_order"]);
+}
+
+function expectSupportHandoffExample(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+): void {
+  const tour = readTour(entry);
+  const steps = tour.steps;
+
+  expect(readTitle(entry)).toBe("Support Handoff");
+  expect(tour.sourceKind).toBe("generated");
+  expect(tour.diagram.type).toBe("sequence");
+  expect(steps[0]?.text).toBe("Overview of Support Handoff.");
+  expect(readPrimaryFocusIds(steps)).toEqual([
+    undefined,
+    "customer",
+    "triage",
+    "agent",
+    "open_case",
+    "handoff_case"
+  ]);
+}
+
 function readSteps(
+  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
+) {
+  return readTour(entry).steps;
+}
+
+function readTour(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ) {
   expect(entry).toBeDefined();
 
-  return entry!.tour.steps;
+  return entry!.tour;
 }
 
 function readFocusLength(
@@ -268,6 +321,12 @@ function readFocusLength(
   index: number
 ): number {
   return steps[index]?.focus.length ?? 0;
+}
+
+function readPrimaryFocusIds(
+  steps: ResolvedDiagramTourCollection["entries"][number]["tour"]["steps"]
+): Array<string | undefined> {
+  return steps.map((step) => step.focus[0]?.id);
 }
 
 function readTitle(
@@ -279,7 +338,7 @@ function readTitle(
 function readNodeCount(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ): number {
-  return entry?.tour.diagram.nodes.length ?? 0;
+  return entry?.tour.diagram.elements.length ?? 0;
 }
 
 function expectGeneratedDiagramPreview(
