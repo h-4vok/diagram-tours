@@ -100,9 +100,6 @@ Cutoff date: 2026-03-17
   - Note: the current default startup still lands in light mode for first-time users
 - Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
-- Inline tour descriptions inside Mermaid source
-  - Note: investigate whether authored tour copy can live in Mermaid itself, reducing the need for a separate YAML file in some flows
-  - Pending: define what inline syntax would be supported, how it maps to steps, and how it coexists with authored `*.tour.yaml`
 - Adoption and onboarding strategy for people and AI assistants
   - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
   - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work
