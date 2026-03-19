@@ -4,6 +4,9 @@
     "noEmit": false,
     "outDir": "./dist",
     "paths": {
+      "@diagram-tour/core": [
+        "../core/dist/index.d.ts"
+      ],
       "@diagram-tour/parser": [
         "../parser/dist/index.d.ts"
       ],
