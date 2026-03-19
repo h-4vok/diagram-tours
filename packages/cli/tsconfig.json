@@ -1,9 +1,17 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": ".",
+    "paths": {
+      "@diagram-tour/parser": [
+        "../parser/src/index.ts"
+      ],
+      "@diagram-tour/web-player": [
+        "../web-player/package.json"
+      ]
+    },
     "types": [
       "node"
     ]

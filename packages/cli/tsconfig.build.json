@@ -3,6 +3,14 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "./dist",
+    "paths": {
+      "@diagram-tour/parser": [
+        "../parser/dist/index.d.ts"
+      ],
+      "@diagram-tour/web-player": [
+        "../web-player/package.json"
+      ]
+    },
     "rootDir": "./src"
   },
   "include": [
