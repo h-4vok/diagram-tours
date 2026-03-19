@@ -10,7 +10,11 @@
   ],
   "scripts": {
     "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/cli build",
-    "test": "bun test ./scripts/dev-web-player-lib.test.ts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
+    "test:scripts": "vitest run --config ./scripts/vitest.config.ts --coverage",
+    "test:unit": "bun run test:scripts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
+    "coverage:dashboard": "bun ./scripts/build-coverage-dashboard.ts",
+    "test": "bun run test:unit && bun run coverage:dashboard && bun ./scripts/print-coverage-path.ts",
+    "coverage": "bun run test",
     "smoke": "bun run build && bun run --cwd packages/web-player smoke",
     "dev": "bun run ./scripts/dev-web-player.ts",
     "dev:interactive": "bun run ./scripts/dev-web-player-interactive.ts",

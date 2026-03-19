@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import {
   describeInteractiveChoices,
@@ -6,6 +6,7 @@ import {
   readInteractiveChoice,
   readSourceTarget,
   readViteArgs,
+  spawnWebPlayer,
   validateSourceTarget
 } from "./dev-web-player-lib";
 
@@ -51,16 +52,98 @@ describe("dev-web-player-lib", () => {
     );
   });
 
+  test("validates any existing target without kind checks", () => {
+    expect(normalizePathForAssertion(validateSourceTarget("./examples", "any"))).toContain("/examples");
+  });
+
   test("validates .tour.yaml file targets", () => {
     expect(validateSourceTarget("./fixtures/payment-flow.tour.yaml", "file")).toContain(
       "payment-flow.tour.yaml"
     );
   });
 
+  test("rejects missing paths", () => {
+    expect(() => validateSourceTarget("./fixtures/does-not-exist", "any")).toThrow("Path does not exist");
+  });
+
   test("rejects non-tour files when a tour file is required", () => {
     expect(() => validateSourceTarget("./fixtures/payment-flow.mmd", "file")).toThrow(
       "Expected a .tour.yaml file"
     );
+  });
+
+  test("rejects directories when a file target is required", () => {
+    expect(() => validateSourceTarget("./examples", "file")).toThrow(
+      "Expected a file target but received a directory"
+    );
+  });
+
+  test("rejects files when a directory target is required", () => {
+    expect(() => validateSourceTarget("./fixtures/payment-flow.tour.yaml", "directory")).toThrow(
+      "Expected a directory target but received a file"
+    );
+  });
+
+  test("spawns the web player with the resolved source target", () => {
+    const originalBun = globalThis.Bun;
+    const spawnCalls: Array<{
+      args: string[];
+      options: Record<string, unknown>;
+    }> = [];
+
+    globalThis.Bun = {
+      spawn(args: string[], options: Record<string, unknown>) {
+        spawnCalls.push({ args, options });
+
+        return { pid: 1 };
+      }
+    } as typeof Bun;
+
+    try {
+      const subprocess = spawnWebPlayer({
+        sourceTarget: "./examples",
+        viteArgs: ["--host", "0.0.0.0"]
+      });
+
+      expect(subprocess).toEqual({ pid: 1 });
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0]?.args).toEqual([
+        process.execPath,
+        "run",
+        "--cwd",
+        "packages/web-player",
+        "dev",
+        "--host",
+        "0.0.0.0"
+      ]);
+      expect(
+        normalizePathForAssertion(
+          (spawnCalls[0]?.options.env as Record<string, string>).DIAGRAM_TOUR_SOURCE_TARGET
+        )
+      ).toContain("/examples");
+    } finally {
+      globalThis.Bun = originalBun;
+    }
+  });
+
+  test("keeps extra positional args in vite args after the explicit source target", () => {
+    expect(readViteArgs(["./examples", "preview", "--mode", "test"])).toEqual([
+      "preview",
+      "--mode",
+      "test"
+    ]);
+  });
+
+  test("does not consume the next flag as a value for flags that expect input", () => {
+    expect(readViteArgs(["./examples", "--host", "--port", "9000"])).toEqual([
+      "--host",
+      "--port",
+      "9000"
+    ]);
+  });
+
+  test("does not consume a value for flags outside the known value list", () => {
+    expect(readViteArgs(["./examples", "--watch", "true"])).toEqual(["--watch", "true"]);
   });
 });
 

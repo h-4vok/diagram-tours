@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vitest/config";
 
@@ -13,7 +14,8 @@ export default defineConfig({
     coverage: {
       all: true,
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text-summary", "html", "json-summary"],
+      reportsDirectory: resolve(__dirname, "../../coverage/packages/web-player"),
       include: ["src/lib/**/*.ts", "src/routes/**/*.ts"],
       exclude: ["src/app.d.ts"],
       thresholds: {

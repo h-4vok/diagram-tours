@@ -132,9 +132,20 @@ Operational docs:
 - [Runtime Loading](docs/runtime-loading.md)
 - [Authoring Guide](docs/authoring-guide.md)
 - [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
+- [Coverage Dashboard](docs/testing/coverage.md)
 - [Smoke Tests](docs/testing/smoke-tests.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Tour Specification v1](docs/tour-spec-v1.md)
+
+## Testing And Coverage
+
+Run:
+
+```bash
+bun run coverage
+```
+
+That builds a unified developer-facing dashboard at `coverage/index.html` while keeping the existing per-package `100%` coverage ownership in place.
 
 ## Repository Packages
 
