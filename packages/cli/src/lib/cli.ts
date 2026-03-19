@@ -13,37 +13,54 @@ import type { ParsedCliArgs, ResolvedLaunchOptions } from "./types.js";
 import { readCliVersion } from "./version.js";
 import { runWizard } from "./wizard.js";
 
+type LaunchResult =
+  | { code: number; kind: "exit" }
+  | { kind: "launch"; launch: ResolvedLaunchOptions };
+type StartupPlan =
+  | { code: number; kind: "exit" }
+  | { kind: "launch"; launch: ResolvedLaunchOptions; mode: ParsedCliArgs["mode"] };
+
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
+  const startupPlan = await readStartupPlan(args);
+
+  if (startupPlan.kind === "exit") {
+    return startupPlan.code;
+  }
+
+  return await runLaunch(startupPlan.mode, startupPlan.launch, opener);
+}
+
+async function resolveLaunchOptions(parsed: ParsedCliArgs): Promise<LaunchResult> {
+  if (parsed.mode !== "wizard") {
+    return {
+      kind: "launch",
+      launch: readDirectLaunch(parsed)
+    };
+  }
+
+  return await readWizardLaunch(parsed);
+}
+
+async function readStartupPlan(args: string[]): Promise<StartupPlan> {
   const parsed = parseCliArgs(args);
   const versionExitCode = writeVersionIfRequested(parsed.mode);
 
   if (versionExitCode !== null) {
-    return versionExitCode;
+    return {
+      code: versionExitCode,
+      kind: "exit"
+    };
   }
 
-  const launch = await resolveLaunchOptions(parsed);
+  const launchResult = await resolveLaunchOptions(parsed);
 
-  await loadResolvedTourCollection(launch.target);
-
-  const binding = await readBinding(launch);
-  const server = await startWebServer({
-    binding,
-    target: launch.target
-  });
-
-  output.write(`Diagram Tours is available at ${server.url}\n`);
-
-  await openBrowserIfNeeded(opener, {
-    browser: launch.browser,
-    mode: parsed.mode,
-    url: server.url
-  });
-
-  return await waitForExit(server.child);
-}
-
-async function resolveLaunchOptions(parsed: ParsedCliArgs): Promise<ResolvedLaunchOptions> {
-  return parsed.mode === "wizard" ? promptForLaunchOptions(parsed) : readDirectLaunch(parsed);
+  return launchResult.kind === "exit"
+    ? launchResult
+    : {
+        kind: "launch",
+        launch: launchResult.launch,
+        mode: parsed.mode
+      };
 }
 
 function writeVersionIfRequested(mode: ParsedCliArgs["mode"]): number | null {
@@ -76,6 +93,35 @@ async function promptForLaunchOptions(parsed: ParsedCliArgs): Promise<ResolvedLa
   }
 }
 
+async function readWizardLaunch(parsed: ParsedCliArgs): Promise<LaunchResult> {
+  try {
+    return {
+      kind: "launch",
+      launch: await promptForLaunchOptions(parsed)
+    };
+  } catch (error) {
+    return handleWizardLaunchError(error);
+  }
+}
+
+async function runLaunch(
+  mode: ParsedCliArgs["mode"],
+  launch: ResolvedLaunchOptions,
+  opener: BrowserOpener
+): Promise<number> {
+  await loadResolvedTourCollection(launch.target);
+
+  const server = await startLaunchServer(launch);
+
+  await openBrowserIfNeeded(opener, {
+    browser: launch.browser,
+    mode,
+    url: server.url
+  });
+
+  return await waitForExit(server.child);
+}
+
 function readDirectLaunch(parsed: ParsedCliArgs): ResolvedLaunchOptions {
   return {
     browser: parsed.browser as ResolvedLaunchOptions["browser"],
@@ -101,6 +147,17 @@ function readBinding(launch: ResolvedLaunchOptions) {
   });
 }
 
+async function startLaunchServer(launch: ResolvedLaunchOptions) {
+  const server = await startWebServer({
+    binding: await readBinding(launch),
+    target: launch.target
+  });
+
+  output.write(`Diagram Tours is available at ${server.url}\n`);
+
+  return server;
+}
+
 async function openBrowserIfNeeded(
   opener: BrowserOpener,
   options: {
@@ -114,4 +171,19 @@ async function openBrowserIfNeeded(
   }
 
   await opener.open(options.url);
+}
+
+function isWizardCancellationError(error: unknown): boolean {
+  return error instanceof Error && error.message === "readline was closed";
+}
+
+function handleWizardLaunchError(error: unknown): LaunchResult {
+  if (isWizardCancellationError(error)) {
+    return {
+      code: 130,
+      kind: "exit"
+    };
+  }
+
+  throw error;
 }

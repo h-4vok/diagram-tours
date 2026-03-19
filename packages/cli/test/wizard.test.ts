@@ -32,7 +32,7 @@ describe("runWizard", () => {
   });
 
   it("recovers from invalid menu input and path input", async () => {
-    const io = createIo(["9", "3", "./missing.tour.yaml", "2", "./examples", "y", "0.0.0.0", "9000"]);
+    const io = createIo(["9", "3", "./missing.tour.yaml", "./examples/payment-flow/payment-flow.mmd", "y", "0.0.0.0", "9000"]);
 
     const result = await runWizard(io, {
       browser: "prompt",
@@ -42,12 +42,12 @@ describe("runWizard", () => {
 
     expect(io.output).toContain("Enter 1, 2, or 3.");
     expect(io.output).toContain("Path does not exist:");
-    expect(io.prompts).toContain("Diagram or tour file path: ");
+    expect(io.prompts.filter((prompt) => prompt === "Diagram or tour file path: ")).toHaveLength(2);
     expect(result).toEqual({
       browser: "always",
       host: "0.0.0.0",
       port: 9000,
-      target: expect.stringContaining("examples")
+      target: expect.stringContaining("payment-flow.mmd")
     });
   });
 
@@ -114,9 +114,29 @@ describe("runWizard", () => {
     expect(result.target).toContain("diagram-tours");
     validateSpy.mockRestore();
   });
+
+  it("stops retrying when the prompt is interrupted while entering a path", async () => {
+    const io = createIo(["3"], {
+      "Diagram or tour file path: ": new Error("readline was closed")
+    });
+
+    await expect(
+      runWizard(io, {
+        browser: "prompt",
+        host: "127.0.0.1",
+        port: null
+      })
+    ).rejects.toThrow("readline was closed");
+
+    expect(io.prompts.filter((prompt) => prompt === "Diagram or tour file path: ")).toHaveLength(1);
+    expect(io.output).not.toContain("readline was closed");
+  });
 });
 
-function createIo(answers: string[]): WizardIo & { output: string; prompts: string[] } {
+function createIo(
+  answers: string[],
+  failures: Partial<Record<string, Error>> = {}
+): WizardIo & { output: string; prompts: string[] } {
   let index = 0;
   let output = "";
   const prompts: string[] = [];
@@ -126,6 +146,14 @@ function createIo(answers: string[]): WizardIo & { output: string; prompts: stri
     prompts,
     async question(prompt: string) {
       prompts.push(prompt);
+
+      const failure = failures[prompt];
+
+      if (failure !== undefined) {
+        delete failures[prompt];
+        throw failure;
+      }
+
       return answers[index++] ?? "";
     },
     write(text: string) {

@@ -131,6 +131,7 @@ Operational docs:
 
 - [Runtime Loading](docs/runtime-loading.md)
 - [Authoring Guide](docs/authoring-guide.md)
+- [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
 - [Smoke Tests](docs/testing/smoke-tests.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Tour Specification v1](docs/tour-spec-v1.md)

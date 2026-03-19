@@ -26,14 +26,18 @@ async function readTarget(io: WizardIo): Promise<string> {
     io.write(
       "\nChoose what to open:\n1. Open current directory\n2. Open another directory\n3. Open a diagram or tour file\n"
     );
-    const choice = (await io.question("Select an option: ")).trim();
+    const choice = await readTargetChoice(io);
 
     try {
       return resolveWizardTarget(await readChoiceTarget(io, choice));
     } catch (error) {
-      io.write(`${readErrorMessage(error)}\n`);
+      handlePromptFailure(io, error);
     }
   }
+}
+
+async function readTargetChoice(io: WizardIo): Promise<string> {
+  return (await io.question("Select an option: ")).trim();
 }
 
 async function readChoiceTarget(io: WizardIo, choice: string): Promise<string> {
@@ -41,17 +45,29 @@ async function readChoiceTarget(io: WizardIo, choice: string): Promise<string> {
     return ".";
   }
 
-  return await readPromptedTarget(io, choice);
+  return await readValidatedPromptedTarget(io, choice);
 }
 
-async function readPromptedTarget(io: WizardIo, choice: string): Promise<string> {
+async function readValidatedPromptedTarget(io: WizardIo, choice: string): Promise<string> {
+  const prompt = readTargetPrompt(choice);
+
+  for (;;) {
+    try {
+      return resolveWizardTarget(await io.question(prompt));
+    } catch (error) {
+      handlePromptFailure(io, error);
+    }
+  }
+}
+
+function readTargetPrompt(choice: string): string {
   const prompt = TARGET_PROMPTS[choice];
 
   if (prompt === undefined) {
     throw new Error("Enter 1, 2, or 3.");
   }
 
-  return await io.question(prompt);
+  return prompt;
 }
 
 function resolveWizardTarget(input: string): string {
@@ -103,6 +119,18 @@ async function readPort(io: WizardIo, defaultPort: number | null): Promise<numbe
 
 function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Could not resolve that path.";
+}
+
+function handlePromptFailure(io: WizardIo, error: unknown): void {
+  if (isClosedReadlineError(error)) {
+    throw error;
+  }
+
+  io.write(`${readErrorMessage(error)}\n`);
+}
+
+function isClosedReadlineError(error: unknown): boolean {
+  return error instanceof Error && error.message === "readline was closed";
 }
 
 function readBrowserSelection(

@@ -83,9 +83,25 @@ Cutoff date: 2026-03-17
   - Current state: the workspace has been heavily refined, but `reqs.md` still marks this area as open and it remains a reasonable ongoing polish stream
   - Gap: connectors, labels, and fine-grained visual hierarchy can still improve
   - Evidence: `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
+- Wizard path retry UX
+  - Current state: invalid explicit paths fail clearly during wizard input validation
+  - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
+  - Evidence: `packages/cli/src/lib/wizard.ts`
 
 ### Todo
 
+- Another theme pass
+  - Note: the current palette is serviceable, but the overall color choices still need another intentional design pass
+- Default to dark mode until the user has already chosen a preference
+  - Note: the current default startup still lands in light mode for first-time users
+- Stepper and step-text presentation redesign
+  - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
+- Inline tour descriptions inside Mermaid source
+  - Note: investigate whether authored tour copy can live in Mermaid itself, reducing the need for a separate YAML file in some flows
+  - Pending: define what inline syntax would be supported, how it maps to steps, and how it coexists with authored `*.tour.yaml`
+- Adoption and onboarding strategy for people and AI assistants
+  - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
+  - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work
 - Support for more complex diagram types, including Mermaid sequence diagrams
   - Note: the documented and supported scope is still centered on Mermaid flowcharts
   - Pending: investigate Mermaid's sequence-diagram model and define the impact on parser, validation, references, and player behavior

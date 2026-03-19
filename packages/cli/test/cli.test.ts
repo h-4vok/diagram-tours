@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { readCliVersion } from "../src/lib/version.js";
+
 const resolveServerBindingMock = vi.fn();
 const startWebServerMock = vi.fn();
 const validateTargetPathMock = vi.fn();
@@ -113,7 +115,7 @@ describe("runCli", () => {
     const exitCode = await runCli(["--version"], opener);
 
     expect(exitCode).toBe(0);
-    expect(writes.join("")).toContain("diagram-tours 0.1.0-alpha.2");
+    expect(writes.join("")).toContain(`diagram-tours ${readCliVersion()}`);
     expect(validateTargetPathMock).not.toHaveBeenCalled();
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
@@ -164,6 +166,21 @@ describe("runCli", () => {
     expect(closeMock).toHaveBeenCalledOnce();
   });
 
+  it("exits cleanly when the wizard is interrupted", async () => {
+    const opener = { open: vi.fn() };
+
+    runWizardMock.mockRejectedValue(new Error("readline was closed"));
+
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli([], opener);
+
+    expect(exitCode).toBe(130);
+    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
+    expect(startWebServerMock).not.toHaveBeenCalled();
+    expect(opener.open).not.toHaveBeenCalled();
+    expect(closeMock).toHaveBeenCalledOnce();
+  });
+
   it("treats an undefined child exit code as success", async () => {
     const opener = { open: vi.fn() };
 
@@ -206,6 +223,15 @@ describe("runCli", () => {
     await expect(runCli(["./examples"], { open: vi.fn() })).rejects.toThrow(
       "No valid tours or diagrams were discovered in source target"
     );
+    expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
+  it("rethrows unexpected wizard failures", async () => {
+    runWizardMock.mockRejectedValue(new Error("wizard boom"));
+    const { runCli } = await import("../src/lib/cli.js");
+
+    await expect(runCli([], { open: vi.fn() })).rejects.toThrow("wizard boom");
+    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
   });
 });
