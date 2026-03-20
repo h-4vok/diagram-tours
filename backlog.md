@@ -114,8 +114,12 @@ Cutoff date: 2026-03-17
 - Rebalance smoke coverage into core smoke vs extended pre-push coverage
   - Note: the current smoke suite has grown large enough that it no longer fits the original fast-signal intent of smoke testing
   - Pending: define which runtime checks are truly core smoke coverage for every task, and move slower or broader browser scenarios into a separate suite that runs for `bun run prepush` and before merging PRs
+- Improve sequence-diagram highlighting quality
+  - Note: sequence diagrams are functional today, but their current focus/highlight treatment still feels weaker than the flowchart experience
 - Another theme pass
   - Note: the current palette is serviceable, but the overall color choices still need another intentional design pass
+- Improve dark-mode treatment for sequence diagrams
+  - Note: dark mode remains noticeably weaker on sequence diagrams than on the rest of the player and still needs a dedicated visual pass
 - Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
 - `diagram-tours init` scaffolding for new authored tours

@@ -377,6 +377,134 @@ describe("mermaid diagram helpers", () => {
 
     expect(container.querySelector('[data-diagram-element-id="missing_message"]')).toBeNull();
   });
+
+  it("skips marker annotation when the matched sequence line is not an svg element", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640"></svg>',
+        '<div class="messageLine0"></div>',
+        '<div class="messageText">Send request</div>'
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: createSequenceDiagram()
+    });
+
+    expect(container.querySelector('[data-diagram-element-id="request_sent"]')).not.toBeNull();
+    expect(container.querySelector("#arrowhead-request_sent")).toBeNull();
+  });
+
+  it("falls back to a document-level marker when the owning svg does not contain it", async () => {
+    const documentMarkerHost = document.createElement("div");
+
+    documentMarkerHost.innerHTML =
+      '<svg><defs><marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker></defs></svg>';
+    document.body.append(documentMarkerHost);
+
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
+        '<text class="messageText">Send request</text>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    try {
+      await renderMermaidDiagram({
+        container,
+        diagram: createSequenceDiagram()
+      });
+
+      expect(documentMarkerHost.querySelector("#arrowhead-request_sent")).not.toBeNull();
+      expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
+        "url(#arrowhead-request_sent)"
+      );
+    } finally {
+      documentMarkerHost.remove();
+    }
+  });
+
+  it("ignores marker references that do not resolve to svg marker elements", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
+        '<text class="messageText">Send request</text>',
+        "</svg>",
+        '<div id="arrowhead"></div>'
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: createSequenceDiagram()
+    });
+
+    expect(container.querySelector("#arrowhead-request_sent")).toBeNull();
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe("url(#arrowhead)");
+  });
+
+  it("ignores malformed or empty marker references on matched sequence messages", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<defs><marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker></defs>',
+        '<line class="messageLine0" marker-start="url(#\'\')" marker-mid="url(arrowhead)" marker-end="url(#arrowhead)"></line>',
+        '<text class="messageText">Send request</text>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: createSequenceDiagram()
+    });
+
+    expect(container.querySelector("#arrowhead-request_sent")).not.toBeNull();
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-start")).toBe("url(#'')");
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-mid")).toBe("url(arrowhead)");
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
+      "url(#arrowhead-request_sent)"
+    );
+  });
+
+  it("reuses an existing cloned marker when multiple marker attributes target the same message", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<defs><marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker></defs>',
+        '<line class="messageLine0" marker-start="url(#arrowhead)" marker-end="url(#arrowhead)"></line>',
+        '<text class="messageText">Send request</text>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: createSequenceDiagram()
+    });
+
+    expect(container.querySelectorAll("#arrowhead-request_sent")).toHaveLength(1);
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-start")).toBe(
+      "url(#arrowhead-request_sent)"
+    );
+    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
+      "url(#arrowhead-request_sent)"
+    );
+  });
 });
 
 function readFocusState(container: HTMLElement, nodeId: string): string | null {
@@ -449,17 +577,38 @@ function expectAnnotatedSequenceMessageElements(container: HTMLElement): void {
 }
 
 function expectAnnotatedSequenceMarker(container: HTMLElement): void {
-  expect(container.querySelector('#arrowhead-request_sent')).not.toBeNull();
-  expect(container.querySelector('#arrowhead-request_sent')?.getAttribute("data-diagram-element-auxiliary")).toBe(
-    "true"
-  );
-  expect(container.querySelector('#arrowhead-request_sent path')?.getAttribute("data-diagram-element-id")).toBe(
-    "request_sent"
-  );
-  expect(
-    container.querySelector('#arrowhead-request_sent path')?.getAttribute("data-diagram-element-auxiliary")
-  ).toBe("true");
-  expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
-    "url(#arrowhead-request_sent)"
-  );
+  const marker = readSequenceMarker(container);
+  const markerPath = readSequenceMarkerPath(container);
+  const messageLine = readRequiredElement(container, ".messageLine0");
+
+  expect(marker).not.toBeNull();
+  expect(readRequiredAttribute(marker, "data-diagram-element-auxiliary")).toBe("true");
+  expect(readRequiredAttribute(markerPath, "data-diagram-element-id")).toBe("request_sent");
+  expect(readRequiredAttribute(markerPath, "data-diagram-element-auxiliary")).toBe("true");
+  expect(readRequiredAttribute(messageLine, "marker-end")).toBe("url(#arrowhead-request_sent)");
+}
+
+function readSequenceMarker(container: HTMLElement): Element | null {
+  return container.querySelector("#arrowhead-request_sent");
+}
+
+function readSequenceMarkerPath(container: HTMLElement): Element | null {
+  return container.querySelector("#arrowhead-request_sent path");
+}
+
+function readRequiredElement(container: HTMLElement, selector: string): Element {
+  const element = container.querySelector(selector);
+
+  expect(element).not.toBeNull();
+
+  return element!;
+}
+
+function readRequiredAttribute(element: Element | null, name: string): string {
+  const attribute = element?.getAttribute(name);
+
+  expect(element).not.toBeNull();
+  expect(attribute).not.toBeNull();
+
+  return attribute!;
 }
