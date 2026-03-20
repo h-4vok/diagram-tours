@@ -238,6 +238,20 @@ Example:
 Tour "examples/checkout/payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
+The published CLI exposes that validation through:
+
+```bash
+diagram-tours validate
+diagram-tours validate ./examples/checkout
+diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+```
+
+Validation is authored-tour focused:
+
+- a single `*.tour.yaml` target validates exactly that file
+- a directory target validates authored `*.tour.yaml` files recursively beneath it
+- raw diagrams are not considered validation targets for this command
+
 ## Mermaid Requirements
 
 Version 1 supports Mermaid flowcharts and Mermaid sequence diagrams.

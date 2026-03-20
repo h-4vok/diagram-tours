@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { validateTargetPath } from "../src/lib/target.js";
+import { validateInitTarget, validateTargetPath, validateValidationTarget } from "../src/lib/target.js";
 
 const ORIGINAL_CWD = process.cwd();
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -65,6 +65,36 @@ describe("validateTargetPath", () => {
   it("rejects unsupported files", () => {
     expect(() => validateTargetPath("./package.json")).toThrow(
       "Expected a .tour.yaml, .mmd, .mermaid, .md file, or a directory:"
+    );
+  });
+
+  it("accepts a validation directory target", () => {
+    expect(validateValidationTarget("./examples")).toContain("examples");
+  });
+
+  it("defaults validation to the current working directory", () => {
+    expect(validateValidationTarget(null)).toBe(REPO_ROOT);
+  });
+
+  it("accepts a validation tour file target", () => {
+    expect(validateValidationTarget("./examples/checkout/payment-flow.tour.yaml")).toContain(
+      "payment-flow.tour.yaml"
+    );
+  });
+
+  it("rejects diagram files for validation", () => {
+    expect(() => validateValidationTarget("./examples/checkout/payment-flow.mmd")).toThrow(
+      "Expected a .tour.yaml file or a directory:"
+    );
+  });
+
+  it("accepts mermaid files for init", () => {
+    expect(validateInitTarget("./examples/checkout/payment-flow.mmd")).toContain("payment-flow.mmd");
+  });
+
+  it("rejects tour files for init", () => {
+    expect(() => validateInitTarget("./examples/checkout/payment-flow.tour.yaml")).toThrow(
+      "Expected a .mmd or .mermaid file for init:"
     );
   });
 });

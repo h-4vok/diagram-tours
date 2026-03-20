@@ -110,6 +110,7 @@
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
   let zoomScale = DEFAULT_ZOOM_SCALE;
+  $: stepTextLines = readStepTextLines(state.step.text);
 
   async function goPrevious(): Promise<void> {
     await goToStepIndex(state.stepIndex - 1);
@@ -935,6 +936,14 @@
 
     return svg === null ? null : { context, svg };
   }
+
+  function readStepTextLines(text: string): string[] {
+    return normalizeStepText(text).split("\n");
+  }
+
+  function normalizeStepText(text: string): string {
+    return text.replace(/<br\s*\/?>/giu, "\n");
+  }
 </script>
 
 <svelte:window on:pointerdown={handleWindowPointerDown} />
@@ -1046,7 +1055,12 @@
             </button>
           {/each}
         </div>
-        <p data-testid="step-text" class="step-text">{state.step.text}</p>
+        <p data-testid="step-text" class="step-text">
+          {#each stepTextLines as line, index (index)}
+            {line}
+            {#if index < stepTextLines.length - 1}<br />{/if}
+          {/each}
+        </p>
 
         <div class="controls">
           <button
