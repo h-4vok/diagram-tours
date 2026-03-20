@@ -450,7 +450,7 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(container.querySelector("#arrowhead-request_sent")).toBeNull();
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe("url(#arrowhead)");
+    expect(readMessageLineAttribute(container, "marker-end")).toBe("url(#arrowhead)");
   });
 
   it("ignores malformed or empty marker references on matched sequence messages", async () => {
@@ -472,11 +472,9 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(container.querySelector("#arrowhead-request_sent")).not.toBeNull();
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-start")).toBe("url(#'')");
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-mid")).toBe("url(arrowhead)");
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
-      "url(#arrowhead-request_sent)"
-    );
+    expect(readMessageLineAttribute(container, "marker-start")).toBe("url(#'')");
+    expect(readMessageLineAttribute(container, "marker-mid")).toBe("url(arrowhead)");
+    expect(readMessageLineAttribute(container, "marker-end")).toBe("url(#arrowhead-request_sent)");
   });
 
   it("reuses an existing cloned marker when multiple marker attributes target the same message", async () => {
@@ -498,12 +496,8 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(container.querySelectorAll("#arrowhead-request_sent")).toHaveLength(1);
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-start")).toBe(
-      "url(#arrowhead-request_sent)"
-    );
-    expect(container.querySelector('.messageLine0')?.getAttribute("marker-end")).toBe(
-      "url(#arrowhead-request_sent)"
-    );
+    expect(readMessageLineAttribute(container, "marker-start")).toBe("url(#arrowhead-request_sent)");
+    expect(readMessageLineAttribute(container, "marker-end")).toBe("url(#arrowhead-request_sent)");
   });
 });
 
@@ -611,4 +605,8 @@ function readRequiredAttribute(element: Element | null, name: string): string {
   expect(attribute).not.toBeNull();
 
   return attribute!;
+}
+
+function readMessageLineAttribute(container: HTMLElement, name: string): string {
+  return readRequiredAttribute(readRequiredElement(container, ".messageLine0"), name);
 }
