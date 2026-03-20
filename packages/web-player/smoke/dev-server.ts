@@ -34,7 +34,7 @@ export async function startDevServer(options: StartDevServerOptions): Promise<St
     output += chunk.toString();
   });
 
-  await waitForServer(baseUrl, () => output);
+  await waitForServer(child, baseUrl, () => output);
 
   return {
     baseUrl,
@@ -110,10 +110,16 @@ function includesPrompt(text: string): boolean {
   });
 }
 
-async function waitForServer(baseUrl: string, readOutput: () => string): Promise<void> {
+async function waitForServer(
+  child: ChildProcessWithoutNullStreams,
+  baseUrl: string,
+  readOutput: () => string
+): Promise<void> {
   const timeoutAt = Date.now() + 120_000;
 
   while (Date.now() < timeoutAt) {
+    ensureServerStillRunning(child, baseUrl, readOutput);
+
     if (await isServerReady(baseUrl)) {
       return;
     }
@@ -122,6 +128,16 @@ async function waitForServer(baseUrl: string, readOutput: () => string): Promise
   }
 
   throw new Error(`Timed out waiting for server at ${baseUrl}\n${readOutput()}`);
+}
+
+function ensureServerStillRunning(
+  child: ChildProcessWithoutNullStreams,
+  baseUrl: string,
+  readOutput: () => string
+): void {
+  if (child.exitCode !== null) {
+    throw new Error(`Server at ${baseUrl} exited before it was ready.\n${readOutput()}`);
+  }
 }
 
 async function isServerReady(baseUrl: string): Promise<boolean> {

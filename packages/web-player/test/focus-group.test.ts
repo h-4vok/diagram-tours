@@ -4,7 +4,7 @@ import { createFocusGroup } from "../src/lib/focus-group";
 
 describe("createFocusGroup", () => {
   it("returns an empty group when no nodes are focused", () => {
-    expect(createFocusGroup([])).toEqual({
+    expect(createFocusGroup([])).toMatchObject({
       mode: "empty",
       nodeIds: [],
       size: 0
@@ -12,7 +12,7 @@ describe("createFocusGroup", () => {
   });
 
   it("returns a single-node group for one focused node", () => {
-    expect(createFocusGroup(["response"])).toEqual({
+    expect(createFocusGroup(["response"])).toMatchObject({
       mode: "single",
       nodeIds: ["response"],
       size: 1
@@ -20,7 +20,7 @@ describe("createFocusGroup", () => {
   });
 
   it("deduplicates and sorts multiple focused nodes into a stable group", () => {
-    expect(createFocusGroup(["payment_provider", "payment_service", "payment_provider"])).toEqual({
+    expect(createFocusGroup(["payment_provider", "payment_service", "payment_provider"])).toMatchObject({
       mode: "group",
       nodeIds: ["payment_provider", "payment_service"],
       size: 2

@@ -5,6 +5,7 @@ export interface TourPlayerState {
   step: ResolvedTourStep;
   canGoPrevious: boolean;
   canGoNext: boolean;
+  focusedElementIds: string[];
   focusedNodeIds: string[];
 }
 
@@ -47,7 +48,8 @@ function createState(tour: ResolvedDiagramTour, stepIndex: number): TourPlayerSt
     step: tour.steps[stepIndex],
     canGoPrevious: stepIndex > 0,
     canGoNext: stepIndex < tour.steps.length - 1,
-    focusedNodeIds: tour.steps[stepIndex].focus.map((node) => node.id)
+    focusedElementIds: tour.steps[stepIndex].focus.map((element) => element.id),
+    focusedNodeIds: tour.steps[stepIndex].focus.map((element) => element.id)
   };
 }
 

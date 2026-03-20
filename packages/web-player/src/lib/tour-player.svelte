@@ -13,6 +13,15 @@
     renderMermaidDiagram
   } from "$lib/mermaid-diagram";
   import {
+    applySvgZoom,
+    canZoomIn,
+    canZoomOut,
+    createNextZoomScale,
+    createPreservedZoomScrollPosition,
+    DEFAULT_ZOOM_SCALE,
+    formatZoomPercentage
+  } from "$lib/diagram-zoom";
+  import {
     createDiagramMinimapGeometry,
     createMinimapCenterScrollPosition,
     createMinimapViewportScrollPosition,
@@ -27,9 +36,9 @@
   import { createTourPlayer } from "$lib/player-state";
   import {
     createNodeStepChoices,
-    createNodeStepIndex,
+    createDiagramElementStepIndex,
     hasNodeStepMatches,
-    readNodeStepMatches,
+    readDiagramElementStepMatches,
     type NodeStepChoice
   } from "$lib/tour-step-links";
   import type { ResolvedDiagramTour } from "@diagram-tour/core";
@@ -65,6 +74,10 @@
   };
 
   type DiagramNodeElement = HTMLElement | SVGElement;
+  const INTERACTIVE_DIAGRAM_ELEMENT_SELECTOR = [
+    '[data-diagram-element-id]:not([data-diagram-element-auxiliary="true"])',
+    '[data-node-id]:not([data-diagram-element-auxiliary="true"])'
+  ].join(", ");
 
   type ViewportDragInput = {
     dragState: ViewportDragState;
@@ -91,11 +104,12 @@
   let isMinimapCollapsed = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
   let nodeStepChooser: NodeStepChooser | null = null;
-  let nodeStepIndex = createNodeStepIndex(tour);
+  let nodeStepIndex = createDiagramElementStepIndex(tour);
   let optimisticViewportRect: DiagramMinimapRect | null = null;
   let previousInitialStepIndex = initialStepIndex;
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
+  let zoomScale = DEFAULT_ZOOM_SCALE;
 
   async function goPrevious(): Promise<void> {
     await goToStepIndex(state.stepIndex - 1);
@@ -103,6 +117,18 @@
 
   async function goNext(): Promise<void> {
     await goToStepIndex(state.stepIndex + 1);
+  }
+
+  async function zoomIn(): Promise<void> {
+    await updateZoomScale(createNextZoomScale(zoomScale, "in"));
+  }
+
+  async function zoomOut(): Promise<void> {
+    await updateZoomScale(createNextZoomScale(zoomScale, "out"));
+  }
+
+  async function resetZoom(): Promise<void> {
+    await updateZoomScale(createNextZoomScale(zoomScale, "reset"));
   }
 
   async function syncFocusState(): Promise<void> {
@@ -118,7 +144,7 @@
       return;
     }
 
-    const focusGroup = createFocusGroup(state.focusedNodeIds);
+    const focusGroup = createFocusGroup(state.focusedElementIds);
 
     applyFocusState({
       container: currentContext.container,
@@ -157,7 +183,7 @@
     void syncFocusState();
   }
 
-  $: nodeStepIndex = createNodeStepIndex(tour);
+  $: nodeStepIndex = createDiagramElementStepIndex(tour);
   $: renderedViewportRect = optimisticViewportRect ?? minimapGeometry?.viewportRect ?? null;
 
   async function goToStepIndex(stepIndex: number): Promise<void> {
@@ -223,6 +249,7 @@
         diagram: tour.diagram
       });
       hasRenderedDiagram = true;
+      syncRenderedSvgZoom();
       refreshNavigableNodeState();
       await syncFocusState();
     } catch (_error) {
@@ -311,6 +338,62 @@
 
   function updateMinimapGeometry(): void {
     minimapGeometry = shouldHideMinimapGeometry() ? null : createCurrentMinimapGeometry();
+  }
+
+  async function updateZoomScale(nextZoomScale: number): Promise<void> {
+    const zoomContext = readZoomContext();
+
+    if (zoomContext === null) {
+      return;
+    }
+
+    const previousMetrics = readDiagramMinimapMetrics(zoomContext.context);
+
+    if (!applyZoomScaleToSvg(zoomContext.svg, nextZoomScale)) {
+      return;
+    }
+
+    zoomScale = nextZoomScale;
+    await waitForDiagramLayout();
+    preserveZoomViewport(zoomContext.context, previousMetrics);
+  }
+
+  function readZoomContext():
+    | {
+        context: { container: HTMLDivElement; content: HTMLDivElement };
+        svg: SVGSVGElement;
+      }
+    | null {
+    const context = readDiagramContext();
+
+    if (context === null) {
+      return null;
+    }
+
+    return createZoomContext(context);
+  }
+
+  function applyZoomScaleToSvg(svg: SVGSVGElement, nextZoomScale: number): boolean {
+    return applySvgZoom(svg, nextZoomScale);
+  }
+
+  function preserveZoomViewport(context: {
+    container: HTMLDivElement;
+    content: HTMLDivElement;
+  }, previousMetrics: DiagramMinimapMetrics): void {
+    const nextPosition = createPreservedZoomScrollPosition({
+      nextMetrics: readCurrentMetrics(context),
+      previousMetrics
+    });
+
+    writeDiagramScrollPosition(nextPosition, "auto");
+  }
+
+  function readCurrentMetrics(context: {
+    container: HTMLDivElement;
+    content: HTMLDivElement;
+  }): DiagramMinimapMetrics {
+    return readDiagramMinimapMetrics(context);
   }
 
   async function handleDiagramClick(event: MouseEvent): Promise<void> {
@@ -440,15 +523,23 @@
   function writeDiagramScrollPosition(position: {
     scrollLeft: number;
     scrollTop: number;
-  } | null): void {
-    const container = readBoundElement(diagramContainer);
+  } | null, behavior: ScrollBehavior = "auto"): void {
+    const scrollTarget = readScrollTarget(position);
 
-    if (container === null || position === null) {
+    if (scrollTarget === null) {
       return;
     }
 
-    applyDiagramScrollPosition(container, position);
+    applyDiagramScrollPosition(scrollTarget.container, scrollTarget.position, behavior);
     updateMinimapGeometry();
+  }
+
+  function readScrollTarget(
+    position: { scrollLeft: number; scrollTop: number } | null
+  ): { container: HTMLDivElement; position: { scrollLeft: number; scrollTop: number } } | null {
+    const container = readBoundElement(diagramContainer);
+
+    return container === null || position === null ? null : { container, position };
   }
 
   function formatMinimapRectStyle(rect: {
@@ -479,11 +570,11 @@
       : createDiagramMinimapGeometry({
           nodeRects: readDiagramMinimapNodeRects({
             content: currentContext.content,
-            focusedNodeIds: tour.diagram.nodes.map((node) => node.id)
+            focusedElementIds: tour.diagram.elements.map((element) => element.id)
           }),
           focusedNodeRects: readDiagramMinimapNodeRects({
             content: currentContext.content,
-            focusedNodeIds: state.focusedNodeIds
+            focusedElementIds: state.focusedElementIds
           }),
           metrics: readDiagramMinimapMetrics({
             container: currentContext.container,
@@ -500,13 +591,15 @@
       return;
     }
 
-    content.querySelectorAll<DiagramNodeElement>("[data-node-id]").forEach((element) => {
-      applyNodeStepTargetState(element);
-    });
+    content
+      .querySelectorAll<DiagramNodeElement>(INTERACTIVE_DIAGRAM_ELEMENT_SELECTOR)
+      .forEach((element) => {
+        applyNodeStepTargetState(element);
+      });
   }
 
   function applyNodeStepTargetState(element: DiagramNodeElement): void {
-    const nodeId = element.dataset.nodeId ?? "";
+    const nodeId = readNodeStepTargetId(element);
 
     if (!hasNodeStepMatches(nodeStepIndex, nodeId)) {
       clearNodeStepTargetState(element);
@@ -639,7 +732,9 @@
   function readClickedNodeElement(event: MouseEvent): DiagramNodeElement | null {
     const target = event.target;
 
-    return target instanceof Element ? target.closest<DiagramNodeElement>("[data-node-id]") : null;
+    return target instanceof Element
+      ? target.closest<DiagramNodeElement>(INTERACTIVE_DIAGRAM_ELEMENT_SELECTOR)
+      : null;
   }
 
   function createNodeStepChooser(
@@ -657,13 +752,31 @@
     return {
       label: readChooserNodeLabel(input.nodeElement),
       ...readNodeChooserPosition(shell, input.nodeElement),
-      nodeId: input.nodeElement.dataset.nodeId ?? "",
+      nodeId: readNodeStepTargetId(input.nodeElement),
       options: createNodeStepChoices(tour, input.matchingSteps)
     };
   }
 
   function readChooserNodeLabel(nodeElement: DiagramNodeElement): string {
-    return nodeElement.dataset.nodeLabel ?? nodeElement.dataset.nodeId ?? "Node";
+    return readFirstDefinedNodeStepTargetValue([
+      nodeElement.dataset.diagramElementLabel,
+      nodeElement.dataset.nodeLabel,
+      nodeElement.dataset.diagramElementId,
+      nodeElement.dataset.nodeId,
+      "Element"
+    ]);
+  }
+
+  function readNodeStepTargetId(nodeElement: DiagramNodeElement): string {
+    return readFirstDefinedNodeStepTargetValue([
+      nodeElement.dataset.diagramElementId,
+      nodeElement.dataset.nodeId,
+      ""
+    ]);
+  }
+
+  function readFirstDefinedNodeStepTargetValue(values: Array<string | undefined>): string {
+    return values.find((value) => value !== undefined) ?? "";
   }
 
   function readNodeChooserPosition(
@@ -694,6 +807,16 @@
     refreshNavigableNodeState();
   }
 
+  function syncRenderedSvgZoom(): void {
+    const svg = readRenderedZoomSvg(readDiagramContext());
+
+    if (svg === null) {
+      return;
+    }
+
+    applySvgZoom(svg, zoomScale);
+  }
+
   function shouldCloseNodeStepChooser(event: PointerEvent): boolean {
     if (nodeStepChooser === null) {
       return false;
@@ -705,7 +828,10 @@
       return true;
     }
 
-    return target.closest("[data-testid='node-step-chooser'], [data-node-id]") === null;
+    return (
+      target.closest(`[data-testid='node-step-chooser'], ${INTERACTIVE_DIAGRAM_ELEMENT_SELECTOR}`) ===
+      null
+    );
   }
 
   function readNodeClickInput(
@@ -727,7 +853,10 @@
   }
 
   function readNodeStepMatchesForElement(nodeElement: DiagramNodeElement): number[] {
-    return readNodeStepMatches(nodeStepIndex, nodeElement.dataset.nodeId ?? "");
+    return readDiagramElementStepMatches(
+      nodeStepIndex,
+      nodeElement.dataset.diagramElementId ?? nodeElement.dataset.nodeId ?? ""
+    );
   }
 
   function createNodeClickInputPayload(
@@ -757,10 +886,11 @@
     position: {
       scrollLeft: number;
       scrollTop: number;
-    }
+    },
+    behavior: ScrollBehavior
   ): void {
     if (typeof container.scrollTo === "function") {
-      scrollDiagramContainer(container, position);
+      scrollDiagramContainer(container, position, behavior);
 
       return;
     }
@@ -774,13 +904,36 @@
     position: {
       scrollLeft: number;
       scrollTop: number;
-    }
+    },
+    behavior: ScrollBehavior
   ): void {
     container.scrollTo({
-      behavior: "auto",
+      behavior,
       left: position.scrollLeft,
       top: position.scrollTop
     });
+  }
+
+  function readRenderedSvg(content: HTMLDivElement | null | undefined): SVGSVGElement | null {
+    return content?.querySelector("svg") ?? null;
+  }
+
+  function readRenderedZoomSvg(
+    context: { container: HTMLDivElement; content: HTMLDivElement } | null
+  ): SVGSVGElement | null {
+    return context === null ? null : readRenderedSvg(context.content);
+  }
+
+  function createZoomContext(context: {
+    container: HTMLDivElement;
+    content: HTMLDivElement;
+  }): {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  } | null {
+    const svg = readRenderedZoomSvg(context);
+
+    return svg === null ? null : { context, svg };
   }
 </script>
 
@@ -840,6 +993,42 @@
     {/if}
 
     <div class="canvas-overlay-stack" data-testid="canvas-overlay-stack">
+      <aside class="viewport-toolbar" data-testid="viewport-toolbar">
+        <p class="viewport-toolbar__label">Zoom</p>
+        <div class="viewport-toolbar__actions">
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-out-button"
+            aria-label="Zoom out"
+            disabled={!canZoomOut(zoomScale)}
+            on:click={() => void zoomOut()}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button viewport-toolbar__button--value"
+            data-testid="zoom-reset-button"
+            aria-label="Reset zoom to 100%"
+            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
+            on:click={() => void resetZoom()}
+          >
+            {formatZoomPercentage(zoomScale)}
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-in-button"
+            aria-label="Zoom in"
+            disabled={!canZoomIn(zoomScale)}
+            on:click={() => void zoomIn()}
+          >
+            +
+          </button>
+        </div>
+      </aside>
+
       <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
         <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
         <div class="step-timeline" data-testid="step-timeline">

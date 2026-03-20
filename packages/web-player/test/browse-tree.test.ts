@@ -14,7 +14,7 @@ const entries = [
     sourcePath: "payments/core/payment-flow/payment-flow.tour.yaml",
     title: "Payment Flow",
     tour: {
-      diagram: { nodes: [], path: "./payment-flow.mmd", source: "" },
+      diagram: createDiagram("./payment-flow.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Payment Flow",
@@ -26,7 +26,7 @@ const entries = [
     sourcePath: "payments/support/refund-flow/refund-flow.tour.yaml",
     title: "Refund Flow",
     tour: {
-      diagram: { nodes: [], path: "./refund-flow.mmd", source: "" },
+      diagram: createDiagram("./refund-flow.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Refund Flow",
@@ -38,7 +38,7 @@ const entries = [
     sourcePath: "ops/release/release-pipeline/release-pipeline.tour.yaml",
     title: "Release Pipeline",
     tour: {
-      diagram: { nodes: [], path: "./release-pipeline.mmd", source: "" },
+      diagram: createDiagram("./release-pipeline.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Release Pipeline",
@@ -277,7 +277,7 @@ describe("browse-tree", () => {
           sourcePath: "overview.tour.yaml",
           title: "Overview",
           tour: {
-            diagram: { nodes: [], path: "./overview.mmd", source: "" },
+            diagram: createDiagram("./overview.mmd"),
             sourceKind: "authored",
             steps: [],
             title: "Overview",
@@ -303,7 +303,7 @@ describe("browse-tree", () => {
           sourcePath: "zeta.tour.yaml",
           title: "Zeta Tour",
           tour: {
-            diagram: { nodes: [], path: "./zeta.mmd", source: "" },
+            diagram: createDiagram("./zeta.mmd"),
             sourceKind: "authored",
             steps: [],
             title: "Zeta Tour",
@@ -315,7 +315,7 @@ describe("browse-tree", () => {
           sourcePath: "alpha.tour.yaml",
           title: "Alpha Tour",
           tour: {
-            diagram: { nodes: [], path: "./alpha.mmd", source: "" },
+            diagram: createDiagram("./alpha.mmd"),
             sourceKind: "authored",
             steps: [],
             title: "Alpha Tour",
@@ -337,7 +337,7 @@ describe("browse-tree", () => {
           sourcePath: "overview.tour.yaml",
           title: "Overview",
           tour: {
-            diagram: { nodes: [], path: "./overview.mmd", source: "" },
+            diagram: createDiagram("./overview.mmd"),
             sourceKind: "authored",
             steps: [],
             title: "Overview",
@@ -356,4 +356,13 @@ describe("browse-tree", () => {
 
 function createEntry(entry: ResolvedDiagramTourCollectionEntry): ResolvedDiagramTourCollectionEntry {
   return entry;
+}
+
+function createDiagram(path: string) {
+  return {
+    elements: [],
+    path,
+    source: "",
+    type: "flowchart" as const
+  };
 }

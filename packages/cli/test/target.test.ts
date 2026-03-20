@@ -24,13 +24,13 @@ describe("validateTargetPath", () => {
   });
 
   it("accepts a tour file target", () => {
-    expect(validateTargetPath("./examples/payment-flow/payment-flow.tour.yaml")).toContain(
+    expect(validateTargetPath("./examples/checkout/payment-flow.tour.yaml")).toContain(
       "payment-flow.tour.yaml"
     );
   });
 
   it("accepts a mermaid diagram target", () => {
-    expect(validateTargetPath("./examples/payment-flow/payment-flow.mmd")).toContain(
+    expect(validateTargetPath("./examples/checkout/payment-flow.mmd")).toContain(
       "payment-flow.mmd"
     );
   });

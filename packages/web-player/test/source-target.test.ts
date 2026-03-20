@@ -30,7 +30,7 @@ describe("source-target", () => {
   });
 
   it("describes single-file preview targets explicitly", () => {
-    const target = resolve(process.cwd(), "../../examples/payment-flow/payment-flow.tour.yaml");
+    const target = resolve(process.cwd(), "../../examples/checkout/payment-flow.tour.yaml");
 
     expect(describeSourceTarget(target)).toEqual({
       kind: "file",
@@ -40,7 +40,7 @@ describe("source-target", () => {
   });
 
   it("describes markdown preview targets explicitly", () => {
-    const target = resolve(process.cwd(), "../../fixtures/markdown-mermaid/checklist.md");
+    const target = resolve(process.cwd(), "../../fixtures/markdown/checklist.md");
 
     expect(describeSourceTarget(target)).toEqual({
       kind: "file",

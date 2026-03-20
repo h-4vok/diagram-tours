@@ -18,7 +18,7 @@ describe("tour-step-links", () => {
           ...resolvedPaymentFlowTour.steps[1],
           focus: [
             ...resolvedPaymentFlowTour.steps[1].focus,
-            { id: "api_gateway", label: "API Gateway" }
+            { id: "api_gateway", kind: "node", label: "API Gateway" }
           ]
         }
       ]

@@ -47,7 +47,7 @@ export function focusDiagramViewport(input: {
     return;
   }
 
-  const focusedNodeRects = readNodeRects(input.content, input.focusGroup.nodeIds);
+  const focusedNodeRects = readElementRects(input.content, input.focusGroup.elementIds);
 
   if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
     return;
@@ -150,12 +150,46 @@ function resolveNextScrollPosition(
   return instruction;
 }
 
-function readNodeRects(content: HTMLElement, focusedNodeIds: string[]): DiagramNodeRect[] {
+function readElementRects(content: HTMLElement, focusedElementIds: string[]): DiagramNodeRect[] {
   const contentRect = content.getBoundingClientRect();
 
-  return focusedNodeIds
-    .map((nodeId) => content.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
-    .flatMap((element) => (element === null ? [] : [toNodeRect(contentRect, element)]));
+  return focusedElementIds.flatMap((elementId) =>
+    readMatchingDiagramElements(content, elementId).map((element) => toNodeRect(contentRect, element))
+  );
+}
+
+function readMatchingDiagramElements(content: HTMLElement, elementId: string): HTMLElement[] {
+  const selector = createDiagramElementSelector(elementId);
+
+  return readMatchingDiagramElementsFromList(content, selector) ?? readSingleMatchingDiagramElement(content, elementId);
+}
+
+function createDiagramElementSelector(elementId: string): string {
+  return [
+    `[data-diagram-element-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`,
+    `[data-node-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+  ].join(", ");
+}
+
+function readMatchingDiagramElementsFromList(
+  content: HTMLElement,
+  selector: string
+): HTMLElement[] | null {
+  return typeof content.querySelectorAll === "function"
+    ? Array.from(content.querySelectorAll<HTMLElement>(selector))
+    : null;
+}
+
+function readSingleMatchingDiagramElement(content: HTMLElement, elementId: string): HTMLElement[] {
+  const element =
+    content.querySelector<HTMLElement>(
+      `[data-diagram-element-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+    ) ??
+    content.querySelector<HTMLElement>(
+      `[data-node-id="${elementId}"]:not([data-diagram-element-auxiliary="true"])`
+    );
+
+  return element === null ? [] : [element];
 }
 
 function toNodeRect(contentRect: DOMRect, element: HTMLElement): DiagramNodeRect {

@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -7,7 +8,8 @@ export default defineConfig({
     coverage: {
       all: true,
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text-summary", "html", "json-summary"],
+      reportsDirectory: resolve(__dirname, "../../coverage/packages/core"),
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.d.ts"],
       thresholds: {

@@ -80,7 +80,7 @@ Each step contains:
 
 ### Focus
 
-Focus references node IDs from the Mermaid diagram.
+Focus references addressable Mermaid diagram-element IDs from the Mermaid diagram.
 
 Example:
 
@@ -91,7 +91,7 @@ focus:
 
 ### Text References
 
-Inside step text, nodes are referenced with:
+Inside step text, diagram elements are referenced with:
 
 ```text
 {{node_id}}
@@ -103,15 +103,31 @@ Example:
 The {{api_gateway}} forwards requests to {{validation_service}}.
 ```
 
-These references resolve to the Mermaid node label.
+These references resolve to the Mermaid diagram-element label.
+
+### Supported Mermaid Targets
+
+Version 1 supports:
+
+- Mermaid flowcharts with explicit node IDs
+- Mermaid sequence diagrams with explicit participant IDs and tagged message IDs
+
+Sequence message IDs use the `[message_id] Label` convention inside the Mermaid message text.
 
 ## Validation Rules
 
+For browser-visible runtime work:
+
+- `bun run smoke` and `bun run smoke:core` are the same fast default browser check
+- `bun run smoke:full` is the complete browser suite and is expected on prepush or merge-ready validation
+- `bun run prepush` is the repository-level gate that includes `bun run smoke:full`
+
 Parser must fail when:
 
-- a node ID does not exist
+- a diagram-element ID does not exist
 - references are invalid
 - a tour contains no steps
+- a sequence diagram reuses an addressable participant or message ID
 
 Errors should be descriptive and actionable.
 
@@ -120,6 +136,7 @@ Errors should be descriptive and actionable.
 Supported:
 
 - Mermaid flowcharts
+- Mermaid sequence diagrams with addressable participants and tagged messages
 - YAML tours
 - sequential steps
 
@@ -128,3 +145,4 @@ Not supported:
 - audio
 - branching
 - multi-diagram tours
+- non-addressable Mermaid sequence constructs such as notes, activation bars, loops, and alt blocks

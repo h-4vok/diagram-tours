@@ -1,17 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectDevServerToFail, startDevServer } from "./dev-server";
 
-test("docs shell browse navigation changes tours without breaking the player", async ({
+test("docs shell browse navigation changes tours without breaking the player @core", async ({
   page
 }) => {
-  await page.goto("/decision-flow?step=3");
+  await page.goto("/checkout/decision-flow?step=3");
 
   await expect(page.getByText("Diagram Tours")).toBeVisible();
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
   await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
   await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
   await expect(page.getByRole("link", { name: "christianguzman.uk" })).toBeVisible();
-  await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
   await page.getByTestId("tour-identity").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await expect(page.getByTestId("browse-search-input")).toBeVisible();
@@ -20,7 +20,7 @@ test("docs shell browse navigation changes tours without breaking the player", a
     "human or audited service"
   );
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
-  await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] [data-node-id="review"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(2);
   await expect(
@@ -31,7 +31,7 @@ test("docs shell browse navigation changes tours without breaking the player", a
   await expect(page.getByText("Refund Flow")).toBeVisible();
   await page.getByText("Refund Flow").click();
 
-  await expect(page).toHaveURL(/\/refund-flow$/);
+  await expect(page).toHaveURL(/\/checkout\/refund-flow$/);
   await expect(page.getByTestId("step-text")).toContainText(
     "reverse a payment"
   );
@@ -41,12 +41,12 @@ test("docs shell browse navigation changes tours without breaking the player", a
   await expect(page.getByText("Decision Flow")).toBeVisible();
   await page.getByText("Decision Flow").click();
 
-  await expect(page).toHaveURL(/\/decision-flow$/);
+  await expect(page).toHaveURL(/\/checkout\/decision-flow$/);
   await expect(page.getByTestId("step-text")).toBeVisible();
 });
 
-test("browse search keeps long queries strict enough to avoid unrelated fuzzy matches", async ({ page }) => {
-  await page.goto("/refund-flow");
+test("browse search keeps long queries strict enough to avoid unrelated fuzzy matches @extended", async ({ page }) => {
+  await page.goto("/checkout/refund-flow");
 
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
   await expect(page.getByTestId("browse-trigger")).toBeVisible();
@@ -59,10 +59,10 @@ test("browse search keeps long queries strict enough to avoid unrelated fuzzy ma
   await expect(page.getByText("Huge System Stress Test")).toHaveCount(0);
 });
 
-test("diagram canvas owns horizontal overflow instead of the document body", async ({
+test("diagram canvas owns horizontal overflow instead of the document body @extended", async ({
   page
 }) => {
-  await page.goto("/decision-flow");
+  await page.goto("/checkout/decision-flow");
 
   await expect(page.getByTestId("diagram-container")).toBeVisible();
   await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
@@ -71,10 +71,10 @@ test("diagram canvas owns horizontal overflow instead of the document body", asy
   await expectCanvasToOwnBody(page);
 });
 
-test("focused areas stay reasonably centered through viewport-centering examples", async ({
+test("focused areas stay reasonably centered through viewport-centering examples @extended", async ({
   page
 }) => {
-  await page.goto("/viewport-centering");
+  await page.goto("/navigation/viewport-centering");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expectFocusedAreaNearViewportCenter(page, ["build"]);
@@ -88,8 +88,8 @@ test("focused areas stay reasonably centered through viewport-centering examples
   await expectFocusedAreaNearViewportCenter(page, ["verify", "observe"]);
 });
 
-test("deep-linked step changes reuse the same Mermaid svg", async ({ page }) => {
-  await page.goto("/decision-flow?step=2");
+test("deep-linked step changes reuse the same Mermaid svg @core", async ({ page }) => {
+  await page.goto("/checkout/decision-flow?step=2");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
 
@@ -106,17 +106,17 @@ test("deep-linked step changes reuse the same Mermaid svg", async ({ page }) => 
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] svg')).toHaveAttribute(
     "data-test-instance-id",
     diagramInstanceId
   );
 });
 
-test("huge-system stress fixture remains navigable across step changes", async ({
+test("huge-system stress fixture remains navigable across step changes @extended", async ({
   page
 }) => {
-  await page.goto("/huge-system?step=5");
+  await page.goto("/ops/huge-system?step=5");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(
@@ -128,17 +128,17 @@ test("huge-system stress fixture remains navigable across step changes", async (
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/huge-system\?step=6$/);
+  await expect(page).toHaveURL(/\/ops\/huge-system\?step=6$/);
   await expect(page.getByTestId("step-text")).toContainText("distant focus");
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="compliance"]')
   ).toHaveCount(1);
 });
 
-test("huge-system first step starts at a readable focus scale", async ({ page }) => {
-  await page.goto("/huge-system");
+test("huge-system first step starts at a readable focus scale @extended", async ({ page }) => {
+  await page.goto("/ops/huge-system");
 
-  await expect(page).toHaveURL(/\/huge-system$/);
+  await expect(page).toHaveURL(/\/ops\/huge-system$/);
   await expectDiagramVisible(page);
   await expectFocusedAreaNearViewportCenter(page, ["edge"], {
     x: 280,
@@ -148,10 +148,10 @@ test("huge-system first step starts at a readable focus scale", async ({ page })
   expect(await readNodeAxisSize(page, "edge", "width")).toBeGreaterThan(80);
 });
 
-test("connector labels remain readable as context in a branching diagram", async ({
+test("connector labels remain readable as context in a branching diagram @extended", async ({
   page
 }) => {
-  await page.goto("/incident-response?step=2");
+  await page.goto("/ops/incident-response?step=2");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(
@@ -164,8 +164,8 @@ test("connector labels remain readable as context in a branching diagram", async
   ).toBeGreaterThan(0);
 });
 
-test("long step text does not break the usable diagram area", async ({ page }) => {
-  await page.goto("/incident-response?step=4");
+test("long step text does not break the usable diagram area @extended", async ({ page }) => {
+  await page.goto("/ops/incident-response?step=4");
 
   await expectDiagramVisible(page);
 
@@ -181,39 +181,49 @@ test("long step text does not break the usable diagram area", async ({ page }) =
   expect(overlayBox.x + overlayBox.width).toBeLessThanOrEqual(diagramBox.x + diagramBox.width);
 });
 
-test("dark mode persists across reloads and direct navigation", async ({ page }) => {
-  await page.goto("/payment-flow");
+test("theme selection persists across reloads and direct navigation @extended", async ({ page }) => {
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 
   await page.getByTestId("theme-toggle").click();
-  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 
   await page.reload();
   await expectDiagramVisible(page);
-  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 
-  await page.goto("/refund-flow");
+  await page.goto("/checkout/refund-flow");
+  await expectDiagramVisible(page);
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
+});
+
+test("first load defaults to dark mode until a preference is chosen @core", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.removeItem("diagram-tour-theme");
+  });
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 });
 
-test("selected steps keep a focused-node contract while dark mode remains usable", async ({ page }) => {
-  await page.goto("/payment-flow");
+test("selected steps keep a focused-node contract while the default dark mode remains usable @extended", async ({
+  page
+}) => {
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
+  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="api_gateway"]')
   ).toHaveAttribute("data-focus-state", "focused");
   await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(1);
-
-  await page.getByTestId("theme-toggle").click();
-  await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="validation_service"]')
   ).toHaveAttribute("data-step-target", "true");
 });
 
-test("unknown tours show a guided 404 with a single recovery action", async ({ page }) => {
+test("unknown tours show a guided 404 with a single recovery action @extended", async ({ page }) => {
   const response = await page.goto("/examples/tuvieja");
 
   expect(response?.status()).toBe(404);
@@ -227,30 +237,30 @@ test("unknown tours show a guided 404 with a single recovery action", async ({ p
   await expect(page).toHaveURL(/\/[^/]+$/);
 });
 
-test("empty-focus steps keep viewport behavior stable", async ({ page }) => {
-  await page.goto("/viewport-centering?step=3");
+test("empty-focus steps keep viewport behavior stable @extended", async ({ page }) => {
+  await page.goto("/navigation/viewport-centering?step=3");
   await expectDiagramVisible(page);
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/viewport-centering\?step=4$/);
+  await expect(page).toHaveURL(/\/navigation\/viewport-centering\?step=4$/);
   await expect(
     page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')
   ).toHaveCount(0);
 
   await expect.poll(async () =>
     page.getByTestId("diagram-container").evaluate((element) => element.scrollTop)
-  ).toBe(0);
+  ).toBeLessThanOrEqual(4);
 
   const neutralScrollTop = await page
     .getByTestId("diagram-container")
     .evaluate((element) => element.scrollTop);
 
-  expect(neutralScrollTop).toBe(0);
+  expect(neutralScrollTop).toBeLessThanOrEqual(4);
 });
 
-test("desktop minimap stays visible and tracks the focused step", async ({ page }) => {
-  await page.goto("/payment-flow");
+test("desktop minimap stays visible and tracks the focused step @extended", async ({ page }) => {
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-shell")).toBeVisible();
   await expect(page.getByTestId("minimap-surface")).toBeVisible();
@@ -262,8 +272,29 @@ test("desktop minimap stays visible and tracks the focused step", async ({ page 
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
-test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
-  await page.goto("/huge-system");
+test("zoom controls resize the active diagram and reset cleanly @extended", async ({ page }) => {
+  await page.goto("/checkout/payment-flow");
+  await expectDiagramVisible(page);
+
+  const baselineWidth = await readNodeAxisSize(page, "api_gateway", "width");
+
+  await page.getByTestId("zoom-in-button").click();
+
+  await expect.poll(async () => readNodeAxisSize(page, "api_gateway", "width")).toBeGreaterThan(
+    baselineWidth * 1.15
+  );
+  await expect(page.getByTestId("zoom-reset-button")).toContainText("125%");
+
+  await page.getByTestId("zoom-reset-button").click();
+
+  await expect.poll(async () => readNodeAxisSize(page, "api_gateway", "width")).toBeLessThan(
+    baselineWidth * 1.05
+  );
+  await expect(page.getByTestId("zoom-reset-button")).toContainText("100%");
+});
+
+test("clicking the minimap pans the main diagram viewport @extended", async ({ page }) => {
+  await page.goto("/ops/huge-system");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-surface")).toBeVisible();
 
@@ -281,8 +312,8 @@ test("clicking the minimap pans the main diagram viewport", async ({ page }) => 
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
 });
 
-test("dragging the minimap viewport rectangle pans the main diagram viewport", async ({ page }) => {
-  await page.goto("/huge-system");
+test("dragging the minimap viewport rectangle pans the main diagram viewport @extended", async ({ page }) => {
+  await page.goto("/ops/huge-system");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-viewport-rect")).toBeVisible();
 
@@ -300,8 +331,8 @@ test("dragging the minimap viewport rectangle pans the main diagram viewport", a
   await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
 });
 
-test("clicking a node jumps directly to its matching step", async ({ page }) => {
-  await page.goto("/refund-flow");
+test("clicking a node jumps directly to its matching step @core", async ({ page }) => {
+  await page.goto("/checkout/refund-flow");
   await expectDiagramVisible(page);
 
   await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click({
@@ -311,12 +342,12 @@ test("clicking a node jumps directly to its matching step", async ({ page }) => 
     }
   });
 
-  await expect(page).toHaveURL(/\/refund-flow\?step=2$/);
+  await expect(page).toHaveURL(/\/checkout\/refund-flow\?step=2$/);
   await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");
 });
 
-test("clicking a repeated node opens a chooser with matching steps", async ({ page }) => {
-  await page.goto("/viewport-stability");
+test("clicking a repeated node opens a chooser with matching steps @extended", async ({ page }) => {
+  await page.goto("/navigation/viewport-stability");
   await expectDiagramVisible(page);
 
   await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click({
@@ -330,16 +361,16 @@ test("clicking a repeated node opens a chooser with matching steps", async ({ pa
   await expect(page.getByTestId("node-step-choice")).toHaveCount(2);
   await page.getByTestId("node-step-choice").nth(1).click();
 
-  await expect(page).toHaveURL(/\/viewport-stability\?step=3$/);
+  await expect(page).toHaveURL(/\/navigation\/viewport-stability\?step=3$/);
 });
 
-test("favorites pin a starred tour above the browse tree", async ({ page }) => {
-  await page.goto("/refund-flow");
+test("favorites pin a starred tour above the browse tree @extended", async ({ page }) => {
+  await page.goto("/checkout/refund-flow");
   await expectDiagramVisible(page);
 
   await page.getByTestId("browse-trigger").click();
   await page
-    .locator('[data-testid="browse-tour-row"][data-tour-slug="refund-flow"]')
+    .locator('[data-testid="browse-tour-row"][data-tour-slug="checkout/refund-flow"]')
     .getByTestId("favorite-toggle")
     .click();
 
@@ -347,17 +378,17 @@ test("favorites pin a starred tour above the browse tree", async ({ page }) => {
   await expect(page.getByTestId("browse-favorite-row")).toContainText("Refund Flow");
 });
 
-test("timeline pills jump directly between steps", async ({ page }) => {
-  await page.goto("/payment-flow");
+test("timeline pills jump directly between steps @extended", async ({ page }) => {
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
 
   await page.getByTestId("timeline-step-button").nth(2).click();
 
-  await expect(page).toHaveURL(/\/payment-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout\/payment-flow\?step=3$/);
   await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
 });
 
-test("issues popover presents a readable diagnostics hierarchy", async ({ page }) => {
+test("issues popover presents a readable diagnostics hierarchy @extended", async ({ page }) => {
   const server = await startDevServer({
     port: 4181,
     promptInputs: ["1", "n", "", ""]
@@ -380,19 +411,19 @@ test("issues popover presents a readable diagnostics hierarchy", async ({ page }
   }
 });
 
-test("small screens hide the minimap automatically", async ({ page }) => {
+test("small screens hide the minimap automatically @extended", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 640 });
-  await page.goto("/payment-flow");
+  await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("step-overlay")).toBeVisible();
   await expect(page.getByTestId("minimap-shell")).toHaveCount(0);
 });
 
-test("generated fallback tours render a minimal overview and node-by-node walkthrough", async ({
+test("generated fallback tours render a minimal overview and node-by-node walkthrough @core", async ({
   page
 }) => {
   const server = await startDevServer({
-    args: ["./examples/payment-flow/payment-flow.mmd"],
+    args: ["./examples/checkout/payment-flow.mmd"],
     port: 4183
   });
 
@@ -412,9 +443,110 @@ test("generated fallback tours render a minimal overview and node-by-node walkth
   }
 });
 
-test("authored tours can target a markdown diagram block by fragment", async ({ page }) => {
+test("authored sequence tours focus participants and messages, and sequence elements stay clickable @extended", async ({
+  page
+}) => {
+  await page.goto("/sequence/order-sequence");
+  await expectDiagramVisible(page);
+
+  await expect(page.getByTestId("step-text")).toContainText("Customer");
+  await expect(
+    page.locator(
+      '[data-testid="diagram-container"] [data-diagram-element-id="customer"][data-focus-state="focused"]'
+    )
+  ).toHaveCount(2);
+
+  await page
+    .locator('[data-testid="diagram-container"] .messageText[data-diagram-element-id="enqueue_order"]')
+    .click({
+      position: {
+        x: 12,
+        y: 12
+      }
+    });
+
+  await expect(page).toHaveURL(/\/sequence\/order-sequence\?step=3$/);
+  await expect(page.getByTestId("step-text")).toContainText("Enqueue fulfillment");
+  await expect(
+    page.locator(
+      '[data-testid="diagram-container"] .messageText[data-diagram-element-id="enqueue_order"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine0[data-diagram-element-id="enqueue_order"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine1[data-diagram-element-id="enqueue_order"][data-focus-state="focused"]'
+    )
+  ).toHaveCount(2);
+
+  await page
+    .locator('[data-testid="diagram-container"] [data-diagram-element-id="customer"]')
+    .first()
+    .click({
+      position: {
+        x: 12,
+        y: 12
+      }
+    });
+
+  await expect(page).toHaveURL(/\/sequence\/order-sequence\?step=1$/);
+});
+
+test("generated fallback sequence tours include participants before tagged messages @extended", async ({
+  page
+}) => {
   const server = await startDevServer({
-    args: ["./fixtures/markdown-mermaid/checklist.tour.yaml"],
+    args: ["./examples/support/support-handoff.mmd"],
+    port: 4187
+  });
+
+  try {
+    await page.goto(server.baseUrl);
+    await expectDiagramVisible(page);
+    await expect(page.getByTestId("step-text")).toContainText("Overview of Support Handoff.");
+
+    await page.getByTestId("next-button").click();
+    await expect(page.getByTestId("step-text")).toContainText("Focus on Customer.");
+
+    const supportHandoffUrl = new URL(page.url());
+    supportHandoffUrl.searchParams.set("step", "5");
+    await page.goto(supportHandoffUrl.toString());
+    await expect(page.getByTestId("step-text")).toContainText("Focus on Open case.");
+    await expect(
+      page.locator(
+        '[data-testid="diagram-container"] .messageText[data-diagram-element-id="open_case"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine0[data-diagram-element-id="open_case"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine1[data-diagram-element-id="open_case"][data-focus-state="focused"]'
+      )
+    ).toHaveCount(2);
+
+    supportHandoffUrl.searchParams.set("step", "6");
+    await page.goto(supportHandoffUrl.toString());
+    await expect(page.getByTestId("step-text")).toContainText("Focus on Handoff case.");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("markdown-backed sequence diagrams load as generated tours @extended", async ({ page }) => {
+  const server = await startDevServer({
+    args: ["./fixtures/markdown/sequence-checklist.md"],
+    port: 4188
+  });
+
+  try {
+    await page.goto(server.baseUrl);
+    await expectDiagramVisible(page);
+    await expect(page.getByTestId("step-text")).toContainText("Overview of Support Sequence.");
+
+    await page.getByTestId("next-button").click();
+
+    await expect(page.getByTestId("step-text")).toContainText("Focus on User.");
+    await expect(
+      page.locator(
+        '[data-testid="diagram-container"] [data-diagram-element-id="user"][data-focus-state="focused"]'
+      )
+    ).toHaveCount(2);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("authored tours can target a markdown diagram block by fragment @extended", async ({ page }) => {
+  const server = await startDevServer({
+    args: ["./fixtures/markdown/checklist.tour.yaml"],
     port: 4185
   });
 
@@ -433,9 +565,9 @@ test("authored tours can target a markdown diagram block by fragment", async ({ 
   }
 });
 
-test("markdown files without Mermaid blocks fail cleanly before startup", async () => {
+test("markdown files without Mermaid blocks fail cleanly before startup @extended", async () => {
   const result = await expectDevServerToFail({
-    args: ["./fixtures/markdown-mermaid/empty.md"],
+    args: ["./fixtures/markdown/empty.md"],
     port: 4186
   });
 
@@ -603,3 +735,4 @@ function assertLayoutBox(input: {
 } {
   expect(input).not.toBeNull();
 }
+

@@ -26,13 +26,13 @@ describe("parseCliArgs", () => {
   });
 
   it("reads a single tour file target", () => {
-    expect(parseCliArgs(["./examples/payment-flow/payment-flow.tour.yaml"])).toEqual({
+    expect(parseCliArgs(["./examples/checkout/payment-flow.tour.yaml"])).toEqual({
       browser: "never",
       hasExplicitTarget: true,
       host: "127.0.0.1",
       mode: "direct",
       port: null,
-      target: "./examples/payment-flow/payment-flow.tour.yaml"
+      target: "./examples/checkout/payment-flow.tour.yaml"
     });
   });
 

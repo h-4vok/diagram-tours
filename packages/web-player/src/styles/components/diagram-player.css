@@ -5,7 +5,6 @@
   min-width: 0;
   overflow: auto scroll;
   padding: 0;
-  scroll-behavior: smooth;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-border-strong, var(--color-border)) 82%, transparent)
@@ -95,16 +94,19 @@
 }
 /* stylelint-enable selector-class-pattern */
 
-[data-node-id] {
+[data-diagram-element-id] {
   opacity: 1;
   transition:
     box-shadow 220ms ease,
     filter 400ms ease,
     opacity 400ms ease,
     transform 260ms ease;
+  fill: var(--color-node-base-text);
+  stroke: var(--color-node-base-stroke);
 }
 
-[data-node-id] :is(rect, path, polygon, circle, ellipse) {
+[data-diagram-element-id]:is(rect, path, polygon, circle, ellipse, line),
+[data-diagram-element-id] :is(rect, path, polygon, circle, ellipse, line) {
   fill: var(--color-node-base-fill);
   stroke: var(--color-node-base-stroke);
   stroke-width: 1.4px;
@@ -116,7 +118,8 @@
     filter 180ms ease;
 }
 
-[data-node-id] :is(text, foreignObject) {
+[data-diagram-element-id]:is(text, foreignObject, tspan),
+[data-diagram-element-id] :is(text, foreignObject, tspan) {
   fill: var(--color-node-base-text);
   opacity: 1;
   transition:
@@ -127,12 +130,33 @@
     filter 180ms ease;
 }
 
+[data-diagram-element-kind="message"]:is(line, polyline),
+[data-diagram-element-kind="message"] :is(line, polyline) {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-node-base-text) 74%, var(--color-node-base-stroke));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-diagram-element-kind="message"]:is(path, polygon),
+[data-diagram-element-kind="message"] :is(path, polygon) {
+  fill: color-mix(in srgb, var(--color-node-base-text) 74%, var(--color-node-base-stroke));
+  stroke: color-mix(in srgb, var(--color-node-base-text) 74%, var(--color-node-base-stroke));
+}
+
+[data-diagram-element-kind="message"]:is(text, tspan),
+[data-diagram-element-kind="message"] :is(text, tspan) {
+  fill: color-mix(in srgb, var(--color-node-base-text) 90%, var(--color-node-base-stroke));
+}
+
 [data-step-target="true"] {
   cursor: pointer;
 }
 
-[data-step-target="true"]:hover :is(rect, path, polygon, circle, ellipse),
-[data-step-target-active="true"] :is(rect, path, polygon, circle, ellipse) {
+[data-step-target="true"]:hover:is(rect, path, polygon, circle, ellipse, line),
+[data-step-target-active="true"]:is(rect, path, polygon, circle, ellipse, line),
+[data-step-target="true"]:hover :is(rect, path, polygon, circle, ellipse, line),
+[data-step-target-active="true"] :is(rect, path, polygon, circle, ellipse, line) {
   fill: url("#diagram-tour-node-hover-gradient");
   filter:
     drop-shadow(0 0 8px color-mix(in srgb, var(--color-node-hover-stroke) 24%, transparent))
@@ -145,8 +169,10 @@
   fill: url("#diagram-tour-node-hover-gradient");
 }
 
-[data-step-target="true"]:hover :is(text, foreignObject),
-[data-step-target-active="true"] :is(text, foreignObject) {
+[data-step-target="true"]:hover:is(text, foreignObject, tspan),
+[data-step-target-active="true"]:is(text, foreignObject, tspan),
+[data-step-target="true"]:hover :is(text, foreignObject, tspan),
+[data-step-target-active="true"] :is(text, foreignObject, tspan) {
   fill: var(--color-node-hover-text);
   opacity: 1;
 }
@@ -160,7 +186,8 @@
   opacity: 1;
 }
 
-[data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
+[data-focus-state="focused"]:is(rect, path, polygon, circle, ellipse, line),
+[data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse, line) {
   filter:
     drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.65) color-mix(in srgb, var(--color-focus-shadow) 84%, transparent))
     drop-shadow(0 0 var(--focus-glow-blur, 8px) color-mix(in srgb, var(--color-node-focus-stroke) 32%, transparent));
@@ -173,14 +200,38 @@
   fill: url("#diagram-tour-node-focus-gradient");
 }
 
+[data-focus-state="focused"][data-diagram-element-kind="message"]:is(line, polyline),
+[data-focus-state="focused"][data-diagram-element-kind="message"] :is(line, polyline) {
+  fill: none;
+  stroke: var(--color-node-focus-stroke);
+  stroke-width: 4px;
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="message"]:is(path, polygon),
+[data-focus-state="focused"][data-diagram-element-kind="message"] :is(path, polygon) {
+  fill: var(--color-node-focus-stroke);
+  stroke: var(--color-node-focus-stroke);
+  stroke-width: 2.8px;
+}
+
 [data-step-target="true"]:hover rect.label-container {
   fill: url("#diagram-tour-node-hover-gradient");
 }
 
+[data-focus-state="focused"]:is(text, foreignObject, tspan),
 [data-focus-state="focused"] text,
-[data-focus-state="focused"] foreignObject {
+[data-focus-state="focused"] foreignObject,
+[data-focus-state="focused"] tspan {
   fill: var(--color-node-focus-text);
+  filter:
+    drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.45) color-mix(in srgb, var(--color-focus-shadow) 42%, transparent));
   opacity: 1;
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="message"]:is(text, tspan),
+[data-focus-state="focused"][data-diagram-element-kind="message"] :is(text, tspan) {
+  fill: var(--color-node-focus-text);
+  font-weight: 700;
 }
 
 /* stylelint-disable selector-class-pattern */

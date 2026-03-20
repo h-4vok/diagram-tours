@@ -11,8 +11,8 @@ import {
 } from "../src/lib/theme";
 
 describe("theme helpers", () => {
-  it("defaults to light mode", () => {
-    expect(DEFAULT_THEME).toBe("light");
+  it("defaults to dark mode", () => {
+    expect(DEFAULT_THEME).toBe("dark");
   });
 
   it("toggles between light and dark themes", () => {

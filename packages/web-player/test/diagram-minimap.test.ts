@@ -227,6 +227,40 @@ describe("diagram minimap helpers", () => {
       viewportWidth: 600
     });
   });
+
+  it("reads focused rects from the legacy focusedElementIds path and tolerates content without selectors", () => {
+    const element = createElementStub();
+    mockRect(element, { height: 60, left: 200, top: 120, width: 80 });
+
+    const content = {
+      getBoundingClientRect: () => createDomRect({ height: 600, left: 20, top: 10, width: 800 }),
+      querySelector: (selector: string) => readLegacyElement(selector, element)
+    } as unknown as HTMLElement;
+
+    expect(
+      readDiagramMinimapNodeRects({
+        content,
+        focusedElementIds: ["api_gateway"]
+      })
+    ).toEqual([{ height: 60, left: 180, top: 110, width: 80 }]);
+
+    expect(
+      readDiagramMinimapNodeRects({
+        content: {
+          getBoundingClientRect: () => createDomRect({ height: 0, left: 0, top: 0, width: 0 }),
+          querySelector: () => null
+        } as unknown as HTMLElement,
+        focusedElementIds: ["missing"]
+      })
+    ).toEqual([]);
+
+    expect(
+      readDiagramMinimapNodeRects({
+        content,
+        focusedNodeIds: undefined
+      })
+    ).toEqual([]);
+  });
 });
 
 function createMetrics(
@@ -286,7 +320,7 @@ function createFixture(input?: {
   });
 
   Object.defineProperty(content, "querySelector", {
-    value: (selector: string) => nodeMap.get(selector) ?? null,
+    value: (selector: string) => readMappedNode(nodeMap, selector),
     writable: true
   });
   Object.assign(content, { __nodeMap: nodeMap });
@@ -349,6 +383,20 @@ function createElementStub(input?: {
 
 function readNodeMap(content: HTMLElement): Map<string, Element> {
   return (content as HTMLElement & { __nodeMap: Map<string, Element> }).__nodeMap;
+}
+
+function readMappedNode(nodeMap: Map<string, Element>, selector: string): Element | null {
+  return nodeMap.get(selector) ?? nodeMap.get(extractNodeSelector(selector)) ?? null;
+}
+
+function extractNodeSelector(selector: string): string {
+  const nodeId = selector.match(/data-node-id="([^"]+)"/u)?.[1];
+
+  return nodeId === undefined ? selector : `[data-node-id="${nodeId}"]`;
+}
+
+function readLegacyElement(selector: string, element: Element): Element | null {
+  return selector.includes('data-diagram-element-id="api_gateway"') ? element : null;
 }
 
 function createDomRect(input: RectInput): DOMRect {

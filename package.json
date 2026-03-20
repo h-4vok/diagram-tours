@@ -10,9 +10,17 @@
   ],
   "scripts": {
     "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/cli build",
-    "test": "bun test ./scripts/dev-web-player-lib.test.ts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
-    "smoke": "bun run build && bun run --cwd packages/web-player smoke",
+    "test:scripts": "vitest run --config ./scripts/vitest.config.ts --coverage",
+    "test:unit": "bun run test:scripts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
+    "coverage:dashboard": "bun ./scripts/build-coverage-dashboard.ts",
+    "test": "bun run test:unit && bun run coverage:dashboard && bun ./scripts/print-coverage-path.ts",
+    "coverage": "bun run test",
+    "smoke": "bun run build && bun run --cwd packages/web-player smoke:core",
+    "smoke:core": "bun run build && bun run --cwd packages/web-player smoke:core",
+    "smoke:extended": "bun run build && bun run --cwd packages/web-player smoke:extended",
+    "smoke:full": "bun run build && bun run --cwd packages/web-player smoke:full",
     "dev": "bun run ./scripts/dev-web-player.ts",
+    "dev:open": "bun run ./scripts/dev-web-player.ts --open",
     "dev:interactive": "bun run ./scripts/dev-web-player-interactive.ts",
     "install:cli": "bun run --cwd packages/cli build && npm install -g ./packages/cli",
     "changeset": "changeset",
@@ -23,7 +31,7 @@
     "version:alpha": "node ./scripts/changeset-version.mjs alpha",
     "version:beta": "node ./scripts/changeset-version.mjs beta",
     "version:release": "node ./scripts/changeset-version.mjs release",
-    "prepush": "bun run lint && bun run typecheck && bun run test && bun run smoke",
+    "prepush": "bun run lint && bun run typecheck && bun run test && bun run smoke:full",
     "prepare": "husky"
   },
   "devDependencies": {

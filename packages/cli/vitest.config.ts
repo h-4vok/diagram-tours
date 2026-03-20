@@ -17,7 +17,8 @@ export default defineConfig({
     coverage: {
       all: true,
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text-summary", "html", "json-summary"],
+      reportsDirectory: resolveFromPackageRoot("../../coverage/packages/cli"),
       include: ["src/lib/**/*.ts"],
       exclude: ["src/lib/types.ts"],
       thresholds: {

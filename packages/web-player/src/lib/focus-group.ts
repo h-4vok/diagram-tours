@@ -1,31 +1,35 @@
 export interface FocusGroup {
+  elementIds: string[];
   mode: "empty" | "single" | "group";
   nodeIds: string[];
   size: number;
 }
 
-export function createFocusGroup(nodeIds: string[]): FocusGroup {
-  const uniqueNodeIds = [...new Set(nodeIds)].sort();
+export function createFocusGroup(elementIds: string[]): FocusGroup {
+  const uniqueElementIds = [...new Set(elementIds)].sort();
 
-  if (uniqueNodeIds.length === 0) {
+  if (uniqueElementIds.length === 0) {
     return {
+      elementIds: [],
       mode: "empty",
       nodeIds: [],
       size: 0
     };
   }
 
-  if (uniqueNodeIds.length === 1) {
+  if (uniqueElementIds.length === 1) {
     return {
+      elementIds: uniqueElementIds,
       mode: "single",
-      nodeIds: uniqueNodeIds,
+      nodeIds: uniqueElementIds,
       size: 1
     };
   }
 
   return {
+    elementIds: uniqueElementIds,
     mode: "group",
-    nodeIds: uniqueNodeIds,
-    size: uniqueNodeIds.length
+    nodeIds: uniqueElementIds,
+    size: uniqueElementIds.length
   };
 }

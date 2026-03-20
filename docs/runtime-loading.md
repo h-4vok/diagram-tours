@@ -38,6 +38,7 @@ The CLI is responsible for browser policy, host/port selection, and launching th
 Repository contributors still have Bun-first helper scripts:
 
 - `bun run dev`
+- `bun run dev:open`
 - `bun run dev <target>`
 - `bun run dev:interactive`
 
@@ -75,10 +76,10 @@ Each discovered entry receives a slug derived from its relative source path.
 
 Examples:
 
-- `examples/payment-flow/payment-flow.tour.yaml` -> `payment-flow`
-- `examples/payment-flow/payment-flow.mmd` -> `payment-flow`
-- `fixtures/markdown-mermaid/checklist.md#details` -> `fixtures/markdown-mermaid/checklist/details`
-- `examples/incident-response/incident-response.tour.yaml` -> `incident-response`
+- `examples/checkout/payment-flow.tour.yaml` -> `checkout/payment-flow`
+- `examples/checkout/payment-flow.mmd` -> `checkout/payment-flow`
+- `fixtures/markdown/checklist.md#details` -> `fixtures/markdown/checklist/details`
+- `examples/ops/incident-response.tour.yaml` -> `ops/incident-response`
 - `examples/nested/demo.tour.yaml` -> `nested/demo`
 
 If the filename stem matches the containing directory name, the directory path becomes the slug.

@@ -145,8 +145,10 @@ describe("tour-player.svelte", () => {
 
     const overlayStack = container.querySelector('[data-testid="canvas-overlay-stack"]');
 
-    expect(overlayStack?.firstElementChild).toBe(screen.getByTestId("step-overlay"));
-    expect(overlayStack?.lastElementChild).toBe(screen.getByTestId("minimap-shell"));
+    expect(overlayStack).not.toBeNull();
+    expect((overlayStack as HTMLElement).firstElementChild).toBe(screen.getByTestId("viewport-toolbar"));
+    expect((overlayStack as HTMLElement).children[1]).toBe(screen.getByTestId("step-overlay"));
+    expect((overlayStack as HTMLElement).lastElementChild).toBe(screen.getByTestId("minimap-shell"));
   });
 
   it("hides the minimap automatically on small screens", async () => {
@@ -183,6 +185,35 @@ describe("tour-player.svelte", () => {
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
     });
     expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe("false");
+  });
+
+  it("zooms the rendered svg and resets back to 100 percent", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const svg = (await screen.findByTestId("diagram-container")).querySelector("svg");
+
+    expect(svg?.getAttribute("width")).toBe("960");
+    expect(screen.getByTestId("zoom-reset-button").textContent).toContain("100%");
+
+    await fireEvent.click(screen.getByTestId("zoom-in-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("1200");
+      expect(svg?.getAttribute("height")).toBe("800");
+      expect(screen.getByTestId("zoom-reset-button").textContent).toContain("125%");
+    });
+
+    await fireEvent.click(screen.getByTestId("zoom-reset-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("960");
+      expect(svg?.getAttribute("height")).toBe("640");
+      expect(screen.getByTestId("zoom-reset-button").textContent).toContain("100%");
+    });
   });
 
   it("renders a clickable numbered timeline and jumps directly to a chosen step", async () => {
@@ -272,6 +303,28 @@ describe("tour-player.svelte", () => {
 
     expect(clientNode.dataset.stepTarget).toBeUndefined();
     await fireEvent.click(clientShape);
+
+    expect(screen.queryByTestId("node-step-chooser")).toBeNull();
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores auxiliary diagram elements when wiring click targets", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const auxiliaryMarker = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+    auxiliaryMarker.dataset.diagramElementId = "response";
+    auxiliaryMarker.dataset.nodeId = "response";
+    auxiliaryMarker.dataset.diagramElementAuxiliary = "true";
+    diagramContainer.querySelector("svg")?.append(auxiliaryMarker);
+
+    expect(auxiliaryMarker.getAttribute("data-step-target")).toBeNull();
+    await fireEvent.click(auxiliaryMarker);
 
     expect(screen.queryByTestId("node-step-chooser")).toBeNull();
     expect(gotoMock).not.toHaveBeenCalled();
@@ -394,7 +447,7 @@ function renderDiagramForTest(input: {
   const parent = input.container.parentElement as HTMLElement;
   const positions = createNodePositions();
 
-  input.container.innerHTML = `<svg data-testid="diagram-svg">${input.diagram.nodes
+  input.container.innerHTML = `<svg data-testid="diagram-svg" width="960" height="640" data-intrinsic-width="960" data-intrinsic-height="640">${input.diagram.elements
     .map(
       (node) => `
         <g data-node-id="${node.id}" data-node-label="${node.label}">
@@ -529,13 +582,13 @@ function createMultiMatchTour() {
     ...resolvedPaymentFlowTour,
     steps: [
       resolvedPaymentFlowTour.steps[0],
-      {
-        ...resolvedPaymentFlowTour.steps[1],
-        focus: [
-          ...resolvedPaymentFlowTour.steps[1].focus,
-          { id: "api_gateway", label: "API Gateway" }
-        ]
-      },
+          {
+            ...resolvedPaymentFlowTour.steps[1],
+            focus: [
+              ...resolvedPaymentFlowTour.steps[1].focus,
+              { id: "api_gateway", kind: "node" as const, label: "API Gateway" }
+            ]
+          },
       ...resolvedPaymentFlowTour.steps.slice(2)
     ]
   };

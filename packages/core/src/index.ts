@@ -11,20 +11,26 @@ export interface DiagramTour {
   steps: TourStep[];
 }
 
-export interface MermaidNode {
+export type DiagramType = "flowchart" | "sequence";
+
+export type DiagramElementKind = "node" | "participant" | "message";
+
+export interface DiagramElement {
   id: string;
+  kind: DiagramElementKind;
   label: string;
 }
 
 export interface ResolvedDiagram {
+  elements: DiagramElement[];
   path: string;
   source: string;
-  nodes: MermaidNode[];
+  type: DiagramType;
 }
 
 export interface ResolvedTourStep {
+  focus: DiagramElement[];
   index: number;
-  focus: MermaidNode[];
   text: string;
 }
 

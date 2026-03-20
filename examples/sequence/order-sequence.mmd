@@ -1,0 +1,8 @@
+sequenceDiagram
+  participant customer as Customer
+  participant api as API Gateway
+  participant queue as Fulfillment Queue
+
+  customer->>api: [submit_order] Submit order
+  api->>queue: [enqueue_order] Enqueue fulfillment
+  queue-->>api: Delivery accepted
