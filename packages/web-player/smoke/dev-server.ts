@@ -118,9 +118,7 @@ async function waitForServer(
   const timeoutAt = Date.now() + 120_000;
 
   while (Date.now() < timeoutAt) {
-    if (child.exitCode !== null) {
-      throw new Error(`Server at ${baseUrl} exited before it was ready.\n${readOutput()}`);
-    }
+    ensureServerStillRunning(child, baseUrl, readOutput);
 
     if (await isServerReady(baseUrl)) {
       return;
@@ -130,6 +128,16 @@ async function waitForServer(
   }
 
   throw new Error(`Timed out waiting for server at ${baseUrl}\n${readOutput()}`);
+}
+
+function ensureServerStillRunning(
+  child: ChildProcessWithoutNullStreams,
+  baseUrl: string,
+  readOutput: () => string
+): void {
+  if (child.exitCode !== null) {
+    throw new Error(`Server at ${baseUrl} exited before it was ready.\n${readOutput()}`);
+  }
 }
 
 async function isServerReady(baseUrl: string): Promise<boolean> {
