@@ -438,6 +438,30 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("diagram-container")).toBeDefined();
   });
 
+  it("renders literal br markers in step text as visible line breaks instead of raw markup", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: {
+        ...resolvedPaymentFlowTour,
+        steps: [
+          {
+            ...resolvedPaymentFlowTour.steps[0],
+            text: "Line one<br/>Line two"
+          },
+          ...resolvedPaymentFlowTour.steps.slice(1)
+        ]
+      }
+    });
+
+    const stepText = await screen.findByTestId("step-text");
+
+    expect(stepText.innerHTML).toContain("<br>");
+    expect(stepText.textContent).toContain("Line one");
+    expect(stepText.textContent).toContain("Line two");
+    expect(stepText.textContent).not.toContain("<br");
+  });
+
 });
 
 function renderDiagramForTest(input: {

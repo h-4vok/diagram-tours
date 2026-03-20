@@ -1,32 +1,102 @@
-import type { BrowserPreference, ParsedCliArgs } from "./types.js";
+import type {
+  BrowserPreference,
+  ParsedCliArgs,
+  ParsedInitArgs,
+  ParsedSetupArgs,
+  ParsedStartupArgs,
+  ParsedValidateArgs
+} from "./types.js";
 
 const DEFAULT_HOST = "127.0.0.1";
+const INIT_COMMAND = "init";
+const SETUP_COMMAND = "setup";
+const VALIDATE_COMMAND = "validate";
+const SUBCOMMANDS = new Set([INIT_COMMAND, SETUP_COMMAND, VALIDATE_COMMAND]);
 
 export function parseCliArgs(input: string[]): ParsedCliArgs {
+  const command = readCommand(input);
+
+  if (command !== null) {
+    return parseSubcommandArgs(command, input.slice(1));
+  }
+
+  return parseStartupArgs(input);
+}
+
+function parseStartupArgs(input: string[]): ParsedCliArgs {
   const state = createInitialState();
 
   for (let index = 0; index < input.length; index += 1) {
-    const value = input[index];
-
-    if (value.startsWith("-")) {
-      index = readFlag(input, index, state);
-
-      continue;
-    }
-
-    assignTarget(state, value);
+    index = readStartupToken(input, index, state);
   }
 
-  return finalizeState(state);
+  return readStartupCommand(state);
+}
+
+function readStartupToken(
+  input: string[],
+  index: number,
+  state: ReturnType<typeof createInitialState>
+): number {
+  const value = input[index];
+
+  if (value.startsWith("-")) {
+    return readFlag(input, index, state);
+  }
+
+  assignTarget(state, value);
+
+  return index;
+}
+
+function readStartupCommand(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  return state.mode === "version"
+    ? { command: "version" }
+    : {
+        command: "startup",
+        options: finalizeState(state)
+      };
 }
 
 function createInitialState() {
   return {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
-    mode: "wizard" as ParsedCliArgs["mode"],
+    mode: "wizard" as ParsedStartupArgs["mode"],
     port: null as number | null,
     target: null as string | null
+  };
+}
+
+function readCommand(input: string[]): "init" | "setup" | "validate" | null {
+  const firstValue = input[0];
+
+  return typeof firstValue === "string" && SUBCOMMANDS.has(firstValue)
+    ? (firstValue as "init" | "setup" | "validate")
+    : null;
+}
+
+function parseSubcommandArgs(
+  command: "init" | "setup" | "validate",
+  input: string[]
+): Extract<ParsedCliArgs, { command: "init" | "setup" | "validate" }> {
+  if (command === SETUP_COMMAND) {
+    return {
+      command,
+      options: parseSetupArgs(input)
+    };
+  }
+
+  if (command === VALIDATE_COMMAND) {
+    return {
+      command,
+      options: parseValidateArgs(input)
+    };
+  }
+
+  return {
+    command,
+    options: parseInitArgs(input)
   };
 }
 
@@ -93,18 +163,7 @@ function assignTarget(state: ReturnType<typeof createInitialState>, target: stri
   state.target = target;
 }
 
-function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
-  if (state.mode === "version") {
-    return {
-      browser: "never",
-      hasExplicitTarget: false,
-      host: state.host,
-      mode: "version",
-      port: null,
-      target: null
-    };
-  }
-
+function finalizeState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
   const hasExplicitTarget = state.target !== null;
 
   return {
@@ -125,9 +184,162 @@ function readBrowserPreference(browser: BrowserPreference, hasExplicitTarget: bo
   return browser;
 }
 
-function readMode(hasExplicitTarget: boolean): ParsedCliArgs["mode"] {
+function readMode(hasExplicitTarget: boolean): ParsedStartupArgs["mode"] {
   return hasExplicitTarget ? "direct" : "wizard";
 }
+
+function parseSetupArgs(input: string[]): ParsedSetupArgs {
+  const state = {
+    agent: "prompt" as ParsedSetupArgs["agent"],
+    agentPath: null as string | null,
+    overwrite: false
+  };
+
+  for (let index = 0; index < input.length; index += 1) {
+    const flag = input[index];
+
+    if (!flag.startsWith("-")) {
+      throw new Error(`Unexpected positional argument "${flag}" for setup.`);
+    }
+
+    index = readSetupFlag(input, index, state);
+  }
+
+  return state;
+}
+
+function readSetupFlag(input: string[], index: number, state: ParsedSetupArgs): number {
+  const flag = input[index];
+  const handler = SETUP_FLAG_HANDLERS[flag];
+
+  if (handler === undefined) {
+    throw new Error(`Unknown flag "${flag}" for setup.`);
+  }
+
+  return handler(input, index, state);
+}
+
+function assignSetupAgentMode(
+  state: ParsedSetupArgs,
+  agent: Exclude<ParsedSetupArgs["agent"], "prompt">
+): void {
+  if (state.agent !== "prompt" || state.agentPath !== null) {
+    throw new Error("Choose only one setup agent installation mode.");
+  }
+
+  state.agent = agent;
+}
+
+function assignSetupAgentPath(state: ParsedSetupArgs, agentPath: string): void {
+  if (state.agent !== "prompt" || state.agentPath !== null) {
+    throw new Error("Choose only one setup agent installation mode.");
+  }
+
+  state.agent = "default";
+  state.agentPath = agentPath;
+}
+
+function parseValidateArgs(input: string[]): ParsedValidateArgs {
+  if (input.length === 0) {
+    return {
+      target: null
+    };
+  }
+
+  assertSingleValidateTarget(input);
+
+  return {
+    target: input[0]!
+  };
+}
+
+function assertSingleValidateTarget(input: string[]): void {
+  if (input.length > 1 || input[0]!.startsWith("-")) {
+    throw new Error("Expected validate to receive zero or one target path.");
+  }
+}
+
+function parseInitArgs(input: string[]): ParsedInitArgs {
+  const state = {
+    overwrite: false,
+    target: null as string | null
+  };
+
+  input.forEach((value) => readInitValue(value, state));
+
+  if (state.target === null) {
+    throw new Error("Expected init to receive a Mermaid diagram path.");
+  }
+
+  return state as ParsedInitArgs;
+}
+
+function readInitValue(
+  value: string,
+  state: {
+    overwrite: boolean;
+    target: string | null;
+  }
+): void {
+  if (value.startsWith("-")) {
+    assignInitFlag(value, state);
+    return;
+  }
+
+  assignInitTarget(state, value);
+}
+
+function assignInitFlag(
+  value: string,
+  state: {
+    overwrite: boolean;
+  }
+): void {
+  if (value !== "--overwrite") {
+    throw new Error(`Unknown flag "${value}" for init.`);
+  }
+
+  state.overwrite = true;
+}
+
+function assignInitTarget(
+  state: {
+    target: string | null;
+  },
+  target: string
+): void {
+  if (state.target !== null) {
+    throw new Error("Only one diagram path may be provided to init.");
+  }
+
+  state.target = target;
+}
+
+const SETUP_FLAG_HANDLERS: Partial<Record<
+  string,
+  (
+    input: string[],
+    index: number,
+    state: ParsedSetupArgs
+  ) => number
+>> = {
+  "--overwrite"(_input, index, state) {
+    state.overwrite = true;
+    return index;
+  },
+  "--agent"(_input, index, state) {
+    assignSetupAgentMode(state, "default");
+    return index;
+  },
+  "--no-agent"(_input, index, state) {
+    assignSetupAgentMode(state, "none");
+    return index;
+  },
+  "--agent-path"(input, index, state) {
+    assignSetupAgentPath(state, readFlagValue("--agent-path", input[index + 1]));
+    return index + 1;
+  }
+};
 
 const FLAG_HANDLERS: Partial<Record<
   string,

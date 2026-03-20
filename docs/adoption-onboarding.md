@@ -30,11 +30,16 @@ Near-term ideas:
 - make fallback tours feel useful immediately so a user gets value before authoring YAML
 - provide one minimal copy-pasteable `*.tour.yaml` example near the top of the docs
 
-Potential product improvements:
+Current shipped helpers:
 
-- `diagram-tours init` to scaffold a local example and project guidance
-- `diagram-tours export-template <diagram>` to generate a starter YAML from a raw diagram
+- `diagram-tours setup` to install `.diagram-tours/instructions.md` and optionally a Codex subagent definition
+- `diagram-tours init <diagram.mmd>` to scaffold a sibling starter `*.tour.yaml`
+- `diagram-tours validate [target]` to check one authored tour file or a directory tree
+
+Potential product improvements beyond the current commands:
+
 - friendlier empty-state guidance when a directory has diagrams but no authored tours yet
+- richer AI/export helpers beyond the current setup/init/validate surface
 
 ## Onboarding For AI Assistants
 
@@ -69,9 +74,10 @@ Potential repository artifacts:
 
 Potential CLI helpers:
 
+- `diagram-tours setup`
 - `diagram-tours init`
-- `diagram-tours export-template <diagram>`
-- `diagram-tours print-prompt <diagram>`
+- `diagram-tours validate`
+- future helpers such as `diagram-tours export-template <diagram>`
 
 ## Candidate AI Prompt Shape
 
@@ -89,5 +95,5 @@ Preview with `diagram-tours <path>`.
 
 1. Add an adoption/onboarding section to the README.
 2. Introduce a small repository convention for AI-readable instructions.
-3. Add a scaffold helper such as `diagram-tours init`.
-4. Add a template exporter for authored tour generation.
+3. Keep improving the README and repo conventions around the shipped `setup`, `init`, and `validate` commands.
+4. Add richer AI/export helpers only when the simpler flow stops being enough.

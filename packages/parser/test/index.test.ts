@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadResolvedTour, loadResolvedTourCollection } from "../src/index";
+import { loadResolvedTour, loadResolvedTourCollection, validateDiscoveredTours } from "../src/index";
 
 const FIXTURE_TOUR_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -981,6 +981,64 @@ describe("@diagram-tour/parser", () => {
     ]);
     expect(collection.skipped).toHaveLength(1);
     expect(collection.skipped[0]?.sourcePath).toBe("broken.tour.yaml");
+  });
+
+  it("validates discovered authored tours under a directory", async () => {
+    const result = await validateDiscoveredTours(DISCOVERY_FIXTURE_ROOT);
+
+    expect(result).toEqual({
+      invalid: [
+        {
+          error:
+            `Tour "${normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml"))}": step 1 focus references unknown Mermaid node id "missing_node"`,
+          sourcePath: "invalid-tour/invalid.tour.yaml"
+        }
+      ],
+      valid: ["alpha-tour/alpha.tour.yaml", "nested/beta-tour/beta.tour.yaml"]
+    });
+  });
+
+  it("keeps invalid authored tours visible even when none validate", async () => {
+    const result = await validateDiscoveredTours(INVALID_ONLY_FIXTURE_ROOT);
+
+    expect(result.valid).toEqual([]);
+    expect(result.invalid).toEqual([
+      {
+        error:
+          `Tour "${normalizePath(resolve(INVALID_ONLY_FIXTURE_ROOT, "./broken.tour.yaml"))}": step 1 focus references unknown Mermaid node id "ghost"`,
+        sourcePath: "broken.tour.yaml"
+      }
+    ]);
+  });
+
+  it("returns no authored tours for a directory with only raw diagrams", async () => {
+    const fallbackRoot = await createTempDiagramDirectory({
+      "payments/refund.mmd": "flowchart LR\n  customer[Customer] --> receipt[Receipt]"
+    });
+    const result = await validateDiscoveredTours(fallbackRoot);
+
+    expect(result).toEqual({
+      invalid: [],
+      valid: []
+    });
+  });
+
+  it("validates a single authored tour file target", async () => {
+    const result = await validateDiscoveredTours(FIXTURE_TOUR_PATH);
+
+    expect(result).toEqual({
+      invalid: [],
+      valid: ["payment-flow.tour.yaml"]
+    });
+  });
+
+  it("returns no authored tours for a non-tour single-file target", async () => {
+    const result = await validateDiscoveredTours(resolve(EXAMPLES_ROOT, "./checkout/payment-flow.mmd"));
+
+    expect(result).toEqual({
+      invalid: [],
+      valid: []
+    });
   });
 
   it("treats dot as the current working directory discovery root", async () => {

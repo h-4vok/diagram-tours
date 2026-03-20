@@ -21,20 +21,26 @@ afterEach(async () => {
 });
 
 describe("resolveServerBinding", () => {
-  it("uses port 7733 when it is available", async () => {
-    await expect(resolveServerBinding({ host: "127.0.0.1", requestedPort: null })).resolves.toEqual({
+  it("uses the preferred automatic port when it is available", async () => {
+    const preferredPort = await readAvailablePort();
+
+    await expect(
+      resolveServerBinding({ host: "127.0.0.1", preferredPort, requestedPort: null })
+    ).resolves.toEqual({
       host: "127.0.0.1",
-      port: 7733
+      port: preferredPort
     });
   });
 
-  it("falls back to another free port when 7733 is unavailable", async () => {
-    await occupyPort(7733);
+  it("falls back to another free port when the preferred automatic port is unavailable", async () => {
+    const preferredPort = await readAvailablePort();
 
-    const result = await resolveServerBinding({ host: "127.0.0.1", requestedPort: null });
+    await occupyPort(preferredPort);
+
+    const result = await resolveServerBinding({ host: "127.0.0.1", preferredPort, requestedPort: null });
 
     expect(result.host).toBe("127.0.0.1");
-    expect(result.port).not.toBe(7733);
+    expect(result.port).not.toBe(preferredPort);
     expect(result.port).toBeGreaterThan(0);
   });
 
@@ -64,4 +70,22 @@ async function occupyPort(port: number) {
   });
 
   servers.push(server);
+}
+
+async function readAvailablePort(): Promise<number> {
+  const server = createServer();
+
+  const port = await new Promise<number>((resolveListen) => {
+    server.listen(0, "127.0.0.1", () => {
+      resolveListen((server.address() as { port: number }).port);
+    });
+  });
+
+  await new Promise<void>((resolveClose) => {
+    server.close(() => {
+      resolveClose();
+    });
+  });
+
+  return port;
 }

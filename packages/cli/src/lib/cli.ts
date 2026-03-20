@@ -3,131 +3,98 @@ import type { ChildProcess } from "node:child_process";
 import { stdin as input, stdout as output } from "node:process";
 
 import { loadResolvedTourCollection } from "@diagram-tour/parser";
+import { parseCliArgs } from "./args.js";
 import { defaultBrowserOpener, type BrowserOpener } from "./browser.js";
 import { resolveBrowserOpenPolicy } from "./browser-policy.js";
-import { parseCliArgs } from "./args.js";
+import { runInitCommand } from "./init.js";
 import { resolveServerBinding } from "./port-policy.js";
 import { startWebServer } from "./server.js";
+import { runSetupCommand } from "./setup.js";
 import { validateTargetPath } from "./target.js";
-import type { ParsedCliArgs, ResolvedLaunchOptions } from "./types.js";
+import type { ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
+import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
 import { runWizard } from "./wizard.js";
 
 type LaunchResult =
   | { code: number; kind: "exit" }
   | { kind: "launch"; launch: ResolvedLaunchOptions };
-type StartupPlan =
-  | { code: number; kind: "exit" }
-  | { kind: "launch"; launch: ResolvedLaunchOptions; mode: ParsedCliArgs["mode"] };
 
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
-  const startupPlan = await readStartupPlan(args);
-
-  if (startupPlan.kind === "exit") {
-    return startupPlan.code;
-  }
-
-  return await runLaunch(startupPlan.mode, startupPlan.launch, opener);
-}
-
-async function resolveLaunchOptions(parsed: ParsedCliArgs): Promise<LaunchResult> {
-  if (parsed.mode !== "wizard") {
-    return {
-      kind: "launch",
-      launch: readDirectLaunch(parsed)
-    };
-  }
-
-  return await readWizardLaunch(parsed);
-}
-
-async function readStartupPlan(args: string[]): Promise<StartupPlan> {
   const parsed = parseCliArgs(args);
-  const versionExitCode = writeVersionIfRequested(parsed.mode);
 
-  if (versionExitCode !== null) {
-    return {
-      code: versionExitCode,
-      kind: "exit"
-    };
+  if (parsed.command === "startup") {
+    return await runStartupCommand(parsed.options, opener);
   }
 
-  const launchResult = await resolveLaunchOptions(parsed);
-
-  return launchResult.kind === "exit"
-    ? launchResult
-    : {
-        kind: "launch",
-        launch: launchResult.launch,
-        mode: parsed.mode
-      };
+  return await runUtilityCommand(parsed);
 }
 
-function writeVersionIfRequested(mode: ParsedCliArgs["mode"]): number | null {
-  if (mode !== "version") {
-    return null;
-  }
-
-  output.write(`diagram-tours ${readCliVersion()}\n`);
-
-  return 0;
+async function runUtilityCommand(
+  parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
+): Promise<number> {
+  return await readUtilityHandler(parsed.command)(parsed);
 }
 
-async function promptForLaunchOptions(parsed: ParsedCliArgs): Promise<ResolvedLaunchOptions> {
-  const readline = createInterface({ input, output });
-
-  try {
-    return await runWizard(
-      {
-        question(prompt) {
-          return readline.question(prompt);
-        },
-        write(text: string) {
-          output.write(text);
-        }
-      },
-      parsed
-    );
-  } finally {
-    readline.close();
-  }
-}
-
-async function readWizardLaunch(parsed: ParsedCliArgs): Promise<LaunchResult> {
-  try {
-    return {
-      kind: "launch",
-      launch: await promptForLaunchOptions(parsed)
-    };
-  } catch (error) {
-    return handleWizardLaunchError(error);
-  }
-}
-
-async function runLaunch(
-  mode: ParsedCliArgs["mode"],
-  launch: ResolvedLaunchOptions,
+async function runStartupCommand(
+  parsed: ParsedStartupArgs,
   opener: BrowserOpener
 ): Promise<number> {
-  await loadResolvedTourCollection(launch.target);
+  const launchResult = parsed.mode === "wizard" ? await readWizardLaunch(parsed) : readDirectLaunch(parsed);
 
-  const server = await startLaunchServer(launch);
+  if (launchResult.kind === "exit") {
+    return launchResult.code;
+  }
+
+  await loadResolvedTourCollection(launchResult.launch.target);
+  const server = await startLaunchServer(launchResult.launch);
 
   await openBrowserIfNeeded(opener, {
-    browser: launch.browser,
-    mode,
+    browser: launchResult.launch.browser,
+    mode: parsed.mode,
     url: server.url
   });
 
   return await waitForExit(server.child);
 }
 
-function readDirectLaunch(parsed: ParsedCliArgs): ResolvedLaunchOptions {
+async function withPromptIo<T>(action: (io: PromptIo) => Promise<T>): Promise<T> {
+  const readline = createInterface({ input, output });
+
+  try {
+    return await action({
+      question(prompt) {
+        return readline.question(prompt);
+      },
+      write(text: string) {
+        output.write(text);
+      }
+    });
+  } finally {
+    readline.close();
+  }
+}
+
+async function readWizardLaunch(parsed: ParsedStartupArgs): Promise<LaunchResult> {
+  try {
+    return {
+      kind: "launch",
+      launch: await withPromptIo((io) => runWizard(io, parsed))
+    };
+  } catch (error) {
+    return handleWizardLaunchError(error);
+  }
+}
+
+function readDirectLaunch(parsed: ParsedStartupArgs): LaunchResult {
   return {
-    browser: parsed.browser as ResolvedLaunchOptions["browser"],
-    host: parsed.host,
-    port: parsed.port,
-    target: validateTargetPath(parsed.target as string)
+    kind: "launch",
+    launch: {
+      browser: parsed.browser as ResolvedLaunchOptions["browser"],
+      host: parsed.host,
+      port: parsed.port,
+      target: validateTargetPath(parsed.target as string)
+    }
   };
 }
 
@@ -162,7 +129,7 @@ async function openBrowserIfNeeded(
   opener: BrowserOpener,
   options: {
     browser: ResolvedLaunchOptions["browser"];
-    mode: ParsedCliArgs["mode"];
+    mode: ParsedStartupArgs["mode"];
     url: string;
   }
 ): Promise<void> {
@@ -186,4 +153,30 @@ function handleWizardLaunchError(error: unknown): LaunchResult {
   }
 
   throw error;
+}
+
+const UTILITY_COMMAND_HANDLERS = {
+  init(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" }>) {
+    return runInitCommand(parsed.options);
+  },
+  setup(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "setup" }>) {
+    return withPromptIo((io) => runSetupCommand(parsed.options, io));
+  },
+  validate(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "validate" }>) {
+    return runValidateCommand(parsed.options);
+  },
+  version(_parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "version" }>) {
+    output.write(`diagram-tours ${readCliVersion()}\n`);
+    return Promise.resolve(0);
+  }
+};
+
+function readUtilityHandler(
+  command: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>["command"]
+): (
+  parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
+) => Promise<number> {
+  return UTILITY_COMMAND_HANDLERS[command] as (
+    parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
+  ) => Promise<number>;
 }

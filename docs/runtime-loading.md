@@ -33,6 +33,24 @@ Behavior:
 
 The CLI is responsible for browser policy, host/port selection, and launching the packaged Node server. The SvelteKit runtime remains responsible for loading tours and serving the UI.
 
+## Authoring Commands
+
+The published CLI also includes authoring commands that do not start the runtime:
+
+- `diagram-tours setup`
+- `diagram-tours init <diagram.mmd>`
+- `diagram-tours validate [target]`
+
+Behavior:
+
+- `setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition
+- `init` creates a sibling starter `*.tour.yaml` for a standalone `.mmd` or `.mermaid` source
+- `validate` checks one authored `*.tour.yaml` file or all authored tours under a directory recursively
+
+`setup` runs interactively by default but also supports direct flags such as `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite`. `init` supports `--overwrite` for replacing an existing scaffolded file.
+
+These commands are CLI-side authoring helpers. They do not change the runtime source of truth, which remains `DIAGRAM_TOUR_SOURCE_TARGET` for startup and browser preview.
+
 ## Contributor Startup
 
 Repository contributors still have Bun-first helper scripts:
