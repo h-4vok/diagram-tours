@@ -82,6 +82,7 @@ UX here includes CLI messages, browser flows, and GitHub-read documentation, not
 Creating or updating a pull request is not the end of the task.
 
 When an agent opens or updates a PR, the task remains in progress until the relevant CI checks for that PR are green.
+Do not mark the task complete, and do not hand off the PR as ready, until those checks have finished and passed.
 
 Agents must:
 
