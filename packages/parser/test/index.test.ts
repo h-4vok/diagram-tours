@@ -9,7 +9,7 @@ import { loadResolvedTour, loadResolvedTourCollection } from "../src/index";
 
 const FIXTURE_TOUR_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../fixtures/payment-flow.tour.yaml"
+  "../../../fixtures/flowchart/payment-flow.tour.yaml"
 );
 const DISCOVERY_FIXTURE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "./fixtures/discovery");
 const INVALID_ONLY_FIXTURE_ROOT = resolve(
@@ -428,7 +428,7 @@ describe("@diagram-tour/parser", () => {
 
   it("builds a one-tour collection from a single diagram file target", async () => {
     const collection = await loadResolvedTourCollection(
-      resolve(EXAMPLES_ROOT, "./payment-flow/payment-flow.mmd")
+      resolve(EXAMPLES_ROOT, "./checkout/payment-flow.mmd")
     );
 
     expect(collection.entries).toHaveLength(1);
@@ -1015,18 +1015,18 @@ describe("@diagram-tour/parser", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
-      "decision-flow",
-      "huge-system",
-      "incident-response",
-      "order-sequence",
-      "parallel-onboarding",
-      "payment-flow",
-      "refund-flow",
-      "release-pipeline",
-      "support-decision-tree",
-      "support-handoff",
-      "viewport-centering",
-      "viewport-stability"
+      "checkout/decision-flow",
+      "checkout/payment-flow",
+      "checkout/refund-flow",
+      "navigation/viewport-centering",
+      "navigation/viewport-stability",
+      "ops/huge-system",
+      "ops/incident-response",
+      "ops/parallel-onboarding",
+      "ops/release-pipeline",
+      "sequence/order-sequence",
+      "support/support-decision-tree",
+      "support/support-handoff"
     ]);
   });
 

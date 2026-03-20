@@ -114,9 +114,11 @@ If a step tries to explain too much, split it.
 The current convention is one directory per example:
 
 ```text
-examples/payment-flow/
+examples/checkout/
   payment-flow.mmd
   payment-flow.tour.yaml
+  refund-flow.mmd
+  refund-flow.tour.yaml
 ```
 
 That layout produces a clean slug and keeps related files together.
@@ -124,7 +126,7 @@ That layout produces a clean slug and keeps related files together.
 If you only have a diagram at first, this is still valid:
 
 ```text
-examples/payment-flow/
+examples/checkout/
   payment-flow.mmd
 ```
 
@@ -189,9 +191,9 @@ A practical local loop is:
 For the published product flow, use the global CLI:
 
 ```bash
-diagram-tours ./examples/payment-flow/payment-flow.tour.yaml
-diagram-tours ./examples/payment-flow/payment-flow.mmd
-diagram-tours ./fixtures/markdown-mermaid/checklist.md
+diagram-tours ./examples/checkout/payment-flow.tour.yaml
+diagram-tours ./examples/checkout/payment-flow.mmd
+diagram-tours ./fixtures/markdown/checklist.md
 diagram-tours ./examples
 diagram-tours
 ```
@@ -199,8 +201,8 @@ diagram-tours
 For repository contributor work, the Bun helpers still exist:
 
 ```bash
-bun run dev ./examples/payment-flow/payment-flow.tour.yaml
-bun run dev ./examples/payment-flow/payment-flow.mmd
+bun run dev ./examples/checkout/payment-flow.tour.yaml
+bun run dev ./examples/checkout/payment-flow.mmd
 bun run dev ./examples
 bun run dev:open
 bun run dev:interactive
@@ -211,7 +213,7 @@ The environment-variable flow still works when you want to drive the runtime dir
 PowerShell example:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/payment-flow/payment-flow.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/checkout/payment-flow.tour.yaml"
 bun run dev
 ```
 

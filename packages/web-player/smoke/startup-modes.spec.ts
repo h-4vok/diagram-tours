@@ -3,17 +3,16 @@ import { expect, test, type Page } from "@playwright/test";
 import { startDevServer } from "./dev-server";
 
 test.describe("startup modes", () => {
-  test.describe.configure({ mode: "serial" });
   test.setTimeout(120_000);
 
-  test("repo-wide startup exposes repo-only tours in browse", async ({ page }) => {
+  test("repo-wide startup exposes repo-only tours in browse @core", async ({ page }) => {
     const server = await startDevServer({
       port: 4174,
       promptInputs: ["1", "n", "", ""]
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
 
       await expectRepoWideBrowse(page);
       expect(server.output).toContain(server.baseUrl);
@@ -22,14 +21,14 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("explicit examples directory keeps browse scoped to shipped examples", async ({ page }) => {
+  test("explicit examples directory keeps browse scoped to shipped examples @core", async ({ page }) => {
     const server = await startDevServer({
       args: ["./examples"],
       port: 4175
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
 
       await expectExamplesBrowse(page);
     } finally {
@@ -37,9 +36,9 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("explicit single-file startup limits browse to one tour", async ({ page }) => {
+  test("explicit single-file startup limits browse to one tour @core", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/payment-flow/payment-flow.tour.yaml"],
+      args: ["./examples/checkout/payment-flow.tour.yaml"],
       port: 4176
     });
 
@@ -56,7 +55,7 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("interactive open-all matches repo-wide startup", async ({
+  test("interactive open-all matches repo-wide startup @extended", async ({
     page
   }) => {
     const server = await startDevServer({
@@ -65,7 +64,7 @@ test.describe("startup modes", () => {
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
 
       await expectRepoWideBrowse(page);
     } finally {
@@ -73,14 +72,14 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("interactive directory selection matches examples-only startup", async ({ page }) => {
+  test("interactive directory selection matches examples-only startup @extended", async ({ page }) => {
     const server = await startDevServer({
       port: 4178,
       promptInputs: ["2", "./examples", "n", "", ""]
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/refund-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout/refund-flow`);
 
       await expectExamplesBrowse(page);
     } finally {
@@ -88,10 +87,10 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("interactive file selection matches single-file startup", async ({ page }) => {
+  test("interactive file selection matches single-file startup @extended", async ({ page }) => {
     const server = await startDevServer({
       port: 4179,
-      promptInputs: ["3", "./examples/payment-flow/payment-flow.tour.yaml", "n", "", ""]
+      promptInputs: ["3", "./examples/checkout/payment-flow.tour.yaml", "n", "", ""]
     });
 
     try {
@@ -107,9 +106,9 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("interactive startup skips the prompt when a target is explicit", async ({ page }) => {
+  test("interactive startup skips the prompt when a target is explicit @extended", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/refund-flow/refund-flow.tour.yaml"],
+      args: ["./examples/checkout/refund-flow.tour.yaml"],
       port: 4180
     });
 
@@ -128,9 +127,9 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("explicit diagram startup generates a fallback tour preview", async ({ page }) => {
+  test("explicit diagram startup generates a fallback tour preview @core", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/payment-flow/payment-flow.mmd"],
+      args: ["./examples/checkout/payment-flow.mmd"],
       port: 4182
     });
 
@@ -145,9 +144,9 @@ test.describe("startup modes", () => {
     }
   });
 
-  test("explicit markdown startup generates multiple fallback entries from one file", async ({ page }) => {
+  test("explicit markdown startup generates multiple fallback entries from one file @extended", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./fixtures/markdown-mermaid/checklist.md"],
+      args: ["./fixtures/markdown/checklist.md"],
       port: 4184
     });
 

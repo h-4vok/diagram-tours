@@ -1,7 +1,6 @@
 name = "Symmetra"
 description = "Tour contract guardian for diagram-tours. Review changes that may affect the tour contract, source-target loading, package boundaries, or alignment between code, tests, and docs."
 model = "gpt-5.4-mini"
-reasoning_effort = "high"
 sandbox_mode = "read-only"
 
 developer_instructions = """

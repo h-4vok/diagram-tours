@@ -34,7 +34,8 @@ Run the relevant checks before declaring work complete:
 
 Also run:
 
-- `bun run smoke` when startup flow, routing, UX, browse, viewport, theme, docs-visible behavior, or other user-visible runtime behavior changed
+- `bun run smoke` when startup flow, routing, UX, browse, viewport, theme, docs-visible behavior, or other user-visible runtime behavior changed and the fast core browser tier is enough
+- `bun run smoke:full` when the browser change needs the full core + extended smoke suite
 - `bun run build` when touching published packages, runtime packaging, or startup/runtime integration
 - `bun run prepush` for cross-package or release-facing changes
 

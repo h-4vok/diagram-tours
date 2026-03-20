@@ -89,6 +89,10 @@ Cutoff date: 2026-03-17
   - Evidence: `package.json`, `scripts/build-coverage-dashboard.ts`, `scripts/vitest.config.ts`, `docs/testing/coverage.md`
 - Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
   - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
+- Rebalance smoke coverage into core smoke vs extended pre-push coverage
+  - Current state: `bun run smoke` now runs a smaller tagged core browser suite for packaged-runtime startup and critical navigation confidence, while broader browser scenarios run through an extended suite included in `bun run prepush`
+  - Testing expectation: script coverage and Playwright selection validate that every existing browser scenario remains covered in either the core or extended tier, with `prepush` still exercising the full browser surface before handoff
+  - Evidence: `package.json`, `packages/web-player/package.json`, `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
 - Support for more complex diagram types, including Mermaid sequence diagrams
   - Current state: version 1 now supports Mermaid flowcharts plus Mermaid sequence diagrams with addressable participants and tagged messages, generated fallback steps, `focus`/`{{ref}}` resolution, minimap markers, viewport centering, and click-to-step navigation
   - Scope note: notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs still remain out of scope
@@ -110,10 +114,6 @@ Cutoff date: 2026-03-17
   - Evidence: `packages/cli/src/lib/wizard.ts`
 
 ### Todo
-
-- Rebalance smoke coverage into core smoke vs extended pre-push coverage
-  - Note: the current smoke suite has grown large enough that it no longer fits the original fast-signal intent of smoke testing
-  - Pending: define which runtime checks are truly core smoke coverage for every task, and move slower or broader browser scenarios into a separate suite that runs for `bun run prepush` and before merging PRs
 - Improve sequence-diagram highlighting quality
   - Note: sequence diagrams are functional today, but their current focus/highlight treatment still feels weaker than the flowchart experience
 - Another theme pass

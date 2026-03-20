@@ -43,7 +43,8 @@ The strongest pattern is to make repository support legible through small, repea
 Recommended repository conventions:
 
 - keep tours next to diagrams
-- use predictable sibling names:
+- group related examples into topical folders so the repo browser stays readable
+- use predictable sibling names inside each topical folder:
   - `payment-flow.mmd`
   - `payment-flow.tour.yaml`
 - add a small repository marker file such as `.diagram-tours/instructions.md`

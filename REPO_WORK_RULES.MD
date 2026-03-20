@@ -116,6 +116,12 @@ Sequence message IDs use the `[message_id] Label` convention inside the Mermaid 
 
 ## Validation Rules
 
+For browser-visible runtime work:
+
+- `bun run smoke` and `bun run smoke:core` are the same fast default browser check
+- `bun run smoke:full` is the complete browser suite and is expected on prepush or merge-ready validation
+- `bun run prepush` is the repository-level gate that includes `bun run smoke:full`
+
 Parser must fail when:
 
 - a diagram-element ID does not exist

@@ -1,7 +1,6 @@
-name = "Lucio"
+name = "UX Reviewer"
 description = "UX reviewer for diagram-tours. Review end-to-end user experience across the CLI, the web player, and GitHub-read documentation."
 model = "gpt-5.4"
-reasoning_effort = "high"
 sandbox_mode = "read-only"
 
 developer_instructions = """

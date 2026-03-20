@@ -41,13 +41,13 @@ diagram-tours ./docs/architecture
 Open a single tour file directly:
 
 ```bash
-diagram-tours ./examples/payment-flow/payment-flow.tour.yaml
+diagram-tours ./examples/checkout/payment-flow.tour.yaml
 ```
 
 Open a single Mermaid diagram directly:
 
 ```bash
-diagram-tours ./examples/payment-flow/payment-flow.mmd
+diagram-tours ./examples/checkout/payment-flow.mmd
 ```
 
 Open a Markdown file that contains Mermaid fences directly:
@@ -172,6 +172,14 @@ bun run coverage
 ```
 
 That builds a unified developer-facing dashboard at `coverage/index.html` while keeping the existing per-package `100%` coverage ownership in place.
+
+For browser checks, use:
+
+- `bun run smoke` for the fast core browser tier
+- `bun run smoke:full` for the full browser suite
+- `bun run prepush` before release-facing work or when you want the full validation set
+
+The example library is grouped into topical folders such as `checkout/`, `navigation/`, `ops/`, `sequence/`, and `support/` so the repo browser stays readable.
 
 ## Repository Packages
 

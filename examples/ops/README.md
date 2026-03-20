@@ -18,18 +18,18 @@ From the default examples shell:
 bun run dev
 ```
 
-Then open the `huge-system` tour in the player.
+Then open the `ops/huge-system` tour in the player.
 
 For a focused author preview:
 
 ```bash
-DIAGRAM_TOUR_SOURCE_TARGET=./examples/huge-system/huge-system.tour.yaml bun run dev
+DIAGRAM_TOUR_SOURCE_TARGET=./examples/ops/huge-system.tour.yaml bun run dev
 ```
 
 PowerShell:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/huge-system/huge-system.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/ops/huge-system.tour.yaml"
 bun run dev
 ```
 

@@ -12,8 +12,8 @@ import {
 
 describe("dev-web-player-lib", () => {
   test("reads an explicit source target when one is provided", () => {
-    expect(readSourceTarget(["./examples/payment-flow", "--host", "0.0.0.0"], ".")).toBe(
-      "./examples/payment-flow"
+    expect(readSourceTarget(["./examples/checkout", "--host", "0.0.0.0"], ".")).toBe(
+      "./examples/checkout"
     );
   });
 
@@ -22,7 +22,7 @@ describe("dev-web-player-lib", () => {
   });
 
   test("strips the first positional target from vite args", () => {
-    expect(readViteArgs(["./examples/payment-flow", "--host", "0.0.0.0"])).toEqual([
+    expect(readViteArgs(["./examples/checkout", "--host", "0.0.0.0"])).toEqual([
       "--host",
       "0.0.0.0"
     ]);
@@ -57,7 +57,7 @@ describe("dev-web-player-lib", () => {
   });
 
   test("validates .tour.yaml file targets", () => {
-    expect(validateSourceTarget("./fixtures/payment-flow.tour.yaml", "file")).toContain(
+    expect(validateSourceTarget("./fixtures/flowchart/payment-flow.tour.yaml", "file")).toContain(
       "payment-flow.tour.yaml"
     );
   });
@@ -67,7 +67,7 @@ describe("dev-web-player-lib", () => {
   });
 
   test("rejects non-tour files when a tour file is required", () => {
-    expect(() => validateSourceTarget("./fixtures/payment-flow.mmd", "file")).toThrow(
+    expect(() => validateSourceTarget("./fixtures/flowchart/payment-flow.mmd", "file")).toThrow(
       "Expected a .tour.yaml file"
     );
   });
@@ -79,7 +79,7 @@ describe("dev-web-player-lib", () => {
   });
 
   test("rejects files when a directory target is required", () => {
-    expect(() => validateSourceTarget("./fixtures/payment-flow.tour.yaml", "directory")).toThrow(
+    expect(() => validateSourceTarget("./fixtures/flowchart/payment-flow.tour.yaml", "directory")).toThrow(
       "Expected a directory target but received a file"
     );
   });

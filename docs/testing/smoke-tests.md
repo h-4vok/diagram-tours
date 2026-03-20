@@ -1,467 +1,122 @@
 # Smoke Tests
 
-This document explains, in plain language, which capability each important `web-player` smoke test validates.
+This document explains which browser-visible behaviors belong to the fast `core smoke` tier and which belong to the broader `extended pre-push` tier.
 
-The executable source of truth remains Playwright in `packages/web-player/smoke/`. This file exists so the owner can review the intent and design of the smoke suite without reading every selector or helper in the test code.
+The executable source of truth remains Playwright in `packages/web-player/smoke/`. This file is the human-readable map of that suite.
 
-## Principles
+## Commands
 
-- smoke tests validate critical end-to-end visible behavior
-- the primary signal should be what an operator can verify in the browser
-- we avoid depending on internal details when an equivalent visible signal is available
-- when the same capability has multiple startup modes, we compare the visible shape of the loaded collection
+- `bun run smoke`: builds the packaged runtime and runs only the tagged core browser scenarios
+- `bun run smoke:extended`: builds the packaged runtime and runs only the tagged extended browser scenarios
+- `bun run smoke:full`: builds the packaged runtime and runs the complete browser suite
+- `bun run prepush`: runs lint, typecheck, unit coverage, and the full browser suite
 
-## Startup Modes
+## Tiering Principles
+
+- core smoke protects fast packaged-runtime confidence for everyday work
+- extended smoke protects broader browser UX, edge cases, and heavier interaction coverage before handoff
+- every existing browser scenario stays covered in one tier or the other
+- when a startup mode or interaction only duplicates a behavior already proven by core smoke, it belongs in extended unless it adds unique risk
+
+## Core Smoke
+
+Core smoke is the minimum browser-visible contract we want on every relevant task:
+
+- packaged CLI startup into a repo-wide collection
+- scoped startup into examples-only and single-file preview modes
+- critical shell hydration and browse-driven tour switching
+- route-driven step navigation without remount churn
+- direct node-to-step interaction
+- generated fallback tour startup for raw Mermaid input
+- first-load dark-mode default
+
+### Core startup coverage
 
 File: `packages/web-player/smoke/startup-modes.spec.ts`
 
-### Startup modes -- repo-wide startup exposes repo-only tours in browse
+- `repo-wide startup exposes repo-only tours in browse`
+- `explicit examples directory keeps browse scoped to shipped examples`
+- `explicit single-file startup limits browse to one tour`
+- `explicit diagram startup generates a fallback tour preview`
 
-- Starts the built `diagram-tours` CLI with no positional target
-- Uses the wizard to select `Open current directory`
-- Chooses not to open the browser from the wizard
-- Navigates to the `payment-flow` tour
-- Opens the browse panel
-- Verifies that `preview target notice` is not shown
-- Verifies that search can find `Alpha Tour`
-- Verifies that search can find `Beta Tour`
-- Verifies that search can find `Release Pipeline`
-- Verifies that the printed URL matches the launched port
+Why these stay in core:
 
-Why these checks exist:
+- they prove the packaged CLI can launch the main supported target shapes
+- they verify visible collection scoping instead of only process-level startup
+- they keep generated fallback startup covered in the default signal
 
-- they confirm that the no-arg wizard loads the current working directory
-- they confirm the source target is repo-wide and not just `examples`
-- they use tours from different parts of the repo to avoid a weak test
-- they validate the collection through the browser itself, not through loader internals
-- they confirm that the CLI prints the final runtime URL clearly
-
-### Startup modes -- explicit examples directory keeps browse scoped to shipped examples
-
-- Starts the built CLI with `diagram-tours ./examples`
-- Navigates to the `payment-flow` tour
-- Opens the browse panel
-- Verifies that `preview target notice` is not shown
-- Verifies that the `diagnostics` badge does not exist
-- Verifies that search does not find `Alpha Tour`
-- Verifies that search does not find `Beta Tour`
-- Verifies that search does find `Release Pipeline`
-- Verifies that search does find `Refund Flow`
-
-Why these checks exist:
-
-- they clearly separate `./examples` from the full repo
-- they verify that internal fixtures outside the public example library are not loaded
-- they confirm that the expected public collection still remains available
-
-### Startup modes -- explicit single-file startup limits browse to one tour
-
-- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.tour.yaml`
-- Opens the browse panel from the root route
-- Verifies that `preview target notice` mentions `payment-flow.tour.yaml`
-- Verifies that browse shows `Payment Flow`
-- Verifies that browse does not show `Refund Flow`
-
-Why these checks exist:
-
-- they validate single-file preview behavior
-- they verify the visible signal that tells the operator they are in single-file mode
-- they confirm that browse does not mix in unrelated tours
-
-### Startup modes -- interactive open-all matches repo-wide startup
-
-- Starts the built CLI with no positional target
-- Chooses `Open current directory` in the console wizard
-- Navigates to the `payment-flow` tour
-- Opens the browse panel
-- Repeats the same checks as the repo-wide startup case
-
-Why these checks exist:
-
-- they guarantee that the interactive wizard does not change the meaning of `open all`
-- they compare the visible result of the interactive flow to the direct flow
-
-### Startup modes -- interactive directory selection matches examples-only startup
-
-- Starts the built CLI with no positional target
-- Chooses `Open a directory`
-- Enters `./examples`
-- Chooses not to open the browser
-- Navigates to the `refund-flow` tour
-- Opens the browse panel
-- Repeats the same checks as the `./examples` case
-
-Why these checks exist:
-
-- they ensure that the console wizard resolves the same source target as direct startup
-- they exercise the full prompt + input + server + browser flow
-
-### Startup modes -- interactive file selection matches single-file startup
-
-- Starts the built CLI with no positional target
-- Chooses `Open a diagram or tour file`
-- Enters `./examples/payment-flow/payment-flow.tour.yaml`
-- Chooses not to open the browser
-- Opens the browse panel
-- Repeats the same checks as the single-file case
-
-Why these checks exist:
-
-- they ensure that the wizard supports single-file preview without drifting from direct startup behavior
-
-### Startup modes -- interactive startup skips the prompt when a target is explicit
-
-- Starts the built CLI with `diagram-tours ./examples/refund-flow/refund-flow.tour.yaml`
-- Opens the browse panel
-- Verifies the same visible shape as a single-file preview for `Refund Flow`
-- Verifies that the process output does not include interactive prompts
-
-Why these checks exist:
-
-- they guarantee the precedence of an explicit argument over the wizard
-- they cover the case where the global CLI must behave like a direct command
-
-### Startup modes -- explicit diagram startup generates a fallback walkthrough
-
-- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.mmd`
-- Opens the browse panel from the root route
-- Verifies that `preview target notice` mentions `payment-flow.mmd`
-- Verifies that browse shows `Payment Flow`
-- Verifies that the first step is the generated overview step
-
-Why these checks exist:
-
-- they validate direct diagram-file startup without any authored YAML
-- they confirm that generated fallback tours are visible through the same product surface
-
-### Startup modes -- explicit markdown startup generates multiple fallback entries
-
-- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/checklist.md`
-- Opens the browse panel from the root route
-- Verifies that `preview target notice` mentions `checklist.md`
-- Verifies that browse shows both `Overview` and `Details`
-- Verifies that the initial step is a generated overview step
-
-Why these checks exist:
-
-- they validate `.md` as a first-class diagram target
-- they confirm that a single Markdown file can surface multiple generated entries
-
-## Docs Shell And Navigation
+### Core player coverage
 
 File: `packages/web-player/smoke/payment-flow.spec.ts`
 
-### Docs shell browse navigation changes tours without breaking the player
+- `docs shell browse navigation changes tours without breaking the player`
+- `deep-linked step changes reuse the same Mermaid svg`
+- `first load defaults to dark mode until a preference is chosen`
+- `clicking a node jumps directly to its matching step`
+- `generated fallback tours render a minimal overview and node-by-node walkthrough`
 
-- Navigates to `decision-flow?step=3`
-- Verifies the main shell, hydrated theme, current-tour identity, and top bar
-- Opens the browse panel from the current tour chip
-- Verifies that browse, search, and the tree are visible
-- Verifies that the diagram visual state matches the deep-linked step
-- Uses browse search to go to `Refund Flow`
-- Verifies the URL change and the step text change
-- Reopens browse and returns to `Decision Flow`
+Why these stay in core:
 
-Why these checks exist:
+- they prove the main browser shell hydrates and stays coherent across navigation
+- they keep one representative route-driven navigation assertion in the fast tier
+- they cover one direct diagram interaction path that users rely on immediately
+- they retain one representative generated-tour walkthrough beyond startup alone
 
-- they exercise the shell, browse panel, deep links, and cross-tour navigation in the same smoke test
-- they verify that the player and diagram remain coherent during navigation
+## Extended Pre-Push Smoke
 
-### Generated fallback tours render overview and node-by-node steps
+Extended smoke covers richer browser UX, broader startup equivalence, heavier fixtures, and edge-case runtime behavior. These checks still matter, but they no longer need to run as the default smoke signal on every task.
 
-- Starts the built CLI with `diagram-tours ./examples/payment-flow/payment-flow.mmd`
-- Verifies that the first step text is `Overview of Payment Flow.`
-- Advances to the next step
-- Verifies that the step text becomes `Focus on Client.`
+### Extended startup and source-shape coverage
 
-Why these checks exist:
+File: `packages/web-player/smoke/startup-modes.spec.ts`
 
-- they protect the default generated-tour contract for raw Mermaid inputs
-- they confirm that fallback tours reuse the same player flow as authored tours
+- `interactive open-all matches repo-wide startup`
+- `interactive directory selection matches examples-only startup`
+- `interactive file selection matches single-file startup`
+- `interactive startup skips the prompt when a target is explicit`
+- `explicit markdown startup generates multiple fallback entries from one file`
 
-### Authored tours can target a Markdown Mermaid block by fragment
+Why these moved to extended:
 
-- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/checklist.tour.yaml`
-- Verifies that the player renders only the `Details` Mermaid block
-- Verifies that the authored step text resolves node labels from the selected block
+- they mainly validate equivalence and additional source shapes beyond the critical startup baseline
+- they are valuable before handoff, but not required for every fast feedback loop
 
-Why these checks exist:
-
-- they protect the `file.md#fragment` authored-tour contract
-- they prove Markdown-backed authored tours work in the packaged runtime, not just parser tests
-
-### Markdown files without Mermaid blocks fail cleanly before startup
-
-- Starts the built CLI with `diagram-tours ./fixtures/markdown-mermaid/empty.md`
-- Verifies that startup fails with a clear CLI-visible error
-- Verifies that the output does not degrade into repeated runtime `500` noise
-
-Why these checks exist:
-
-- they protect the fail-fast UX for invalid Markdown inputs
-- they keep the new Markdown support aligned with the no-spam startup policy
-
-### Browse search keeps long queries strict enough to avoid unrelated fuzzy matches
-
-- Navigates to `refund-flow`
-- Opens browse
-- Searches for `release`
-- Verifies that `Release Pipeline` appears
-- Verifies that `Parallel Onboarding` and `Huge System Stress Test` do not appear
-
-Why these checks exist:
-
-- they protect the ergonomics of the search experience
-- they prevent fuzzy matching from regressing into noisy results
-
-## Layout And Viewport
+### Extended runtime UX coverage
 
 File: `packages/web-player/smoke/payment-flow.spec.ts`
 
-### Diagram canvas owns horizontal overflow instead of the document body
-
-- Navigates to `decision-flow`
-- Verifies that the diagram is visible
-- Compares the document width to the viewport width
-- Verifies that the canvas occupies the expected size inside the window
-
-Why these checks exist:
-
-- they catch regressions where the whole page becomes horizontally scrollable
-
-### Focused areas stay reasonably centered through viewport-centering examples
-
-- Navigates to `viewport-centering`
-- Verifies centering for the first focus target
-- Advances steps and verifies centering again for the lower focus and grouped focus
-
-Why these checks exist:
-
-- they cover the main viewport promise of the player
-- they use a fixture designed to validate top, bottom, and grouped cases
-
-### Deep-linked step changes reuse the same Mermaid svg
-
-- Navigates to `decision-flow?step=2`
-- Marks the current `svg` with a test id
-- Advances to the next step
-- Verifies that the same `svg` remains mounted
-
-Why these checks exist:
-
-- they protect against unnecessary diagram remounts
-- they help catch performance or visual stability regressions
-
-### Huge-system stress fixture remains navigable and readable
-
-- Navigates to `huge-system?step=5`
-- Verifies the expected nodes and focus state
-- Advances to the next step
-- Verifies the URL, text, and follow-up focus state
-
-Why these checks exist:
-
-- they cover the heaviest fixture in the repo
-- they quickly expose regressions in large diagrams
-
-### Huge-system first step starts at a readable focus scale
-
-- Navigates to `huge-system`
-- Verifies that the first focus target is near the visible center
-- Verifies that the focused node does not start too small
-
-Why these checks exist:
-
-- they protect initial legibility for the densest case in the repo
-
-### Connector labels remain readable as context in a branching diagram
-
-- Navigates to `incident-response?step=2`
-- Verifies the primary focus
-- Verifies that connector labels marked as context still exist
-
-Why these checks exist:
-
-- they protect the visual hierarchy between primary focus and secondary context
-
-### Long step text does not break the usable diagram area
-
-- Navigates to `incident-response?step=4`
-- Measures the text box, overlay, and canvas layout
-- Verifies that the diagram still keeps enough usable space
-
-Why these checks exist:
-
-- they cover layout regressions caused by longer editorial content
-
-### Dark mode persists across reloads and direct navigation
-
-- Navigates to `payment-flow`
-- Enables dark mode
-- Reloads
-- Navigates to `refund-flow`
-- Verifies that the theme remains `dark`
-
-Why these checks exist:
-
-- they cover real persistence, not just a local toggle change
-
-### Selected steps keep a focused-node contract while dark mode remains usable
-
-- Navigates to `payment-flow`
-- Verifies that the selected-step node is marked as the sole focused node
-- Switches to dark mode
-- Verifies that a clickable non-selected node still advertises step-target behavior
-
-Why these checks exist:
-
-- they protect the restyled visibility model where the full diagram stays legible
-- they confirm that selected-step emphasis does not depend on dimming the rest of the diagram
-- they keep dark-mode navigation contracts covered without depending on brittle SVG style internals
-
-### Unknown tours show a guided 404 with a single recovery action
-
-- Navigates to an unknown slug
-- Verifies `404`, the heading, and the message
-- Verifies the `Back to Tours` link
-- Uses that action and confirms recovery
-
-Why these checks exist:
-
-- they protect the intentionally guided error recovery experience
-
-### Empty-focus steps keep viewport behavior stable
-
-- Navigates to `viewport-centering?step=3`
-- Advances to the `empty-focus` step
-- Verifies the absence of focused nodes
-- Verifies that the canvas scroll returns to the expected neutral state
-
-Why these checks exist:
-
-- they cover a tour semantic already supported by the v1 contract
-- they protect against subtle viewport regressions on neutral steps
-
-## Guided Navigation Additions
-
-File: `packages/web-player/smoke/payment-flow.spec.ts`
-
-### Clicking a node jumps directly to its matching step
-
-- Navigates to `refund-flow`
-- Clicks the `Payment Gateway` node in the diagram
-- Verifies that the player navigates to step 2
-- Verifies that the step text updates to the matching explanation
-
-Why these checks exist:
-
-- they validate the direct node-to-step navigation path
-- they confirm that diagram interaction updates the same route and player state as normal step navigation
-
-### Clicking a repeated node opens a chooser with matching steps
-
-- Navigates to `viewport-stability`
-- Clicks a node that appears in multiple tour steps
-- Verifies that the chooser popover appears
-- Verifies that multiple matching step actions are listed
-- Chooses the later matching step and confirms the route update
-
-Why these checks exist:
-
-- they protect the multi-match branch of node click navigation
-- they confirm that repeated-node tours remain navigable without ambiguous direct jumps
-
-### Timeline pills jump directly between steps
-
-- Navigates to `payment-flow`
-- Clicks a later numbered pill in the step timeline
-- Verifies that the route moves to that step
-- Verifies that the step text updates with the selected step
-
-Why these checks exist:
-
-- they protect the compact direct-jump navigation inside the step overlay
-- they confirm that timeline navigation reuses the same route-driven player flow as next and previous buttons
-
-## Navigation Minimap
-
-File: `packages/web-player/smoke/payment-flow.spec.ts`
-
-### Desktop minimap stays visible and tracks the focused step
-
-- Navigates to `payment-flow`
-- Verifies that the minimap shell and surface are visible on desktop
-- Verifies that the current-step focus marker exists
-- Advances to the next step
-- Verifies that the minimap focus marker style changes with the new focus target
-
-Why these checks exist:
-
-- they validate that the minimap is part of the desktop player shell
-- they confirm that the minimap follows guided-step focus, not just raw scroll position
-
-### Clicking the minimap pans the main diagram viewport
-
-- Navigates to `huge-system`
-- Records the current diagram scroll position
-- Clicks near the far corner of the minimap surface
-- Verifies that the main diagram scroll position changes
-
-Why these checks exist:
-
-- they validate the simplest direct-manipulation navigation path
-- they use the browser-visible scroll state of the real canvas instead of internals
-
-### Dragging the minimap viewport rectangle pans the main diagram viewport
-
-- Navigates to `huge-system`
-- Records the current diagram scroll position
-- Drags the minimap viewport rectangle
-- Verifies that the main diagram scroll position changes
-
-Why these checks exist:
-
-- they protect the higher-precision navigation mode of the minimap
-- they ensure the minimap is not just a passive indicator
-
-### Small screens hide the minimap automatically
-
-- Shrinks the viewport to a mobile-sized width
-- Navigates to `payment-flow`
-- Verifies that the step overlay still exists
-- Verifies that the minimap does not render
-
-Why these checks exist:
-
-- they protect the desktop-first scope of minimap v1
-- they ensure mobile layouts do not inherit a cramped or accidental minimap UI
-
-## Browse And Diagnostics Additions
-
-File: `packages/web-player/smoke/payment-flow.spec.ts`
-
-### Favorites pin a starred tour above the browse tree
-
-- Navigates to `refund-flow`
-- Opens the browse panel
-- Stars `Refund Flow` from its normal browse row
-- Verifies that a `Favorites` section appears
-- Verifies that the starred tour is pinned there
-
-Why these checks exist:
-
-- they protect the local favorites shortcut flow in the real browse UI
-- they verify the visible result an operator would actually use later
-
-### Issues popover presents a readable diagnostics hierarchy
-
-- Starts a repo-wide dev server where skipped internal fixtures exist
-- Navigates to `parallel-onboarding`
-- Opens the `Issues` trigger in the top bar
-- Verifies that the diagnostics popover appears
-- Verifies that the first item includes a `.tour.yaml` path and the parser error summary
-
-Why these checks exist:
-
-- they protect the topbar diagnostics path independently of the browse panel
-- they validate the hierarchy and scannability of the upgraded diagnostics presentation
+- browse-search strictness
+- canvas overflow ownership
+- viewport-centering precision
+- huge-diagram stress and initial legibility
+- connector-label context visibility
+- long-step-text layout resilience
+- theme persistence after explicit user choice
+- selected-step visibility in dark mode
+- guided 404 recovery
+- empty-focus viewport stability
+- minimap visibility, click-pan, drag-pan, and mobile auto-hide
+- zoom control behavior
+- repeated-node chooser flow
+- favorites pinning
+- timeline direct-jump pills
+- diagnostics popover hierarchy
+- authored Markdown-fragment tours
+- Markdown startup failure handling
+- authored and generated sequence-diagram browser flows
+- Markdown-backed sequence generated tours
+
+Why these moved to extended:
+
+- they focus on richer interaction quality, UX polish, heavy fixtures, or specialized input contracts
+- several are duplicate-path validations for capabilities already represented in core smoke
+- together they provide the broader merge-time confidence that now belongs in `bun run prepush`
+
+## Coverage Map
+
+Every existing Playwright scenario maps to exactly one tier:
+
+- core: representative startup, shell navigation, direct interaction, fallback walkthrough, and first-load theme baseline
+- extended: startup equivalence, advanced layout and viewport checks, minimap and favorites UX, diagnostics, Markdown edge cases, and sequence-diagram browser coverage
+
+If a new browser test mainly answers "can the packaged app launch and support a basic guided tour flow?", add it to core. If it mainly answers "does the richer UX or a broader edge case still behave correctly?", add it to extended.

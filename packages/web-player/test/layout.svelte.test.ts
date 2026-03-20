@@ -232,7 +232,7 @@ describe("+layout.svelte", () => {
         sourceTarget: {
           kind: "file" as const,
           label: "payment-flow.tour.yaml",
-          path: "/repo/examples/payment-flow/payment-flow.tour.yaml"
+          path: "/repo/examples/checkout/payment-flow.tour.yaml"
         }
       }
     });
