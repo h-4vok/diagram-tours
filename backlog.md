@@ -29,6 +29,10 @@ Cutoff date: 2026-03-17
   - Current state: zoom changes now animate both the SVG resize and the viewport recentering pass, extending the existing smooth step-focus motion into explicit user-driven viewport transitions
   - Testing expectation: player and smoke coverage validate zoom-triggered viewport updates without breaking navigation state
   - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
+- BT-001 True zoom-to-fit
+  - Current state: the player now exposes a Fit action that computes a real zoom-to-fit scale, applies it to the rendered SVG, and recenters the diagram so the current content fits the viewport
+  - Testing expectation: zoom helper coverage, player component coverage, and smoke coverage validate fit math, control behavior, and visible diagram framing
+  - Evidence: `packages/web-player/src/lib/diagram-zoom.ts`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/cards.css`, `packages/web-player/test/diagram-zoom.test.ts`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
 
 - Diagram-first fallback tours for raw Mermaid inputs
   - Current state: directories and direct file targets can now load `.mmd` and `.mermaid` diagrams without authored YAML, with generated overview-plus-node walkthroughs and duplicate suppression when a tour file already owns the same diagram
@@ -100,47 +104,46 @@ Cutoff date: 2026-03-17
 
 ### Partial
 
-- Author diagnostics
+- BT-003 Author diagnostics
   - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
   - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
   - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/diagnostics.ts`
-- Layout polish and highlight hierarchy
+- BT-004 Layout polish and highlight hierarchy
   - Current state: the workspace has been heavily refined, but `reqs.md` still marks this area as open and it remains a reasonable ongoing polish stream
   - Gap: connectors, labels, and fine-grained visual hierarchy can still improve
   - Evidence: `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
-- Wizard path retry UX
+- BT-005 Wizard path retry UX
   - Current state: invalid explicit paths fail clearly during wizard input validation
   - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
   - Evidence: `packages/cli/src/lib/wizard.ts`
 
 ### Todo
-- Improve sequence-diagram highlighting quality
+
+- BT-006 Improve sequence-diagram highlighting quality
   - Note: sequence diagrams are functional today, but their current focus/highlight treatment still feels weaker than the flowchart experience
-- Another theme pass
+- BT-007 Another theme pass
   - Note: the current palette is serviceable, but the overall color choices still need another intentional design pass
-- Improve dark-mode treatment for sequence diagrams
+- BT-008 Improve dark-mode treatment for sequence diagrams
   - Note: dark mode remains noticeably weaker on sequence diagrams than on the rest of the player and still needs a dedicated visual pass
-- Stepper and step-text presentation redesign
+- BT-009 Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
-- `diagram-tours init` scaffolding for new authored tours
+- BT-010 `diagram-tours init` scaffolding for new authored tours
   - Note: add a CLI command that can create a new `*.tour.yaml` from scratch, or inspect an existing Mermaid source and scaffold a starter tour with the right `diagram` target and step structure
-- Installable authoring reference for AI agents and repository tooling
+- BT-011 Installable authoring reference for AI agents and repository tooling
   - Note: add a command that installs a reusable Markdown reference describing the `tour.yaml` standard so files like `AGENTS.md` or other agent instructions can point to one stable doc for Codex, Claude Code, and similar tools
-- Standalone `tour.yaml` validation command with author-friendly diagnostics
+- BT-012 Standalone `tour.yaml` validation command with author-friendly diagnostics
   - Note: add a CLI validation command that checks whether a tour file is valid and reports detailed, actionable errors including source locations such as line information when available
-- Adoption and onboarding strategy for people and AI assistants
+- BT-013 Adoption and onboarding strategy for people and AI assistants
   - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
   - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work
-- Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
+- BT-014 Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
   - Note: we want to treat this as a unified initiative later, rather than mixing it into the initial browse explorer work
   - Pending: define a shared shortcuts model, focus behavior, discoverability, and key-conflict handling
-- True zoom-to-fit
-  - Note: a simple overview recentering helper exists internally, but it is currently hidden because it does not provide actual zoom semantics
-- Step-overlay redesign after minimap integration
+- BT-016 Step-overlay redesign after minimap integration
   - Note: the current step overlay now stacks above the minimap and is good enough for v1, but it should be revisited as part of a more intentional navigation/stepper layout
-- Smarter group centering
+- BT-017 Smarter group centering
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
-- Explicit viewport constraints
+- BT-018 Explicit viewport constraints
   - Note: no current implementation was found in the repository
 
 ## Notes

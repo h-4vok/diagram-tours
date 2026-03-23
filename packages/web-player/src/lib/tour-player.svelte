@@ -18,6 +18,7 @@
     canZoomOut,
     createNextZoomScale,
     createPreservedZoomScrollPosition,
+    createZoomToFitScale,
     DEFAULT_ZOOM_SCALE,
     formatZoomPercentage
   } from "$lib/diagram-zoom";
@@ -31,7 +32,7 @@
     type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
-  import { focusDiagramViewport } from "$lib/diagram-viewport";
+  import { createOverviewScrollPosition, focusDiagramViewport } from "$lib/diagram-viewport";
   import { createFocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import {
@@ -129,6 +130,47 @@
 
   async function resetZoom(): Promise<void> {
     await updateZoomScale(createNextZoomScale(zoomScale, "reset"));
+  }
+
+  async function fitZoomToView(): Promise<void> {
+    const zoomContext = readZoomContext();
+
+    if (zoomContext === null) {
+      return;
+    }
+
+    if (!applyZoomToFitScale(zoomContext)) {
+      return;
+    }
+
+    await waitForDiagramLayout();
+
+    const nextPosition = createOverviewScrollPosition(readCurrentMetrics(zoomContext.context));
+
+    writeDiagramScrollPosition(nextPosition, "auto");
+  }
+
+  function applyZoomToFitScale(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): boolean {
+    const previousMetrics = readDiagramMinimapMetrics(zoomContext.context);
+    const nextZoomScale = createZoomToFitScale({
+      currentScale: zoomScale,
+      metrics: previousMetrics
+    });
+
+    if (nextZoomScale === null) {
+      return false;
+    }
+
+    if (!applyZoomScaleToSvg(zoomContext.svg, nextZoomScale)) {
+      return false;
+    }
+
+    zoomScale = nextZoomScale;
+
+    return true;
   }
 
   async function syncFocusState(): Promise<void> {
@@ -1005,6 +1047,15 @@
             on:click={() => void zoomOut()}
           >
             -
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-fit-button"
+            aria-label="Fit diagram to view"
+            on:click={() => void fitZoomToView()}
+          >
+            Fit
           </button>
           <button
             type="button"
