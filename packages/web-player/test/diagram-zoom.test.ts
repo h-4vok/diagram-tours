@@ -6,8 +6,9 @@ import {
   canZoomOut,
   createNextZoomScale,
   createPreservedZoomScrollPosition,
+  createZoomToFitScale,
   DEFAULT_ZOOM_SCALE,
-  formatZoomPercentage
+  formatZoomPercentage,
 } from "../src/lib/diagram-zoom";
 
 describe("diagram zoom helpers", () => {
@@ -36,16 +37,16 @@ describe("diagram zoom helpers", () => {
       createPreservedZoomScrollPosition({
         nextMetrics: createMetrics({
           contentHeight: 1280,
-          contentWidth: 1600
+          contentWidth: 1600,
         }),
         previousMetrics: createMetrics({
           scrollLeft: 100,
-          scrollTop: 50
-        })
-      })
+          scrollTop: 50,
+        }),
+      }),
     ).toEqual({
       scrollLeft: 280,
-      scrollTop: 170
+      scrollTop: 170,
     });
   });
 
@@ -54,27 +55,66 @@ describe("diagram zoom helpers", () => {
       createPreservedZoomScrollPosition({
         nextMetrics: createMetrics({
           contentHeight: 600,
-          contentWidth: 800
+          contentWidth: 800,
         }),
         previousMetrics: createMetrics({
           scrollLeft: Number.NaN,
-          scrollTop: 9999
-        })
-      })
+          scrollTop: 9999,
+        }),
+      }),
     ).toEqual({
       scrollLeft: 0,
-      scrollTop: 300
+      scrollTop: 300,
     });
   });
+
+  it("creates a zoom scale that fits the viewport within the supported bounds", () => {
+    expect(
+      createZoomToFitScale({
+        currentScale: 1,
+        metrics: createMetrics({
+          contentHeight: 1000,
+          contentWidth: 2000,
+          viewportHeight: 500,
+          viewportWidth: 600,
+        }),
+      }),
+    ).toBe(0.5);
+
+    expect(
+      createZoomToFitScale({
+        currentScale: 1.5,
+        metrics: createMetrics({
+          contentHeight: 600,
+          contentWidth: 800,
+          viewportHeight: 1200,
+          viewportWidth: 1600,
+        }),
+      }),
+    ).toBe(2);
+  });
+
+  it("returns null when fit metrics are unstable", () => {
+    expect(
+      createZoomToFitScale({
+        currentScale: 1,
+        metrics: createMetrics({
+          contentHeight: 0,
+        }),
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when zoom preservation metrics are unstable", () => {});
 
   it("returns null when zoom preservation metrics are unstable", () => {
     expect(
       createPreservedZoomScrollPosition({
         nextMetrics: createMetrics(),
         previousMetrics: createMetrics({
-          contentWidth: 0
-        })
-      })
+          contentWidth: 0,
+        }),
+      }),
     ).toBeNull();
   });
 
@@ -134,7 +174,7 @@ function createMetrics(
     scrollTop: number;
     viewportHeight: number;
     viewportWidth: number;
-  }>
+  }>,
 ): {
   contentHeight: number;
   contentWidth: number;
@@ -149,19 +189,21 @@ function createMetrics(
     scrollLeft: resolveMetric(input, "scrollLeft", 0),
     scrollTop: resolveMetric(input, "scrollTop", 0),
     viewportHeight: resolveMetric(input, "viewportHeight", 300),
-    viewportWidth: resolveMetric(input, "viewportWidth", 400)
+    viewportWidth: resolveMetric(input, "viewportWidth", 400),
   };
 }
 
 function resolveMetric(
-  input: Partial<{
-    contentHeight: number;
-    contentWidth: number;
-    scrollLeft: number;
-    scrollTop: number;
-    viewportHeight: number;
-    viewportWidth: number;
-  }> | undefined,
+  input:
+    | Partial<{
+        contentHeight: number;
+        contentWidth: number;
+        scrollLeft: number;
+        scrollTop: number;
+        viewportHeight: number;
+        viewportWidth: number;
+      }>
+    | undefined,
   key:
     | "contentHeight"
     | "contentWidth"
@@ -169,7 +211,7 @@ function resolveMetric(
     | "scrollTop"
     | "viewportHeight"
     | "viewportWidth",
-  fallback: number
+  fallback: number,
 ): number {
   return input?.[key] ?? fallback;
 }

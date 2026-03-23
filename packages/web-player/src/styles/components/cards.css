@@ -4,13 +4,17 @@
   backdrop-filter: blur(12px);
 }
 
+:root {
+  --overlay-panel-width: min(17.75rem, calc(100vw - (2 * var(--space-md))));
+}
+
 .step-panel {
   display: grid;
   gap: 0.6rem;
   grid-template-rows: auto auto minmax(3.25rem, 5.7rem) auto;
-  max-width: min(17.75rem, calc(100vw - (2 * var(--space-md))));
+  max-width: var(--overlay-panel-width);
   padding: 0.72rem 0.78rem;
-  width: min(17.75rem, calc(100vw - (2 * var(--space-md))));
+  width: var(--overlay-panel-width);
 }
 
 .step-panel--overlay {
@@ -120,7 +124,8 @@
   display: flex;
   gap: 0.7rem;
   justify-content: space-between;
-  min-width: 12.5rem;
+  max-width: var(--overlay-panel-width);
+  width: var(--overlay-panel-width);
   padding: 0.65rem 0.75rem;
 }
 
@@ -319,13 +324,14 @@
   box-shadow: var(--shadow-overlay, var(--shadow-soft));
   display: grid;
   gap: 0.72rem;
-  min-width: 13.5rem;
+  max-width: var(--overlay-panel-width);
   padding: 0.72rem 0.78rem;
+  width: var(--overlay-panel-width);
 }
 
 .minimap-shell--collapsed {
   gap: 0;
-  min-width: 0;
+  width: var(--overlay-panel-width);
 }
 
 .minimap-shell__header {
@@ -456,13 +462,16 @@
 }
 
 @media (width < 720px) {
+  :root {
+    --overlay-panel-width: calc(100vw - 1rem);
+  }
+
   .step-panel {
     max-width: none;
     width: calc(100% - 1rem);
   }
 
   .viewport-toolbar {
-    min-width: 0;
     width: auto;
   }
 

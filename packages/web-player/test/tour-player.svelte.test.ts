@@ -9,17 +9,17 @@ const {
   focusDiagramViewportMock,
   gotoMock,
   renderMermaidDiagramMock,
-  toastErrorMock
+  toastErrorMock,
 } = vi.hoisted(() => ({
   applyFocusStateMock: vi.fn(applyFocusStateForTest),
   focusDiagramViewportMock: vi.fn(),
   gotoMock: vi.fn(() => Promise.resolve()),
   renderMermaidDiagramMock: vi.fn(renderDiagramForTest),
-  toastErrorMock: vi.fn()
+  toastErrorMock: vi.fn(),
 }));
 
 vi.mock("$app/navigation", () => ({
-  goto: gotoMock
+  goto: gotoMock,
 }));
 
 vi.mock("../src/lib/diagram-viewport", async (importOriginal) => {
@@ -27,20 +27,20 @@ vi.mock("../src/lib/diagram-viewport", async (importOriginal) => {
 
   return {
     ...actual,
-    focusDiagramViewport: focusDiagramViewportMock
+    focusDiagramViewport: focusDiagramViewportMock,
   };
 });
 
 vi.mock("../src/lib/mermaid-diagram", () => ({
   renderMermaidDiagram: renderMermaidDiagramMock,
   applyFocusState: applyFocusStateMock,
-  getMermaidErrorMessage: () => "Failed to render Mermaid diagram."
+  getMermaidErrorMessage: () => "Failed to render Mermaid diagram.",
 }));
 
 vi.mock("svelte-sonner", () => ({
   toast: {
-    error: toastErrorMock
-  }
+    error: toastErrorMock,
+  },
 }));
 
 describe("tour-player.svelte", () => {
@@ -54,20 +54,22 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect(await screen.findByTestId("player-canvas")).toBeDefined();
-    expect(screen.getByTestId("tour-identity").textContent).toContain("Payment Flow");
+    expect(screen.getByTestId("tour-identity").textContent).toContain(
+      "Payment Flow",
+    );
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "public edge of the checkout system"
+      "public edge of the checkout system",
     );
     expect(readButtonState("previous-button")).toBe(true);
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "protects the payment path"
+      "protects the payment path",
     );
     expect(readButtonState("previous-button")).toBe(false);
     expect(readButtonState("next-button")).toBe(false);
@@ -77,20 +79,24 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
 
     await waitFor(() => {
       expect(readFocusState(diagramContainer, "api_gateway")).toBe("focused");
-      expect(readFocusState(diagramContainer, "validation_service")).toBe("dimmed");
+      expect(readFocusState(diagramContainer, "validation_service")).toBe(
+        "dimmed",
+      );
     });
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
     await waitFor(() => {
-      expect(readFocusState(diagramContainer, "validation_service")).toBe("focused");
+      expect(readFocusState(diagramContainer, "validation_service")).toBe(
+        "focused",
+      );
       expect(readFocusState(diagramContainer, "api_gateway")).toBe("dimmed");
       expect(focusDiagramViewportMock).toHaveBeenCalled();
     });
@@ -102,38 +108,44 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect((await screen.findByTestId("diagram-error")).textContent).toContain(
-      "Failed to render Mermaid diagram."
+      "Failed to render Mermaid diagram.",
     );
-    expect(toastErrorMock).toHaveBeenCalledWith("Failed to render Mermaid diagram.");
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "Failed to render Mermaid diagram.",
+    );
   });
 
   it("renders the step card as an overlay inside the diagram shell", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     await screen.findByTestId("step-text");
 
     const stepPanel = container.querySelector('[data-testid="step-overlay"]');
-    const diagramShell = container.querySelector('[data-testid="diagram-shell"]');
+    const diagramShell = container.querySelector(
+      '[data-testid="diagram-shell"]',
+    );
 
     expect(stepPanel).not.toBeNull();
     expect(diagramShell).not.toBeNull();
     expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
-    expect(container.querySelector('[data-testid="tour-identity"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="tour-identity"]'),
+    ).not.toBeNull();
   });
 
   it("renders the minimap on desktop, shows focused nodes, and stacks it below the step overlay", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect(await screen.findByTestId("minimap-shell")).toBeDefined();
@@ -143,12 +155,20 @@ describe("tour-player.svelte", () => {
       expect(screen.getAllByTestId("minimap-focus-marker")).toHaveLength(1);
     });
 
-    const overlayStack = container.querySelector('[data-testid="canvas-overlay-stack"]');
+    const overlayStack = container.querySelector(
+      '[data-testid="canvas-overlay-stack"]',
+    );
 
     expect(overlayStack).not.toBeNull();
-    expect((overlayStack as HTMLElement).firstElementChild).toBe(screen.getByTestId("viewport-toolbar"));
-    expect((overlayStack as HTMLElement).children[1]).toBe(screen.getByTestId("step-overlay"));
-    expect((overlayStack as HTMLElement).lastElementChild).toBe(screen.getByTestId("minimap-shell"));
+    expect((overlayStack as HTMLElement).firstElementChild).toBe(
+      screen.getByTestId("viewport-toolbar"),
+    );
+    expect((overlayStack as HTMLElement).children[1]).toBe(
+      screen.getByTestId("step-overlay"),
+    );
+    expect((overlayStack as HTMLElement).lastElementChild).toBe(
+      screen.getByTestId("minimap-shell"),
+    );
   });
 
   it("hides the minimap automatically on small screens", async () => {
@@ -157,7 +177,7 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     await screen.findByTestId("step-text");
@@ -171,40 +191,52 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect(await screen.findByTestId("minimap-shell")).toBeDefined();
     expect(screen.queryByTestId("minimap-surface")).toBeNull();
-    expect(screen.getByTestId("minimap-toggle").getAttribute("aria-expanded")).toBe("false");
+    expect(
+      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
+    ).toBe("false");
 
     await fireEvent.click(screen.getByTestId("minimap-toggle"));
 
-    expect(screen.getByTestId("minimap-toggle").getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
+    ).toBe("true");
     await waitFor(() => {
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
     });
-    expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe("false");
+    expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe(
+      "false",
+    );
   });
 
   it("zooms the rendered svg and resets back to 100 percent", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
-    const svg = (await screen.findByTestId("diagram-container")).querySelector("svg");
+    const svg = (await screen.findByTestId("diagram-container")).querySelector(
+      "svg",
+    );
 
     expect(svg?.getAttribute("width")).toBe("960");
-    expect(screen.getByTestId("zoom-reset-button").textContent).toContain("100%");
+    expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      "100%",
+    );
 
     await fireEvent.click(screen.getByTestId("zoom-in-button"));
 
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("1200");
       expect(svg?.getAttribute("height")).toBe("800");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain("125%");
+      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+        "125%",
+      );
     });
 
     await fireEvent.click(screen.getByTestId("zoom-reset-button"));
@@ -212,7 +244,32 @@ describe("tour-player.svelte", () => {
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("960");
       expect(svg?.getAttribute("height")).toBe("640");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain("100%");
+      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+        "100%",
+      );
+    });
+  });
+
+  it("fits the current diagram to the viewport when requested", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const svg = diagramContainer.querySelector("svg");
+
+    expect(svg?.getAttribute("width")).toBe("960");
+
+    await fireEvent.click(screen.getByTestId("zoom-fit-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("480");
+      expect(svg?.getAttribute("height")).toBe("320");
+      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+        "50%",
+      );
     });
   });
 
@@ -220,14 +277,18 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
-    const timelineButtons = await screen.findAllByTestId("timeline-step-button");
+    const timelineButtons = await screen.findAllByTestId(
+      "timeline-step-button",
+    );
 
     expect(timelineButtons).toHaveLength(4);
     expect(timelineButtons[0].getAttribute("aria-current")).toBe("step");
-    expect(timelineButtons[0].className).toContain("step-timeline__pill--current");
+    expect(timelineButtons[0].className).toContain(
+      "step-timeline__pill--current",
+    );
 
     await fireEvent.click(timelineButtons[2]);
 
@@ -235,7 +296,7 @@ describe("tour-player.svelte", () => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
         invalidateAll: false,
         keepFocus: true,
-        noScroll: true
+        noScroll: true,
       });
     });
   });
@@ -244,11 +305,13 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const responseNode = diagramContainer.querySelector('[data-node-id="response"]') as SVGGElement;
+    const responseNode = diagramContainer.querySelector(
+      '[data-node-id="response"]',
+    ) as SVGGElement;
     const responseShape = responseNode.querySelector("rect") as SVGRectElement;
 
     expect(responseNode.dataset.stepTarget).toBe("true");
@@ -258,7 +321,7 @@ describe("tour-player.svelte", () => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
         invalidateAll: false,
         keepFocus: true,
-        noScroll: true
+        noScroll: true,
       });
     });
   });
@@ -267,11 +330,13 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: createMultiMatchTour()
+      tour: createMultiMatchTour(),
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const gatewayNode = diagramContainer.querySelector('[data-node-id="api_gateway"]') as SVGGElement;
+    const gatewayNode = diagramContainer.querySelector(
+      '[data-node-id="api_gateway"]',
+    ) as SVGGElement;
     const gatewayShape = gatewayNode.querySelector("rect") as SVGRectElement;
 
     await fireEvent.click(gatewayShape);
@@ -285,7 +350,7 @@ describe("tour-player.svelte", () => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
         invalidateAll: false,
         keepFocus: true,
-        noScroll: true
+        noScroll: true,
       });
     });
   });
@@ -294,11 +359,13 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const clientNode = diagramContainer.querySelector('[data-node-id="client"]') as SVGGElement;
+    const clientNode = diagramContainer.querySelector(
+      '[data-node-id="client"]',
+    ) as SVGGElement;
     const clientShape = clientNode.querySelector("rect") as SVGRectElement;
 
     expect(clientNode.dataset.stepTarget).toBeUndefined();
@@ -312,11 +379,14 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
-    const auxiliaryMarker = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const auxiliaryMarker = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path",
+    );
 
     auxiliaryMarker.dataset.diagramElementId = "response";
     auxiliaryMarker.dataset.nodeId = "response";
@@ -334,11 +404,11 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 2,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect((await screen.findByTestId("step-text")).textContent).toContain(
-      "merchant-side transaction state"
+      "merchant-side transaction state",
     );
 
     await fireEvent.click(screen.getByTestId("next-button"));
@@ -347,7 +417,7 @@ describe("tour-player.svelte", () => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=4", {
         invalidateAll: false,
         keepFocus: true,
-        noScroll: true
+        noScroll: true,
       });
     });
 
@@ -357,7 +427,7 @@ describe("tour-player.svelte", () => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
         invalidateAll: false,
         keepFocus: true,
-        noScroll: true
+        noScroll: true,
       });
     });
   });
@@ -366,22 +436,22 @@ describe("tour-player.svelte", () => {
     const view = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect((await screen.findByTestId("step-text")).textContent).toContain(
-      "public edge of the checkout system"
+      "public edge of the checkout system",
     );
     expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
 
     await view.rerender({
       initialStepIndex: 2,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "merchant-side transaction state"
+      "merchant-side transaction state",
     );
     expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
     await waitFor(() => {
@@ -393,14 +463,14 @@ describe("tour-player.svelte", () => {
     render(TourPlayer, {
       initialStepIndex: 2,
       selectedSlug: "payment-flow",
-      tour: resolvedPaymentFlowTour
+      tour: resolvedPaymentFlowTour,
     });
 
     const diagramContainer = await screen.findByTestId("diagram-container");
     const diagramStage = screen.getByTestId("diagram-stage-inner");
 
     expect(screen.getByTestId("step-text").textContent).toContain(
-      "merchant-side transaction state"
+      "merchant-side transaction state",
     );
     await waitFor(() => {
       expect(focusDiagramViewportMock).toHaveBeenCalledWith(
@@ -409,9 +479,9 @@ describe("tour-player.svelte", () => {
           content: diagramStage,
           focusGroup: expect.objectContaining({
             mode: "group",
-            size: 2
-          })
-        })
+            size: 2,
+          }),
+        }),
       );
     });
   });
@@ -425,11 +495,11 @@ describe("tour-player.svelte", () => {
         steps: [
           {
             ...resolvedPaymentFlowTour.steps[0],
-            text: `${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text}`
+            text: `${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text} ${resolvedPaymentFlowTour.steps[0].text}`,
           },
-          ...resolvedPaymentFlowTour.steps.slice(1)
-        ]
-      }
+          ...resolvedPaymentFlowTour.steps.slice(1),
+        ],
+      },
     });
 
     expect(await screen.findByTestId("step-text")).toBeDefined();
@@ -437,7 +507,6 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("next-button")).toBeDefined();
     expect(screen.getByTestId("diagram-container")).toBeDefined();
   });
-
 });
 
 function renderDiagramForTest(input: {
@@ -454,7 +523,7 @@ function renderDiagramForTest(input: {
           <rect width="120" height="72"></rect>
           <text>${node.label}</text>
         </g>
-      `
+      `,
     )
     .join("")}</svg>`;
 
@@ -462,32 +531,36 @@ function renderDiagramForTest(input: {
     clientHeight: { value: 480, writable: true },
     clientWidth: { value: 720, writable: true },
     scrollHeight: { value: 480, writable: true },
-    scrollWidth: { value: 720, writable: true }
+    scrollWidth: { value: 720, writable: true },
   });
   Object.defineProperties(input.container, {
     clientHeight: { value: 920, writable: true },
     clientWidth: { value: 1320, writable: true },
     scrollHeight: { value: 920, writable: true },
-    scrollWidth: { value: 1320, writable: true }
+    scrollWidth: { value: 1320, writable: true },
   });
 
   parent.scrollLeft = 0;
   parent.scrollTop = 0;
   parent.scrollTo = createScrollToForTest(parent);
-  parent.getBoundingClientRect = () => createDomRect({ height: 480, left: 0, top: 0, width: 720 });
+  parent.getBoundingClientRect = () =>
+    createDomRect({ height: 480, left: 0, top: 0, width: 720 });
   input.container.getBoundingClientRect = () =>
     createDomRect({ height: 920, left: 0, top: 0, width: 1320 });
 
   const svg = input.container.querySelector("svg") as SVGSVGElement;
 
-  svg.getBoundingClientRect = () => createDomRect({ height: 640, left: 160, top: 140, width: 960 });
+  svg.getBoundingClientRect = () =>
+    createDomRect({ height: 640, left: 160, top: 140, width: 960 });
 
-  input.container.querySelectorAll<SVGGElement>("[data-node-id]").forEach((element) => {
-    const nodeId = element.dataset.nodeId ?? "";
-    const rect = positions[nodeId];
+  input.container
+    .querySelectorAll<SVGGElement>("[data-node-id]")
+    .forEach((element) => {
+      const nodeId = element.dataset.nodeId ?? "";
+      const rect = positions[nodeId];
 
-    element.getBoundingClientRect = () => createDomRect(rect);
-  });
+      element.getBoundingClientRect = () => createDomRect(rect);
+    });
 
   return Promise.resolve();
 }
@@ -499,7 +572,7 @@ function createNodePositions(): Record<string, RectInput> {
     payment_provider: { height: 84, left: 930, top: 290, width: 136 },
     payment_service: { height: 84, left: 760, top: 290, width: 126 },
     response: { height: 76, left: 1120, top: 292, width: 128 },
-    validation_service: { height: 84, left: 560, top: 290, width: 142 }
+    validation_service: { height: 84, left: 560, top: 290, width: 142 },
   };
 }
 
@@ -509,13 +582,15 @@ function applyFocusStateForTest(input: {
 }): void {
   const focusedNodeIds = new Set(input.focusGroup.nodeIds);
 
-  input.container.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
-    setFocusStateForTest({
-      element,
-      isEmptyFocus: focusedNodeIds.size === 0,
-      isFocused: focusedNodeIds.has(element.dataset.nodeId ?? "")
+  input.container
+    .querySelectorAll<HTMLElement>("[data-node-id]")
+    .forEach((element) => {
+      setFocusStateForTest({
+        element,
+        isEmptyFocus: focusedNodeIds.size === 0,
+        isFocused: focusedNodeIds.has(element.dataset.nodeId ?? ""),
+      });
     });
-  });
 }
 
 function setFocusStateForTest(input: {
@@ -537,16 +612,18 @@ function readButtonState(testId: string): boolean {
 }
 
 function readFocusState(container: HTMLElement, nodeId: string): string | null {
-  return container
-    .querySelector(`[data-node-id="${nodeId}"]`)
-    ?.getAttribute("data-focus-state") ?? null;
+  return (
+    container
+      .querySelector(`[data-node-id="${nodeId}"]`)
+      ?.getAttribute("data-focus-state") ?? null
+  );
 }
 
 function setWindowWidth(width: number): void {
   Object.defineProperty(window, "innerWidth", {
     configurable: true,
     value: width,
-    writable: true
+    writable: true,
   });
 }
 
@@ -564,7 +641,7 @@ function createDomRect(input: RectInput): DOMRect {
     left: input.left,
     right: input.left + input.width,
     top: input.top,
-    width: input.width
+    width: input.width,
   } as DOMRect;
 }
 
@@ -582,23 +659,22 @@ function createMultiMatchTour() {
     ...resolvedPaymentFlowTour,
     steps: [
       resolvedPaymentFlowTour.steps[0],
-          {
-            ...resolvedPaymentFlowTour.steps[1],
-            focus: [
-              ...resolvedPaymentFlowTour.steps[1].focus,
-              { id: "api_gateway", kind: "node" as const, label: "API Gateway" }
-            ]
-          },
-      ...resolvedPaymentFlowTour.steps.slice(2)
-    ]
+      {
+        ...resolvedPaymentFlowTour.steps[1],
+        focus: [
+          ...resolvedPaymentFlowTour.steps[1].focus,
+          { id: "api_gateway", kind: "node" as const, label: "API Gateway" },
+        ],
+      },
+      ...resolvedPaymentFlowTour.steps.slice(2),
+    ],
   };
 }
-
 
 function toScrollPositionForTest(
   parent: HTMLElement,
   options: ScrollToOptions | number,
-  top?: number
+  top?: number,
 ): {
   scrollLeft: number;
   scrollTop: number;
@@ -610,26 +686,27 @@ function toScrollPositionForTest(
 
 function toNumericScrollPositionForTest(
   left: number,
-  top?: number
+  top?: number,
 ): {
   scrollLeft: number;
   scrollTop: number;
 } {
   return {
     scrollLeft: left,
-    scrollTop: top ?? 0
+    scrollTop: top ?? 0,
   };
 }
 
 function toObjectScrollPositionForTest(
   parent: HTMLElement,
-  options: ScrollToOptions
+  options: ScrollToOptions,
 ): {
   scrollLeft: number;
   scrollTop: number;
 } {
   return {
     scrollLeft: options.left ?? parent.scrollLeft,
-    scrollTop: options.top ?? parent.scrollTop
+    scrollTop: options.top ?? parent.scrollTop,
   };
 }
+
