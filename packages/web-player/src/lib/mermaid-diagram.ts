@@ -7,6 +7,7 @@ const APP_NODE_CLASS_PREFIX = "diagram_tour_node_";
 const FOCUSED_STATE = "focused";
 const DIMMED_STATE = "dimmed";
 const MERMAID_ERROR_MESSAGE = "Failed to render Mermaid diagram.";
+const MERMAID_FONT_STACK = "Geist, Inter, Segoe UI, system-ui, sans-serif";
 const NODE_FOCUS_GRADIENT_ID = "diagram-tour-node-focus-gradient";
 const NODE_HOVER_GRADIENT_ID = "diagram-tour-node-hover-gradient";
 
@@ -24,7 +25,11 @@ export async function renderMermaidDiagram(input: {
   const mermaid = await loadMermaid();
 
   mermaid.default.initialize({
-    startOnLoad: false
+    startOnLoad: false,
+    theme: "base",
+    themeVariables: {
+      fontFamily: MERMAID_FONT_STACK
+    }
   });
 
   const renderResult = await renderDiagramSource({

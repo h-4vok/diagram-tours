@@ -9,7 +9,8 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { mermaidRender } = vi.hoisted(() => ({
+const { mermaidInitialize, mermaidRender } = vi.hoisted(() => ({
+  mermaidInitialize: vi.fn(),
   mermaidRender: vi.fn(async () => ({
     svg: [
       '<svg width="100%" style="max-width: 1440px;" viewBox="0 0 1440 960">',
@@ -24,7 +25,7 @@ const { mermaidRender } = vi.hoisted(() => ({
 
 vi.mock("mermaid", () => ({
   default: {
-    initialize: vi.fn(),
+    initialize: mermaidInitialize,
     render: mermaidRender
   }
 }));
@@ -61,6 +62,15 @@ describe("mermaid diagram helpers", () => {
       diagram: resolvedPaymentFlowTour.diagram
     });
 
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startOnLoad: false,
+        theme: "base",
+        themeVariables: expect.objectContaining({
+          fontFamily: "Geist, Inter, Segoe UI, system-ui, sans-serif"
+        })
+      })
+    );
     expect(mermaidRender).toHaveBeenCalledTimes(1);
     expect(container.querySelector('[data-node-id="api_gateway"]')).not.toBeNull();
     expect(container.querySelector('[data-node-label="API Gateway"]')).not.toBeNull();

@@ -19,6 +19,7 @@
 
 .step-panel--overlay {
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 48%, var(--color-border));
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-overlay, var(--shadow-soft));
@@ -75,7 +76,7 @@
 .step-timeline__pill--current {
   background: var(--color-node-focus-fill);
   border-color: color-mix(in srgb, var(--color-node-focus-stroke) 76%, transparent);
-  box-shadow: 0 10px 20px color-mix(in srgb, var(--color-node-focus-stroke) 16%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-node-focus-stroke) 16%, transparent);
   color: var(--color-node-focus-text);
 }
 
@@ -136,7 +137,6 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .viewport-toolbar__actions {
@@ -184,7 +184,7 @@
   background: color-mix(in srgb, var(--color-surface) 74%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 42%, var(--color-border));
   border-radius: var(--radius-chip);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-border) 10%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-border) 10%, transparent);
   cursor: pointer;
   display: grid;
   gap: 0.1rem;
@@ -208,7 +208,7 @@
   border-color: color-mix(in srgb, var(--color-node-focus-stroke) 48%, var(--color-border));
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 32%, transparent),
-    0 8px 20px color-mix(in srgb, var(--color-border) 12%, transparent);
+    0 4px 16px color-mix(in srgb, var(--color-border) 12%, transparent);
 }
 
 .tour-identity__label,
@@ -224,7 +224,6 @@
   font-size: 0.76rem;
   font-weight: 500;
   letter-spacing: 0.045em;
-  text-transform: uppercase;
 }
 
 .tour-identity__title {
@@ -308,7 +307,6 @@
   font-family: var(--font-family-mono);
   font-size: 0.72rem;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
 .node-step-chooser__preview {
@@ -353,7 +351,6 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .minimap-shell__toggle {
@@ -432,33 +429,41 @@
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-surface {
   background:
-    linear-gradient(180deg, rgb(38 46 64 / 92%), rgb(24 30 43 / 94%)),
-    radial-gradient(circle at 28% 22%, rgb(138 162 255 / 12%), transparent 46%);
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-top) 88%, var(--color-bg-main)),
+      color-mix(in srgb, var(--color-bg-main) 96%, transparent)
+    ),
+    radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 46%);
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .step-panel--overlay {
+  background: rgb(22 27 34 / 80%);
 }
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-node-marker {
-  background: rgb(116 130 162 / 34%);
-  border-color: rgb(164 179 214 / 38%);
+  background: color-mix(in srgb, var(--color-node-base-fill) 56%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-base-stroke) 52%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgb(206 217 246 / 6%),
-    0 0 0 1px rgb(10 14 22 / 18%);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-bg-main) 24%, transparent);
   opacity: 1;
 }
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-focus-marker {
-  background: rgb(86 112 198 / 64%);
-  border-color: rgb(151 174 255 / 96%);
+  background: color-mix(in srgb, var(--color-node-focus-fill) 64%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 92%, transparent);
   box-shadow:
-    0 0 0 1px rgb(151 174 255 / 22%),
-    0 0 14px rgb(138 162 255 / 18%);
+    0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent),
+    0 0 14px color-mix(in srgb, var(--color-node-focus-stroke) 18%, transparent);
 }
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-viewport-rect {
-  background: rgb(138 162 255 / 12%);
-  border-color: rgb(226 234 255 / 72%);
+  background: color-mix(in srgb, var(--color-node-focus-fill) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-node-focus-text) 72%, var(--color-node-focus-stroke));
   box-shadow:
-    inset 0 0 0 1px rgb(151 174 255 / 44%),
-    0 0 0 1px rgb(151 174 255 / 22%);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 44%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
 }
 
 @media (width < 720px) {

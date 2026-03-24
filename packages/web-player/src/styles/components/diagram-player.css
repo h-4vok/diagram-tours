@@ -50,14 +50,15 @@
 .diagram .edgeLabel rect,
 .diagram .labelBkg {
   backdrop-filter: blur(2px);
-  fill: var(--color-edge-label-bg);
-  stroke: var(--color-edge-label-border);
+  fill: var(--color-edge-label-bg) !important;
+  stroke: var(--color-edge-label-border) !important;
   stroke-width: 1px;
 }
 
 .diagram .edgeLabel :is(text, span, p, div, tspan) {
   color: var(--color-edge-label-text);
   fill: var(--color-edge-label-text);
+  font-family: var(--font-mono);
 }
 
 .diagram .edgeLabel .label {
@@ -65,8 +66,8 @@
 }
 
 .diagram .edgeLabel div {
-  background: var(--color-edge-label-bg);
-  border: 1px solid var(--color-edge-label-border);
+  background: var(--color-edge-label-bg) !important;
+  border: 1px solid var(--color-edge-label-border) !important;
   border-radius: var(--edge-label-radius);
   box-shadow: 0 1px 4px var(--color-edge-label-shadow);
   color: var(--color-edge-label-text);
@@ -92,7 +93,24 @@
   margin: 0;
   padding: 0;
 }
+
+.diagram .warning:is(rect, path, polygon, circle, ellipse),
+.diagram .warning :is(rect, path, polygon, circle, ellipse) {
+  fill: var(--node-warning-fill);
+  stroke: var(--color-node-base-stroke);
+}
+
+.diagram .warning:is(text, tspan, foreignObject),
+.diagram .warning :is(text, tspan, foreignObject, div, span, p) {
+  color: var(--node-warning-text);
+  fill: var(--node-warning-text);
+}
 /* stylelint-enable selector-class-pattern */
+
+.theme-root[data-theme="dark"] .diagram .edgePath path,
+.theme-root[data-theme="dark"] .diagram .flowchart-link {
+  stroke: #fff !important;
+}
 
 [data-diagram-element-id] {
   opacity: 1;
@@ -191,13 +209,13 @@
   filter:
     drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.65) color-mix(in srgb, var(--color-focus-shadow) 84%, transparent))
     drop-shadow(0 0 var(--focus-glow-blur, 8px) color-mix(in srgb, var(--color-node-focus-stroke) 32%, transparent));
-  fill: url("#diagram-tour-node-focus-gradient");
-  stroke: var(--color-node-focus-stroke);
-  stroke-width: 4px;
+  fill: var(--node-active-fill) !important;
+  stroke: var(--accent-primary) !important;
+  stroke-width: 4px !important;
 }
 
 [data-focus-state="focused"] rect.label-container {
-  fill: url("#diagram-tour-node-focus-gradient");
+  fill: var(--node-active-fill) !important;
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="message"]:is(line, polyline),
@@ -265,12 +283,12 @@
 }
 
 .error-actions__button--primary {
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
 }
 
 .error-actions__button--primary:hover,
 .error-actions__button--primary:focus-visible {
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent);
 }
 
 .error-actions__button--secondary {

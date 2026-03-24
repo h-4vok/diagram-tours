@@ -38,7 +38,7 @@
 .button:focus-visible:not(:disabled) {
   background: var(--color-button-bg-hover);
   border-color: color-mix(in srgb, var(--color-button-bg-hover) 80%, var(--color-border));
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-button-bg-hover) 14%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-button-bg-hover) 14%, transparent);
 }
 
 .button--secondary {
@@ -55,7 +55,7 @@
     var(--color-button-secondary-text) 16%,
     var(--color-border-strong, var(--color-border))
   );
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-border) 14%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-border) 14%, transparent);
 }
 
 .button:active:not(:disabled) {
