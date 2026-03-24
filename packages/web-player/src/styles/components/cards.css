@@ -214,7 +214,7 @@
   padding: 0.72rem;
   position: absolute;
   width: 15rem;
-  z-index: 20;
+  z-index: 30;
 }
 
 .node-step-chooser__title {
