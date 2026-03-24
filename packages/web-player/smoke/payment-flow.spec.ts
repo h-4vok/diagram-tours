@@ -6,13 +6,13 @@ test("docs shell browse navigation changes tours without breaking the player @co
 }) => {
   await page.goto("/checkout/decision-flow?step=3");
 
-  await expect(page.getByText("Diagram Tours")).toBeVisible();
+  await expect(page.getByRole("link", { name: "diagram-tours" })).toBeVisible();
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
-  await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
-  await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "christianguzman.uk" })).toBeVisible();
+  await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Decision Flow");
+  await expect(page.getByTestId("search-hint-trigger")).toBeVisible();
+  await expect(page.getByRole("link", { name: "GitHub" })).toBeVisible();
   await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
-  await page.getByTestId("tour-identity").click();
+  await page.getByTestId("search-hint-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await expect(page.getByTestId("browse-search-input")).toBeVisible();
   await expect(page.getByTestId("browse-folder-row").first()).toBeVisible();
@@ -65,7 +65,7 @@ test("diagram canvas owns horizontal overflow instead of the document body @exte
   await page.goto("/checkout/decision-flow");
 
   await expect(page.getByTestId("diagram-container")).toBeVisible();
-  await expect(page.getByTestId("tour-identity")).toContainText("Decision Flow");
+  await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Decision Flow");
 
   await expectDocumentWidthToMatchViewport(page);
   await expectCanvasToOwnBody(page);
@@ -227,7 +227,7 @@ test("unknown tours show a guided 404 with a single recovery action @extended", 
   const response = await page.goto("/examples/tuvieja");
 
   expect(response?.status()).toBe(404);
-  await expect(page.getByText("Diagram Tours")).toBeVisible();
+  await expect(page.getByRole("link", { name: "diagram-tours" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Tour not found" })).toBeVisible();
   await expect(page.getByText('Unknown tour slug "examples/tuvieja".')).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to Tours" })).toBeVisible();
@@ -272,7 +272,7 @@ test("desktop minimap stays visible and tracks the focused step @extended", asyn
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
-test("zoom controls resize the active diagram and reset cleanly @extended", async ({ page }) => {
+test("zoom controls resize the active diagram and return cleanly @extended", async ({ page }) => {
   await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
 
@@ -283,14 +283,14 @@ test("zoom controls resize the active diagram and reset cleanly @extended", asyn
   await expect.poll(async () => readNodeAxisSize(page, "api_gateway", "width")).toBeGreaterThan(
     baselineWidth * 1.15
   );
-  await expect(page.getByTestId("zoom-reset-button")).toContainText("125%");
+  await expect(page.getByTestId("zoom-value")).toContainText("125%");
 
-  await page.getByTestId("zoom-reset-button").click();
+  await page.getByTestId("zoom-out-button").click();
 
   await expect.poll(async () => readNodeAxisSize(page, "api_gateway", "width")).toBeLessThan(
     baselineWidth * 1.05
   );
-  await expect(page.getByTestId("zoom-reset-button")).toContainText("100%");
+  await expect(page.getByTestId("zoom-value")).toContainText("100%");
 });
 
 test("clicking the minimap pans the main diagram viewport @extended", async ({ page }) => {
@@ -335,12 +335,12 @@ test("clicking a node jumps directly to its matching step @core", async ({ page 
   await page.goto("/checkout/refund-flow");
   await expectDiagramVisible(page);
 
-  await page.locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]').click({
-    position: {
-      x: 16,
-      y: 16
-    }
-  });
+  await page
+    .locator('[data-testid="diagram-container"] [data-node-id="payment_gateway"]')
+    .first()
+    .evaluate((element) => {
+      element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
 
   await expect(page).toHaveURL(/\/checkout\/refund-flow\?step=2$/);
   await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");

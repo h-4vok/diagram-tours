@@ -1,6 +1,7 @@
 .diagram {
-  block-size: calc(100vh - 5.55rem);
+  block-size: 100%;
   display: block;
+  height: 100%;
   inline-size: 100%;
   min-width: 0;
   overflow: auto scroll;
@@ -106,11 +107,12 @@
   fill: var(--node-warning-text);
 }
 /* stylelint-enable selector-class-pattern */
-
+/* stylelint-disable selector-class-pattern */
 .theme-root[data-theme="dark"] .diagram .edgePath path,
 .theme-root[data-theme="dark"] .diagram .flowchart-link {
   stroke: #fff !important;
 }
+/* stylelint-enable selector-class-pattern */
 
 [data-diagram-element-id] {
   opacity: 1;
@@ -308,13 +310,13 @@
 
 @media (width >= 900px) {
   .diagram {
-    block-size: calc(100vh - 5.1rem);
+    block-size: 100%;
   }
 }
 
 @media (width < 720px) {
   .diagram {
-    block-size: calc(100vh - 6.4rem);
+    block-size: 100%;
   }
 
   .diagram-stage-inner {

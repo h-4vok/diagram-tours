@@ -46,13 +46,17 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect(await screen.findByText("Diagram Tours")).toBeDefined();
-    expect(screen.getByTestId("browse-trigger")).toBeDefined();
+    expect(await screen.findByText("diagram-tours")).toBeDefined();
+    expect(screen.getByTestId("topbar-left")).toBeDefined();
+    expect(screen.getByTestId("topbar-center")).toBeDefined();
+    expect(screen.getByTestId("topbar-right")).toBeDefined();
+    expect(screen.getByTestId("search-hint-trigger")).toBeDefined();
+    expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("diagram-tours");
     expect(screen.queryByTestId("browse-panel")).toBeNull();
     expect(screen.queryByTestId("browse-tree")).toBeNull();
   });
 
-  it("opens browse as an explorer tree, renders compact folders, and keeps theme toggle available", async () => {
+  it("opens browse as an explorer tree from the top search hint and keeps theme toggle available", async () => {
     render(Layout, {
       data: {
         collection: nestedTourCollection,
@@ -60,11 +64,17 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect(screen.getByRole("link", { name: "christianguzman.uk" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe(
+      "https://github.com/h-4vok/diagram-tours"
+    );
+    expect(screen.getByRole("link", { name: "Docs" }).getAttribute("href")).toBe(
+      "https://github.com/h-4vok/diagram-tours/tree/main/docs"
+    );
+    expect(screen.getByRole("link", { name: "Blog" }).getAttribute("href")).toBe(
       "https://christianguzman.uk"
     );
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     expect(await screen.findByTestId("browse-tree")).toBeDefined();
     expect(screen.getByTestId("browse-search-input")).toBeDefined();
@@ -270,6 +280,21 @@ describe("+layout.svelte", () => {
 
     window.dispatchEvent(new CustomEvent("diagram-tour-toggle-browse"));
 
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+  });
+
+  it("opens browse from Ctrl/Cmd+K", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    await fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+
+    await fireEvent.keyDown(window, { key: "k", metaKey: true });
     expect(await screen.findByTestId("browse-panel")).toBeDefined();
   });
 });

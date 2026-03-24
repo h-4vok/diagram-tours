@@ -59,6 +59,7 @@
   let isBrowseFiltering = false;
   let browseRows = flattenBrowseTree(browseTree, [], false);
   let isHydrated = false;
+  let breadcrumbs = ["diagram-tours", "collection"];
 
   $: {
     activeSlug = readActiveSlug(page.url.pathname);
@@ -74,6 +75,7 @@
     filteredBrowseTree = filterBrowseTree(browseTree, browseSearch);
     isBrowseFiltering = browseSearch.trim().length > 0;
     browseRows = flattenBrowseTree(filteredBrowseTree, expandedFolderIds, isBrowseFiltering);
+    breadcrumbs = readBreadcrumbs(activeEntry);
   }
 
   function handleThemeToggle(): void {
@@ -82,9 +84,10 @@
     setStoredTheme(window.localStorage, theme);
   }
 
-  async function toggleBrowse(): Promise<void> {
+  async function openBrowsePalette(): Promise<void> {
     if (isBrowseOpen) {
-      closeBrowse();
+      await tick();
+      focusBrowseEntry();
 
       return;
     }
@@ -131,6 +134,13 @@
   }
 
   function handleWindowKeydown(event: KeyboardEvent): void {
+    if (isBrowseShortcut(event)) {
+      event.preventDefault();
+      void openBrowsePalette();
+
+      return;
+    }
+
     if (!shouldCloseOverlayOnEscape(event.key, isBrowseOpen, isDiagnosticsOpen)) {
       return;
     }
@@ -140,7 +150,7 @@
   }
 
   function handleExternalBrowseToggle(): void {
-    void toggleBrowse();
+    void openBrowsePalette();
   }
 
   onMount(() => {
@@ -217,11 +227,25 @@
     return key === "Escape" && (browseOpen || diagnosticsOpen);
   }
 
+  function isBrowseShortcut(event: KeyboardEvent): boolean {
+    return event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey);
+  }
+
   function readActiveEntry(
     entries: ResolvedDiagramTourCollection["entries"],
     slug: string | null
   ): ResolvedDiagramTourCollection["entries"][number] | null {
     return entries.find((entry) => entry.slug === slug) ?? null;
+  }
+
+  function readBreadcrumbs(
+    entry: ResolvedDiagramTourCollection["entries"][number] | null
+  ): string[] {
+    if (entry === null) {
+      return ["diagram-tours", "collection"];
+    }
+
+    return ["diagram-tours", entry.tour.diagram.type, entry.title];
   }
 
   function focusBrowseEntry(): void {
@@ -242,18 +266,36 @@
 
   <div class="app-shell">
     <header class="topbar">
-      <div class="topbar__brandrow">
-        <a href={resolve("/")} class="topbar__brand">Diagram Tours</a>
+      <div class="topbar__left" data-testid="topbar-left">
+        <a href={resolve("/")} class="topbar__brand">diagram-tours</a>
+        <p class="topbar__breadcrumbs" data-testid="topbar-breadcrumbs">
+          {breadcrumbs.join(" / ")}
+        </p>
       </div>
 
-      <div class="topbar__actions">
+      <div class="topbar__center" data-testid="topbar-center">
+        <button
+          type="button"
+          class="topbar__searchhint"
+          data-testid="search-hint-trigger"
+          aria-expanded={isBrowseOpen}
+          aria-controls="browse-panel"
+          on:click={() => void openBrowsePalette()}
+        >
+          <span aria-hidden="true">[🔍</span>
+          <span>Search tours...</span>
+          <span class="topbar__searchhintkey">⌘K]</span>
+        </button>
+      </div>
+
+      <div class="topbar__actions" data-testid="topbar-right">
         <button
           type="button"
           class="button button--secondary topbar__browsebutton"
           data-testid="browse-trigger"
           aria-expanded={isBrowseOpen}
           aria-controls="browse-panel"
-          on:click={toggleBrowse}
+          on:click={() => void openBrowsePalette()}
         >
           Browse
         </button>
@@ -310,11 +352,27 @@
         {/if}
         <a
           class="topbar__link"
+          href="https://github.com/h-4vok/diagram-tours"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub
+        </a>
+        <a
+          class="topbar__link"
+          href="https://github.com/h-4vok/diagram-tours/tree/main/docs"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Docs
+        </a>
+        <a
+          class="topbar__link"
           href="https://christianguzman.uk"
           target="_blank"
           rel="noreferrer"
         >
-          christianguzman.uk
+          Blog
         </a>
         <button
           type="button"

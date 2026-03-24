@@ -3,7 +3,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
 
@@ -89,9 +88,6 @@
   export let initialStepIndex: number;
   export let selectedSlug: string;
   export let tour: ResolvedDiagramTour;
-  const dispatch = createEventDispatcher<{
-    togglebrowse: void;
-  }>();
   const player = createTourPlayer(tour, initialStepIndex);
 
   let state = player.getState();
@@ -126,10 +122,6 @@
 
   async function zoomOut(): Promise<void> {
     await updateZoomScale(createNextZoomScale(zoomScale, "out"));
-  }
-
-  async function resetZoom(): Promise<void> {
-    await updateZoomScale(createNextZoomScale(zoomScale, "reset"));
   }
 
   async function fitZoomToView(): Promise<void> {
@@ -265,10 +257,6 @@
 
   function readBoundElement<T extends HTMLElement>(value: T | undefined): T | null {
     return value ?? null;
-  }
-
-  function handleTourIdentityClick(): void {
-    dispatch("togglebrowse");
   }
 
   function handleWindowPointerDown(event: PointerEvent): void {
@@ -987,16 +975,6 @@
     class="diagram-shell diagram-shell--canvas"
     data-testid="diagram-shell"
   >
-    <button
-      type="button"
-      class="tour-identity"
-      data-testid="tour-identity"
-      on:click={handleTourIdentityClick}
-    >
-      <p class="tour-identity__label">Current tour</p>
-      <p class="tour-identity__title">{tour.title}</p>
-    </button>
-
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div
       bind:this={diagramContainer}
@@ -1034,53 +1012,7 @@
       </div>
     {/if}
 
-    <div class="canvas-overlay-stack" data-testid="canvas-overlay-stack">
-      <aside class="viewport-toolbar" data-testid="viewport-toolbar">
-        <p class="viewport-toolbar__label">Zoom</p>
-        <div class="viewport-toolbar__actions">
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-out-button"
-            aria-label="Zoom out"
-            disabled={!canZoomOut(zoomScale)}
-            on:click={() => void zoomOut()}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-fit-button"
-            aria-label="Fit diagram to view"
-            on:click={() => void fitZoomToView()}
-          >
-            Fit
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button viewport-toolbar__button--value"
-            data-testid="zoom-reset-button"
-            aria-label="Reset zoom to 100%"
-            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
-            on:click={() => void resetZoom()}
-          >
-            {formatZoomPercentage(zoomScale)}
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-in-button"
-            aria-label="Zoom in"
-            disabled={!canZoomIn(zoomScale)}
-            on:click={() => void zoomIn()}
-          >
-            +
-          </button>
-        </div>
-      </aside>
-
-      <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
+    <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
         <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
         <div class="step-timeline" data-testid="step-timeline">
           {#each tour.steps as step, stepIndex (step.index)}
@@ -1119,27 +1051,25 @@
             Next
           </button>
         </div>
-      </aside>
+    </aside>
 
+    <div class="camera-control-cluster" data-testid="camera-control-cluster">
       {#if !isCompactViewport}
         <aside
           class:minimap-shell--collapsed={isMinimapCollapsed}
           class="minimap-shell"
           data-testid="minimap-shell"
         >
-          <div class="minimap-shell__header">
-            <p class="minimap-shell__label">Navigation minimap</p>
-            <div class="minimap-shell__actions">
-              <button
-                type="button"
-                class="minimap-shell__toggle"
-                data-testid="minimap-toggle"
-                aria-expanded={!isMinimapCollapsed}
-                on:click={toggleMinimap}
-              >
-                {isMinimapCollapsed ? "Show" : "Hide"}
-              </button>
-            </div>
+          <div class="minimap-shell__actions">
+            <button
+              type="button"
+              class="minimap-shell__toggle"
+              data-testid="minimap-toggle"
+              aria-expanded={!isMinimapCollapsed}
+              on:click={toggleMinimap}
+            >
+              {isMinimapCollapsed ? "Show" : "Hide"}
+            </button>
           </div>
 
           {#if !isMinimapCollapsed && minimapGeometry !== null}
@@ -1182,6 +1112,41 @@
           {/if}
         </aside>
       {/if}
+
+      <aside class="viewport-toolbar" data-testid="viewport-toolbar">
+        <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
+        <div class="viewport-toolbar__actions">
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-out-button"
+            aria-label="Zoom out"
+            disabled={!canZoomOut(zoomScale)}
+            on:click={() => void zoomOut()}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-fit-button"
+            aria-label="Fit diagram to view"
+            on:click={() => void fitZoomToView()}
+          >
+            Fit
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-in-button"
+            aria-label="Zoom in"
+            disabled={!canZoomIn(zoomScale)}
+            on:click={() => void zoomIn()}
+          >
+            +
+          </button>
+        </div>
+      </aside>
     </div>
 
     {#if diagramError.length > 0}

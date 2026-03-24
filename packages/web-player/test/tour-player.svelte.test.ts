@@ -58,9 +58,6 @@ describe("tour-player.svelte", () => {
     });
 
     expect(await screen.findByTestId("player-canvas")).toBeDefined();
-    expect(screen.getByTestId("tour-identity").textContent).toContain(
-      "Payment Flow",
-    );
     expect(screen.getByTestId("step-text").textContent).toContain(
       "public edge of the checkout system",
     );
@@ -136,12 +133,9 @@ describe("tour-player.svelte", () => {
     expect(stepPanel).not.toBeNull();
     expect(diagramShell).not.toBeNull();
     expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
-    expect(
-      container.querySelector('[data-testid="tour-identity"]'),
-    ).not.toBeNull();
   });
 
-  it("renders the minimap on desktop, shows focused nodes, and stacks it below the step overlay", async () => {
+  it("renders the minimap on desktop, shows focused nodes, and groups controls in a camera cluster", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -155,20 +149,20 @@ describe("tour-player.svelte", () => {
       expect(screen.getAllByTestId("minimap-focus-marker")).toHaveLength(1);
     });
 
-    const overlayStack = container.querySelector(
-      '[data-testid="canvas-overlay-stack"]',
+    const cameraCluster = container.querySelector(
+      '[data-testid="camera-control-cluster"]',
     );
 
-    expect(overlayStack).not.toBeNull();
-    expect((overlayStack as HTMLElement).firstElementChild).toBe(
-      screen.getByTestId("viewport-toolbar"),
-    );
-    expect((overlayStack as HTMLElement).children[1]).toBe(
-      screen.getByTestId("step-overlay"),
-    );
-    expect((overlayStack as HTMLElement).lastElementChild).toBe(
+    expect(cameraCluster).not.toBeNull();
+    expect((cameraCluster as HTMLElement).firstElementChild).toBe(
       screen.getByTestId("minimap-shell"),
     );
+    expect((cameraCluster as HTMLElement).lastElementChild).toBe(
+      screen.getByTestId("viewport-toolbar"),
+    );
+    expect(
+      container.querySelector('[data-testid="step-overlay"]'),
+    ).not.toBeNull();
   });
 
   it("hides the minimap automatically on small screens", async () => {
@@ -213,7 +207,7 @@ describe("tour-player.svelte", () => {
     );
   });
 
-  it("zooms the rendered svg and resets back to 100 percent", async () => {
+  it("zooms the rendered svg and updates the segmented zoom value", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -225,7 +219,7 @@ describe("tour-player.svelte", () => {
     );
 
     expect(svg?.getAttribute("width")).toBe("960");
-    expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+    expect(screen.getByTestId("zoom-value").textContent).toContain(
       "100%",
     );
 
@@ -234,17 +228,17 @@ describe("tour-player.svelte", () => {
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("1200");
       expect(svg?.getAttribute("height")).toBe("800");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "125%",
       );
     });
 
-    await fireEvent.click(screen.getByTestId("zoom-reset-button"));
+    await fireEvent.click(screen.getByTestId("zoom-out-button"));
 
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("960");
       expect(svg?.getAttribute("height")).toBe("640");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "100%",
       );
     });
@@ -267,7 +261,7 @@ describe("tour-player.svelte", () => {
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("480");
       expect(svg?.getAttribute("height")).toBe("320");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "50%",
       );
     });
