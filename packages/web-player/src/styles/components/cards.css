@@ -239,9 +239,7 @@
 }
 
 .minimap-surface {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-bg-soft) 92%, var(--color-surface)), color-mix(in srgb, var(--color-bg-main) 94%, var(--color-surface))),
-    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--color-bg-glow) 28%, transparent), transparent 42%);
+  background: #f2f2f7;
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
   border-radius: 0.75rem;
   cursor: crosshair;
@@ -250,16 +248,16 @@
 }
 
 .minimap-node-marker {
-  background: color-mix(in srgb, var(--color-bg-soft) 84%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 52%, transparent);
+  background: hsl(40.5882352941 60% 83.3333333333%);
+  border: 1px solid color-mix(in srgb, var(--color-node-base-stroke) 42%, transparent);
   border-radius: 0.3rem;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg-main) 24%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg-main) 12%, transparent);
   opacity: 0.94;
   position: absolute;
 }
 
 .minimap-focus-marker {
-  background: color-mix(in srgb, var(--color-node-focus-fill) 76%, transparent);
+  background: color-mix(in srgb, var(--color-node-focus-fill) 88%, white);
   border: 1px solid color-mix(in srgb, var(--color-node-focus-stroke) 94%, transparent);
   border-radius: 0.3rem;
   box-shadow:
@@ -270,8 +268,8 @@
 
 .minimap-viewport-rect {
   appearance: none;
-  background: color-mix(in srgb, var(--color-node-focus-fill) 20%, transparent);
-  border: 1px solid color-mix(in srgb, white 78%, var(--color-node-focus-stroke));
+  background: rgb(59 130 246 / 20%);
+  border: 2px solid var(--color-accent);
   border-radius: 0.42rem;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 48%, transparent),
@@ -288,13 +286,7 @@
 }
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-surface {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-bg-top) 88%, var(--color-bg-main)),
-      color-mix(in srgb, var(--color-bg-main) 96%, transparent)
-    ),
-    radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 46%);
+  background: #1c1c1e;
 }
 
 
@@ -316,8 +308,9 @@
 }
 
 :is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .minimap-viewport-rect {
-  background: color-mix(in srgb, var(--color-node-focus-fill) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-node-focus-text) 72%, var(--color-node-focus-stroke));
+  background: rgb(96 165 250 / 20%);
+  border-color: #60a5fa;
+  border-width: 2px;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 44%, transparent),
     0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
