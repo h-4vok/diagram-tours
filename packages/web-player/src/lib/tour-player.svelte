@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import { toast } from "svelte-sonner";
 
   import {
@@ -954,6 +955,17 @@
     return context === null ? null : readRenderedSvg(context.content);
   }
 
+  function createStepTextSegments(text: string): Array<{ content: string; isCode: boolean }> {
+    return text.split(/(`[^`]+`)/g).filter(Boolean).map((segment) => {
+      const isCode = segment.startsWith("`") && segment.endsWith("`");
+
+      return {
+        content: isCode ? segment.slice(1, -1) : segment,
+        isCode
+      };
+    });
+  }
+
   function createZoomContext(context: {
     container: HTMLDivElement;
     content: HTMLDivElement;
@@ -1012,142 +1024,154 @@
       </div>
     {/if}
 
-    <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
-        <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
-        <div class="step-timeline" data-testid="step-timeline">
-          {#each tour.steps as step, stepIndex (step.index)}
-            <button
-              type="button"
-              class:step-timeline__pill--current={stepIndex === state.stepIndex}
-              class:step-timeline__pill--complete={stepIndex < state.stepIndex}
-              class="step-timeline__pill"
-              data-testid="timeline-step-button"
-              aria-current={stepIndex === state.stepIndex ? "step" : undefined}
-              on:click={() => void goToStepIndex(stepIndex)}
-            >
-              {step.index}
-            </button>
-          {/each}
-        </div>
-        <p data-testid="step-text" class="step-text">{state.step.text}</p>
-
-        <div class="controls">
+    <aside class="teleprompter" data-testid="teleprompter">
+      <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
+      
+      <div class="teleprompter__content" data-testid="step-overlay">
+        <div class="teleprompter__nav-left">
           <button
             type="button"
-            class="button button--secondary"
+            class="teleprompter__btn"
             on:click={goPrevious}
             disabled={!state.canGoPrevious}
             data-testid="previous-button"
+            aria-label="Previous step"
           >
-            Previous
+            <span class="teleprompter__btn-icon">←</span>
+            <kbd class="teleprompter__kbd">[ ← ]</kbd>
           </button>
+        </div>
+
+        <div class="teleprompter__text-area" data-testid="step-text-container">
+          <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+          {#key state.stepIndex}
+            <div in:fly={{ y: 4, duration: 200, delay: 100 }} out:fade={{ duration: 100 }}>
+              <p data-testid="step-text" class="teleprompter__text">
+                {#each createStepTextSegments(state.step.text) as segment, index (`${state.stepIndex}-${index}`)}
+                  {#if segment.isCode}
+                    <code class="teleprompter__code">{segment.content}</code>
+                  {:else}
+                    {segment.content}
+                  {/if}
+                {/each}
+              </p>
+            </div>
+          {/key}
+        </div>
+
+        <div class="teleprompter__nav-right">
           <button
             type="button"
-            class="button"
+            class="teleprompter__btn"
             on:click={goNext}
             disabled={!state.canGoNext}
             data-testid="next-button"
+            aria-label="Next step"
           >
-            Next
+            <span class="teleprompter__btn-icon">→</span>
+            <kbd class="teleprompter__kbd">[ Space ]</kbd>
           </button>
         </div>
+      </div>
     </aside>
 
-    <div class="camera-control-cluster" data-testid="camera-control-cluster">
-      {#if !isCompactViewport}
-        <aside
-          class:minimap-shell--collapsed={isMinimapCollapsed}
-          class="minimap-shell"
-          data-testid="minimap-shell"
-        >
-          <div class="minimap-shell__actions">
-            <button
-              type="button"
-              class="minimap-shell__toggle"
-              data-testid="minimap-toggle"
-              aria-expanded={!isMinimapCollapsed}
-              on:click={toggleMinimap}
-            >
-              {isMinimapCollapsed ? "Show" : "Hide"}
-            </button>
-          </div>
-
-          {#if !isMinimapCollapsed && minimapGeometry !== null}
-            <div
-              bind:this={minimapSurface}
-              class="minimap-surface"
-              role="group"
-              aria-label="Navigation minimap"
-              data-testid="minimap-surface"
-              style={formatMinimapBoundsStyle(minimapGeometry.bounds)}
-              on:pointerdown={handleMinimapSurfacePointerDown}
-            >
-              {#each minimapGeometry.nodeRects as rect, index (`node-${index}`)}
-                <div
-                  class="minimap-node-marker"
-                  data-testid="minimap-node-marker"
-                  style={formatMinimapRectStyle(rect)}
-                ></div>
-              {/each}
-
-              {#each minimapGeometry.focusRects as rect, index (index)}
-                <div
-                  class="minimap-focus-marker"
-                  data-testid="minimap-focus-marker"
-                  style={formatMinimapRectStyle(rect)}
-                ></div>
-              {/each}
-
-              {#if renderedViewportRect !== null}
-                <button
-                  type="button"
-                  class="minimap-viewport-rect"
-                  data-testid="minimap-viewport-rect"
-                  aria-label="Drag viewport"
-                  style={formatMinimapRectStyle(renderedViewportRect)}
-                  on:pointerdown={handleViewportPointerDown}
-                ></button>
-              {/if}
+    {#if !isCompactViewport}
+      <div class="camera-control-cluster" data-testid="camera-control-cluster">
+        <div class="camera-control-panel" data-testid="camera-control-panel">
+          <aside
+            class:minimap-shell--collapsed={isMinimapCollapsed}
+            class="minimap-shell"
+            data-testid="minimap-shell"
+          >
+            <div class="minimap-shell__actions">
+              <button
+                type="button"
+                class="minimap-shell__toggle"
+                data-testid="minimap-toggle"
+                aria-expanded={!isMinimapCollapsed}
+                on:click={toggleMinimap}
+              >
+                {isMinimapCollapsed ? "Show" : "Hide"}
+              </button>
             </div>
-          {/if}
-        </aside>
-      {/if}
 
-      <aside class="viewport-toolbar" data-testid="viewport-toolbar">
-        <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
-        <div class="viewport-toolbar__actions">
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-out-button"
-            aria-label="Zoom out"
-            disabled={!canZoomOut(zoomScale)}
-            on:click={() => void zoomOut()}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-fit-button"
-            aria-label="Fit diagram to view"
-            on:click={() => void fitZoomToView()}
-          >
-            Fit
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-in-button"
-            aria-label="Zoom in"
-            disabled={!canZoomIn(zoomScale)}
-            on:click={() => void zoomIn()}
-          >
-            +
-          </button>
+            {#if !isMinimapCollapsed && minimapGeometry !== null}
+              <div
+                bind:this={minimapSurface}
+                class="minimap-surface"
+                role="group"
+                aria-label="Navigation minimap"
+                data-testid="minimap-surface"
+                style={formatMinimapBoundsStyle(minimapGeometry.bounds)}
+                on:pointerdown={handleMinimapSurfacePointerDown}
+              >
+                {#each minimapGeometry.nodeRects as rect, index (`node-${index}`)}
+                  <div
+                    class="minimap-node-marker"
+                    data-testid="minimap-node-marker"
+                    style={formatMinimapRectStyle(rect)}
+                  ></div>
+                {/each}
+
+                {#each minimapGeometry.focusRects as rect, index (index)}
+                  <div
+                    class="minimap-focus-marker"
+                    data-testid="minimap-focus-marker"
+                    style={formatMinimapRectStyle(rect)}
+                  ></div>
+                {/each}
+
+                {#if renderedViewportRect !== null}
+                  <button
+                    type="button"
+                    class="minimap-viewport-rect"
+                    data-testid="minimap-viewport-rect"
+                    aria-label="Drag viewport"
+                    style={formatMinimapRectStyle(renderedViewportRect)}
+                    on:pointerdown={handleViewportPointerDown}
+                  ></button>
+                {/if}
+              </div>
+            {/if}
+          </aside>
+
+          <aside class="viewport-toolbar" data-testid="viewport-toolbar">
+            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
+            <div class="viewport-toolbar__actions">
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-out-button"
+                aria-label="Zoom out"
+                disabled={!canZoomOut(zoomScale)}
+                on:click={() => void zoomOut()}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-fit-button"
+                aria-label="Fit diagram to view"
+                on:click={() => void fitZoomToView()}
+              >
+                Fit
+              </button>
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-in-button"
+                aria-label="Zoom in"
+                disabled={!canZoomIn(zoomScale)}
+                on:click={() => void zoomIn()}
+              >
+                +
+              </button>
+            </div>
+          </aside>
         </div>
-      </aside>
-    </div>
+      </div>
+    {/if}
 
     {#if diagramError.length > 0}
       <p data-testid="diagram-error" class="diagram-error diagram-error--overlay">{diagramError}</p>

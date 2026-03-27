@@ -264,6 +264,124 @@
   transition: opacity 400ms ease;
 }
 
+.teleprompter {
+  background: rgba(22, 27, 34, 0.75);
+  backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  bottom: 32px;
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  max-width: 768px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  transform: translateX(-50%);
+  transition: height 0.3s ease-in-out;
+  width: calc(100% - 48px);
+  z-index: 20;
+}
+
+.teleprompter__progress {
+  background: var(--accent-primary);
+  height: 2px;
+  transition: width 0.3s ease-in-out;
+  width: 0;
+}
+
+.teleprompter__content {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  padding: 24px 32px;
+}
+
+.teleprompter__nav-left,
+.teleprompter__nav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.teleprompter__text-area {
+  flex: 1;
+  text-align: center;
+}
+
+.teleprompter__step-info {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin: 0 0 8px;
+  text-transform: none;
+}
+
+.teleprompter__text {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.teleprompter__code {
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 2px 4px;
+}
+
+.teleprompter__btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 48px;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+  width: 48px;
+}
+
+.teleprompter__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.teleprompter__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.teleprompter__btn-icon {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.teleprompter__kbd {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.teleprompter__btn:hover .teleprompter__kbd {
+  opacity: 1;
+}
+
 .error-panel {
   gap: var(--space-lg);
 }

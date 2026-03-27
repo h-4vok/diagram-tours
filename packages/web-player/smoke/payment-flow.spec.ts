@@ -16,7 +16,7 @@ test("docs shell browse navigation changes tours without breaking the player @co
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await expect(page.getByTestId("browse-search-input")).toBeVisible();
   await expect(page.getByTestId("browse-folder-row").first()).toBeVisible();
-  await expect(page.getByTestId("step-text")).toContainText(
+  await expect(page.getByTestId("step-text-container")).toContainText(
     "human or audited service"
   );
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
@@ -32,7 +32,7 @@ test("docs shell browse navigation changes tours without breaking the player @co
   await page.getByText("Refund Flow").click();
 
   await expect(page).toHaveURL(/\/checkout\/refund-flow$/);
-  await expect(page.getByTestId("step-text")).toContainText(
+  await expect(page.getByTestId("step-text-container")).toContainText(
     "reverse a payment"
   );
 
@@ -80,11 +80,11 @@ test("focused areas stay reasonably centered through viewport-centering examples
   await expectFocusedAreaNearViewportCenter(page, ["build"]);
 
   await page.getByTestId("next-button").click();
-  await expect(page.getByTestId("step-text")).toContainText("Roll Out");
+  await expect(page.getByTestId("step-text-container")).toContainText("Roll Out");
   await expectFocusedAreaNearViewportCenter(page, ["rollout"]);
 
   await page.getByTestId("next-button").click();
-  await expect(page.getByTestId("step-text")).toContainText("Verify in Staging");
+  await expect(page.getByTestId("step-text-container")).toContainText("Verify in Staging");
   await expectFocusedAreaNearViewportCenter(page, ["verify", "observe"]);
 });
 
@@ -129,7 +129,7 @@ test("huge-system stress fixture remains navigable across step changes @extended
   await page.getByTestId("next-button").click();
 
   await expect(page).toHaveURL(/\/ops\/huge-system\?step=6$/);
-  await expect(page.getByTestId("step-text")).toContainText("distant focus");
+  await expect(page.getByTestId("step-text-container")).toContainText("distant focus");
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="compliance"]')
   ).toHaveCount(1);
@@ -169,9 +169,9 @@ test("long step text does not break the usable diagram area @extended", async ({
 
   await expectDiagramVisible(page);
 
-  const stepTextBox = await page.getByTestId("step-text").boundingBox();
+  const stepTextBox = await page.getByTestId("step-text-container").boundingBox();
   const diagramBox = await page.getByTestId("diagram-container").boundingBox();
-  const overlayBox = await page.getByTestId("step-overlay").boundingBox();
+  const overlayBox = await page.getByTestId("teleprompter").boundingBox();
 
   assertLayoutBox(stepTextBox);
   assertLayoutBox(diagramBox);
@@ -262,19 +262,23 @@ test("empty-focus steps keep viewport behavior stable @extended", async ({ page 
 test("desktop minimap stays visible and tracks the focused step @extended", async ({ page }) => {
   await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
+  await expect(page.getByTestId("camera-control-cluster")).toBeVisible();
+  await expect(page.getByTestId("camera-control-panel")).toBeVisible();
   await expect(page.getByTestId("minimap-shell")).toBeVisible();
   await expect(page.getByTestId("minimap-surface")).toBeVisible();
+  await expectCameraPanelToContainControls(page);
   expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 
   await page.getByTestId("timeline-step-button").nth(2).click();
-  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+  await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
 test("zoom controls resize the active diagram and return cleanly @extended", async ({ page }) => {
   await page.goto("/checkout/payment-flow");
   await expectDiagramVisible(page);
+  await expectCameraPanelToContainControls(page);
 
   const baselineWidth = await readNodeAxisSize(page, "api_gateway", "width");
 
@@ -291,6 +295,22 @@ test("zoom controls resize the active diagram and return cleanly @extended", asy
     baselineWidth * 1.05
   );
   await expect(page.getByTestId("zoom-value")).toContainText("100%");
+});
+
+test("collapsed minimap keeps zoom controls inside the same camera panel @extended", async ({
+  page
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
+  });
+  await page.goto("/checkout/payment-flow");
+  await expectDiagramVisible(page);
+
+  await expect(page.getByTestId("camera-control-panel")).toBeVisible();
+  await expect(page.getByTestId("minimap-shell")).toBeVisible();
+  await expect(page.getByTestId("minimap-surface")).toHaveCount(0);
+  await expect(page.getByTestId("viewport-toolbar")).toBeVisible();
+  await expectCameraPanelToContainControls(page);
 });
 
 test("clicking the minimap pans the main diagram viewport @extended", async ({ page }) => {
@@ -343,7 +363,7 @@ test("clicking a node jumps directly to its matching step @core", async ({ page 
     });
 
   await expect(page).toHaveURL(/\/checkout\/refund-flow\?step=2$/);
-  await expect(page.getByTestId("step-text")).toContainText("Payment Gateway");
+  await expect(page.getByTestId("step-text-container")).toContainText("Payment Gateway");
 });
 
 test("clicking a repeated node opens a chooser with matching steps @extended", async ({ page }) => {
@@ -385,7 +405,7 @@ test("timeline pills jump directly between steps @extended", async ({ page }) =>
   await page.getByTestId("timeline-step-button").nth(2).click();
 
   await expect(page).toHaveURL(/\/checkout\/payment-flow\?step=3$/);
-  await expect(page.getByTestId("step-text")).toContainText("merchant-side transaction state");
+  await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
 });
 
 test("issues popover presents a readable diagnostics hierarchy @extended", async ({ page }) => {
@@ -430,11 +450,11 @@ test("generated fallback tours render a minimal overview and node-by-node walkth
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text")).toContainText("Overview of Payment Flow.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Payment Flow.");
 
     await page.getByTestId("next-button").click();
 
-    await expect(page.getByTestId("step-text")).toContainText("Focus on Client.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on Client.");
     await expect(
       page.locator('[data-testid="diagram-container"] [data-node-id="client"]')
     ).toHaveAttribute("data-focus-state", "focused");
@@ -449,7 +469,7 @@ test("authored sequence tours focus participants and messages, and sequence elem
   await page.goto("/sequence/order-sequence");
   await expectDiagramVisible(page);
 
-  await expect(page.getByTestId("step-text")).toContainText("Customer");
+  await expect(page.getByTestId("step-text-container")).toContainText("Customer");
   await expect(
     page.locator(
       '[data-testid="diagram-container"] [data-diagram-element-id="customer"][data-focus-state="focused"]'
@@ -466,7 +486,7 @@ test("authored sequence tours focus participants and messages, and sequence elem
     });
 
   await expect(page).toHaveURL(/\/sequence\/order-sequence\?step=3$/);
-  await expect(page.getByTestId("step-text")).toContainText("Enqueue fulfillment");
+  await expect(page.getByTestId("step-text-container")).toContainText("Enqueue fulfillment");
   await expect(
     page.locator(
       '[data-testid="diagram-container"] .messageText[data-diagram-element-id="enqueue_order"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine0[data-diagram-element-id="enqueue_order"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine1[data-diagram-element-id="enqueue_order"][data-focus-state="focused"]'
@@ -497,15 +517,15 @@ test("generated fallback sequence tours include participants before tagged messa
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text")).toContainText("Overview of Support Handoff.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Support Handoff.");
 
     await page.getByTestId("next-button").click();
-    await expect(page.getByTestId("step-text")).toContainText("Focus on Customer.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on Customer.");
 
     const supportHandoffUrl = new URL(page.url());
     supportHandoffUrl.searchParams.set("step", "5");
     await page.goto(supportHandoffUrl.toString());
-    await expect(page.getByTestId("step-text")).toContainText("Focus on Open case.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on Open case.");
     await expect(
       page.locator(
         '[data-testid="diagram-container"] .messageText[data-diagram-element-id="open_case"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine0[data-diagram-element-id="open_case"][data-focus-state="focused"], [data-testid="diagram-container"] .messageLine1[data-diagram-element-id="open_case"][data-focus-state="focused"]'
@@ -514,7 +534,7 @@ test("generated fallback sequence tours include participants before tagged messa
 
     supportHandoffUrl.searchParams.set("step", "6");
     await page.goto(supportHandoffUrl.toString());
-    await expect(page.getByTestId("step-text")).toContainText("Focus on Handoff case.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on Handoff case.");
   } finally {
     await server.stop();
   }
@@ -529,11 +549,11 @@ test("markdown-backed sequence diagrams load as generated tours @extended", asyn
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text")).toContainText("Overview of Support Sequence.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Support Sequence.");
 
     await page.getByTestId("next-button").click();
 
-    await expect(page.getByTestId("step-text")).toContainText("Focus on User.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on User.");
     await expect(
       page.locator(
         '[data-testid="diagram-container"] [data-diagram-element-id="user"][data-focus-state="focused"]'
@@ -553,7 +573,7 @@ test("authored tours can target a markdown diagram block by fragment @extended",
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text")).toContainText("Focus on Detail.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Focus on Detail.");
     await expect(
       page.locator('[data-testid="diagram-container"] [data-node-id="detail"]')
     ).toHaveAttribute("data-focus-state", "focused");
@@ -708,6 +728,23 @@ async function readNodeAxisSize(
   assertLayoutBox(nodeBox);
 
   return nodeBox[axis];
+}
+
+async function expectCameraPanelToContainControls(page: Page): Promise<void> {
+  const panelBox = await page.getByTestId("camera-control-panel").boundingBox();
+  const minimapBox = await page.getByTestId("minimap-shell").boundingBox();
+  const toolbarBox = await page.getByTestId("viewport-toolbar").boundingBox();
+
+  assertLayoutBox(panelBox);
+  assertLayoutBox(minimapBox);
+  assertLayoutBox(toolbarBox);
+  expect(minimapBox.x).toBeGreaterThanOrEqual(panelBox.x);
+  expect(minimapBox.y).toBeGreaterThanOrEqual(panelBox.y);
+  expect(minimapBox.x + minimapBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
+  expect(toolbarBox.x).toBeGreaterThanOrEqual(panelBox.x);
+  expect(toolbarBox.y).toBeGreaterThan(minimapBox.y);
+  expect(toolbarBox.x + toolbarBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
+  expect(toolbarBox.y + toolbarBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
 }
 
 

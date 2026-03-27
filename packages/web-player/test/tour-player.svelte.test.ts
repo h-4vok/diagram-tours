@@ -48,6 +48,7 @@ describe("tour-player.svelte", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     setWindowWidth(1280);
+    mockElementAnimate();
   });
 
   it("renders the selected tour, starts on step one, and respects boundaries", async () => {
@@ -65,7 +66,7 @@ describe("tour-player.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
-    expect(screen.getByTestId("step-text").textContent).toContain(
+    expect(readLastStepTextElement(screen.getAllByTestId("step-text"))?.textContent).toContain(
       "protects the payment path",
     );
     expect(readButtonState("previous-button")).toBe(false);
@@ -155,9 +156,12 @@ describe("tour-player.svelte", () => {
 
     expect(cameraCluster).not.toBeNull();
     expect((cameraCluster as HTMLElement).firstElementChild).toBe(
+      screen.getByTestId("camera-control-panel"),
+    );
+    expect(screen.getByTestId("camera-control-panel").firstElementChild).toBe(
       screen.getByTestId("minimap-shell"),
     );
-    expect((cameraCluster as HTMLElement).lastElementChild).toBe(
+    expect(screen.getByTestId("camera-control-panel").lastElementChild).toBe(
       screen.getByTestId("viewport-toolbar"),
     );
     expect(
@@ -267,24 +271,22 @@ describe("tour-player.svelte", () => {
     });
   });
 
-  it("renders a clickable numbered timeline and jumps directly to a chosen step", async () => {
+  it("navigates between teleprompter steps and updates the URL", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour,
     });
 
-    const timelineButtons = await screen.findAllByTestId(
-      "timeline-step-button",
+    expect(
+      readLastStepTextElement(await screen.findAllByTestId("step-text"))?.textContent,
+    ).toContain(
+      "public edge of the checkout system",
     );
+    expect(screen.getByText("Step 1 of 4")).toBeDefined();
 
-    expect(timelineButtons).toHaveLength(4);
-    expect(timelineButtons[0].getAttribute("aria-current")).toBe("step");
-    expect(timelineButtons[0].className).toContain(
-      "step-timeline__pill--current",
-    );
-
-    await fireEvent.click(timelineButtons[2]);
+    await fireEvent.click(screen.getByTestId("next-button"));
+    await fireEvent.click(screen.getByTestId("next-button"));
 
     await waitFor(() => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
@@ -444,7 +446,7 @@ describe("tour-player.svelte", () => {
       tour: resolvedPaymentFlowTour,
     });
 
-    expect(screen.getByTestId("step-text").textContent).toContain(
+    expect(readLastStepTextElement(screen.getAllByTestId("step-text"))?.textContent).toContain(
       "merchant-side transaction state",
     );
     expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
@@ -619,6 +621,19 @@ function setWindowWidth(width: number): void {
     value: width,
     writable: true,
   });
+}
+
+function readLastStepTextElement(elements: HTMLElement[]): HTMLElement | undefined {
+  return elements.at(-1);
+}
+
+function mockElementAnimate(): void {
+  Element.prototype.animate ??= vi.fn(() => ({
+    cancel: vi.fn(),
+    finished: Promise.resolve(),
+    pause: vi.fn(),
+    play: vi.fn()
+  })) as unknown as typeof Element.prototype.animate;
 }
 
 interface RectInput {
