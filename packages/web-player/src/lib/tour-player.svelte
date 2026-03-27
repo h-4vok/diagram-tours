@@ -1044,6 +1044,22 @@
 
         <div class="teleprompter__text-area" data-testid="step-text-container">
           <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+          <div class="step-timeline" data-testid="step-timeline">
+            {#each tour.steps as step, stepIndex (step.index)}
+              <button
+                type="button"
+                class:step-timeline__pill--current={stepIndex === state.stepIndex}
+                class:step-timeline__pill--complete={stepIndex < state.stepIndex}
+                class="step-timeline__pill"
+                data-testid="timeline-step-button"
+                aria-current={stepIndex === state.stepIndex ? "step" : undefined}
+                aria-label={`Go to step ${step.index}`}
+                on:click={() => void goToStepIndex(stepIndex)}
+              >
+                {step.index}
+              </button>
+            {/each}
+          </div>
           {#key state.stepIndex}
             <div in:fly={{ y: 4, duration: 200, delay: 100 }} out:fade={{ duration: 100 }}>
               <p data-testid="step-text" class="teleprompter__text">

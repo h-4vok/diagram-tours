@@ -311,6 +311,54 @@
   text-align: center;
 }
 
+.step-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0 0 0.85rem;
+}
+
+.step-timeline__pill {
+  appearance: none;
+  background: color-mix(in srgb, var(--color-bg-soft) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 42%, var(--color-border));
+  border-radius: 999px;
+  color: var(--color-text-secondary, var(--color-muted));
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-family-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  min-height: 1.95rem;
+  min-width: 1.95rem;
+  padding: 0.22rem 0.55rem;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.step-timeline__pill:hover,
+.step-timeline__pill:focus-visible {
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 42%, var(--color-border));
+  color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+.step-timeline__pill--complete {
+  background: color-mix(in srgb, var(--color-node-focus-fill) 18%, transparent);
+  color: var(--color-text);
+}
+
+.step-timeline__pill--current {
+  background: var(--color-node-focus-fill);
+  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 76%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-node-focus-stroke) 16%, transparent);
+  color: var(--color-node-focus-text);
+}
+
 .teleprompter__step-info {
   color: var(--text-secondary);
   font-family: var(--font-mono);

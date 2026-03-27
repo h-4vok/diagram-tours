@@ -32,6 +32,7 @@
     "version:beta": "node ./scripts/changeset-version.mjs beta",
     "version:release": "node ./scripts/changeset-version.mjs release",
     "prepush": "bun run lint && bun run typecheck && bun run test && bun run smoke:full",
+    "allchecks:ai": "bun run prepush",
     "prepare": "husky"
   },
   "devDependencies": {

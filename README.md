@@ -149,9 +149,6 @@ bun run dev:interactive
 Contributor guidance lives here:
 
 - [AGENTS.md](AGENTS.md)
-- [ENGINEERING_PLAYBOOK.md](ENGINEERING_PLAYBOOK.md)
-- [REPO_WORK_RULES.md](REPO_WORK_RULES.md)
-- [DELIVERY_CHECKLIST.md](DELIVERY_CHECKLIST.md)
 
 Operational docs:
 
@@ -162,22 +159,26 @@ Operational docs:
 - [Smoke Tests](docs/testing/smoke-tests.md)
 - [Architecture Overview](docs/architecture/overview.md)
 - [Tour Specification v1](docs/tour-spec-v1.md)
+- [Vision Log](VISION_LOG.md)
 
 ## Testing And Coverage
 
-Run:
+Operator quick path:
 
 ```bash
-bun run coverage
+bun run allchecks:ai
 ```
 
-That builds a unified developer-facing dashboard at `coverage/index.html` while keeping the existing per-package `100%` coverage ownership in place.
+`allchecks:ai` is the human-facing alias for the full validation pass (`prepush`) with normal logs.
 
-For browser checks, use:
+Other available commands:
 
-- `bun run smoke` for the fast core browser tier
-- `bun run smoke:full` for the full browser suite
-- `bun run prepush` before release-facing work or when you want the full validation set
+- `bun run lint`
+- `bun run typecheck`
+- `bun run test`
+- `bun run smoke`
+- `bun run smoke:full`
+- `bun run prepush`
 
 The example library is grouped into topical folders such as `checkout/`, `navigation/`, `ops/`, `sequence/`, and `support/` so the repo browser stays readable.
 
