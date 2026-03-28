@@ -267,6 +267,7 @@ test("desktop minimap stays visible and tracks the focused step @extended", asyn
   await expect(page.getByTestId("minimap-shell")).toBeVisible();
   await expect(page.getByTestId("minimap-surface")).toBeVisible();
   await expectCameraPanelToContainControls(page);
+  expect(await page.getByTestId("minimap-edge-marker").count()).toBeGreaterThan(0);
   expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 

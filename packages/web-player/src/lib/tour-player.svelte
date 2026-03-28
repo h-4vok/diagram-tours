@@ -26,6 +26,7 @@
     createDiagramMinimapGeometry,
     createMinimapCenterScrollPosition,
     createMinimapViewportScrollPosition,
+    readDiagramMinimapConnectors,
     readDiagramMinimapMetrics,
     readDiagramMinimapNodeRects,
     type DiagramMinimapGeometry,
@@ -589,6 +590,20 @@
     return `width:${bounds.width}px;height:${bounds.height}px;`;
   }
 
+  function formatMinimapConnectorSegmentStyle(segment: {
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+  }): string {
+    const deltaX = segment.x2 - segment.x1;
+    const deltaY = segment.y2 - segment.y1;
+    const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+
+    return `left:${segment.x1}px;top:${segment.y1}px;width:${length}px;transform:rotate(${angle}deg);`;
+  }
+
   function shouldHideMinimapGeometry(): boolean {
     return isCompactViewport || !hasRenderedDiagram || readDiagramContext() === null;
   }
@@ -599,6 +614,9 @@
     return currentContext === null
       ? null
       : createDiagramMinimapGeometry({
+          connectors: readDiagramMinimapConnectors({
+            content: currentContext.content
+          }),
           nodeRects: readDiagramMinimapNodeRects({
             content: currentContext.content,
             focusedElementIds: tour.diagram.elements.map((element) => element.id)
@@ -966,6 +984,14 @@
     });
   }
 
+  function isCurrentTimelineStep(index: number): boolean {
+    return index === state.stepIndex;
+  }
+
+  function isCompletedTimelineStep(index: number): boolean {
+    return index < state.stepIndex;
+  }
+
   function createZoomContext(context: {
     container: HTMLDivElement;
     content: HTMLDivElement;
@@ -1043,6 +1069,22 @@
         </div>
 
         <div class="teleprompter__text-area" data-testid="step-text-container">
+          <div class="teleprompter__timeline" data-testid="timeline-stepper" role="tablist" aria-label="Tour steps">
+            {#each tour.steps as _step, index}
+              <button
+                type="button"
+                class:teleprompter__timeline-step--complete={isCompletedTimelineStep(index)}
+                class:teleprompter__timeline-step--current={isCurrentTimelineStep(index)}
+                class="teleprompter__timeline-step"
+                data-testid="timeline-step-button"
+                aria-current={isCurrentTimelineStep(index) ? "step" : undefined}
+                aria-label={`Go to step ${index + 1}`}
+                on:click={() => void goToStepIndex(index)}
+              >
+                {index + 1}
+              </button>
+            {/each}
+          </div>
           <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
           {#key state.stepIndex}
             <div in:fly={{ y: 4, duration: 200, delay: 100 }} out:fade={{ duration: 100 }}>
@@ -1101,13 +1143,24 @@
                 class="minimap-surface"
                 role="group"
                 aria-label="Navigation minimap"
-                data-testid="minimap-surface"
-                style={formatMinimapBoundsStyle(minimapGeometry.bounds)}
-                on:pointerdown={handleMinimapSurfacePointerDown}
-              >
-                {#each minimapGeometry.nodeRects as rect, index (`node-${index}`)}
+              data-testid="minimap-surface"
+              style={formatMinimapBoundsStyle(minimapGeometry.bounds)}
+              on:pointerdown={handleMinimapSurfacePointerDown}
+            >
+              {#each minimapGeometry.connectors as connector, connectorIndex (`connector-${connectorIndex}`)}
+                {#each connector.segments as segment, segmentIndex (`segment-${connectorIndex}-${segmentIndex}`)}
                   <div
-                    class="minimap-node-marker"
+                    class="minimap-edge-marker"
+                    data-testid="minimap-edge-marker"
+                    style={formatMinimapConnectorSegmentStyle(segment)}
+                  ></div>
+                {/each}
+
+              {/each}
+
+              {#each minimapGeometry.nodeRects as rect, index (`node-${index}`)}
+                <div
+                  class="minimap-node-marker"
                     data-testid="minimap-node-marker"
                     style={formatMinimapRectStyle(rect)}
                   ></div>

@@ -146,6 +146,7 @@ describe("tour-player.svelte", () => {
     expect(await screen.findByTestId("minimap-shell")).toBeDefined();
     await waitFor(() => {
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
+      expect(screen.getAllByTestId("minimap-edge-marker").length).toBeGreaterThan(0);
       expect(screen.getAllByTestId("minimap-node-marker")).toHaveLength(6);
       expect(screen.getAllByTestId("minimap-focus-marker")).toHaveLength(1);
     });
@@ -521,7 +522,7 @@ function renderDiagramForTest(input: {
         </g>
       `,
     )
-    .join("")}</svg>`;
+    .join("")}<path class="flowchart-link"></path></svg>`;
 
   Object.defineProperties(parent, {
     clientHeight: { value: 480, writable: true },
@@ -557,6 +558,22 @@ function renderDiagramForTest(input: {
 
       element.getBoundingClientRect = () => createDomRect(rect);
     });
+
+  const connector = input.container.querySelector(".flowchart-link") as SVGElement;
+  const connectorPoints = [
+    { x: 108, y: 188 },
+    { x: 200, y: 188 },
+    { x: 400, y: 192 }
+  ];
+
+  Object.assign(connector, {
+    getPointAtLength(distance: number) {
+      return interpolateConnectorPoint(connectorPoints, distance);
+    },
+    getTotalLength() {
+      return readConnectorLength(connectorPoints);
+    }
+  });
 
   return Promise.resolve();
 }
@@ -605,6 +622,64 @@ function setFocusStateForTest(input: {
 
 function readButtonState(testId: string): boolean {
   return (screen.getByTestId(testId) as HTMLButtonElement).disabled;
+}
+
+function interpolateConnectorPoint(
+  points: Array<{ x: number; y: number }>,
+  distance: number
+): { x: number; y: number } {
+  const lengths = readConnectorLengths(points);
+
+  if (isConnectorBoundaryDistance(lengths, distance)) {
+    return readConnectorBoundaryPoint(points, distance);
+  }
+
+  return interpolateConnectorSegment(points, lengths, distance);
+}
+
+function readConnectorLength(points: Array<{ x: number; y: number }>): number {
+  return readConnectorLengths(points).at(-1) ?? 0;
+}
+
+function readConnectorLengths(points: Array<{ x: number; y: number }>): number[] {
+  return points.slice(1).reduce<number[]>(
+    (accumulator, point, index) => [
+      ...accumulator,
+      (accumulator.at(-1) ?? 0) + Math.hypot(point.x - points[index].x, point.y - points[index].y)
+    ],
+    [0]
+  );
+}
+
+function readConnectorBoundaryPoint(
+  points: Array<{ x: number; y: number }>,
+  distance: number
+): { x: number; y: number } {
+  return distance <= 0 ? points[0] : (points.at(-1) as { x: number; y: number });
+}
+
+function isConnectorBoundaryDistance(lengths: number[], distance: number): boolean {
+  const totalLength = lengths.at(-1) ?? 0;
+
+  return distance <= 0 || distance >= totalLength;
+}
+
+function interpolateConnectorSegment(
+  points: Array<{ x: number; y: number }>,
+  lengths: number[],
+  distance: number
+): { x: number; y: number } {
+  const segmentIndex = Math.max(0, lengths.findIndex((value) => value >= distance) - 1);
+  const start = points[segmentIndex];
+  const end = points[segmentIndex + 1];
+  const offset = distance - lengths[segmentIndex];
+  const segmentLength = lengths[segmentIndex + 1] - lengths[segmentIndex];
+  const ratio = segmentLength === 0 ? 0 : offset / segmentLength;
+
+  return {
+    x: start.x + (end.x - start.x) * ratio,
+    y: start.y + (end.y - start.y) * ratio
+  };
 }
 
 function readFocusState(container: HTMLElement, nodeId: string): string | null {

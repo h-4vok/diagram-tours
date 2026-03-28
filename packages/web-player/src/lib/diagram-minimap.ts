@@ -26,14 +26,34 @@ export interface DiagramMinimapRect {
   height: number;
 }
 
+export interface DiagramMinimapConnectorSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface DiagramMinimapArrowhead {
+  angle: number;
+  x: number;
+  y: number;
+}
+
+export interface DiagramMinimapConnector {
+  arrowhead: DiagramMinimapArrowhead | null;
+  segments: DiagramMinimapConnectorSegment[];
+}
+
 export interface DiagramMinimapGeometry {
   bounds: DiagramMinimapRect;
+  connectors: DiagramMinimapConnector[];
   nodeRects: DiagramMinimapRect[];
   focusRects: DiagramMinimapRect[];
   viewportRect: DiagramMinimapRect;
 }
 
 export function createDiagramMinimapGeometry(input: {
+  connectors?: DiagramMinimapConnector[];
   nodeRects: DiagramMinimapNodeRect[];
   focusedNodeRects: DiagramMinimapNodeRect[];
   metrics: DiagramMinimapMetrics;
@@ -49,6 +69,9 @@ export function createDiagramMinimapGeometry(input: {
 
   return {
     bounds,
+    connectors: (input.connectors ?? [])
+      .map((connector) => scaleConnector(connector, scale, bounds))
+      .filter((connector) => connector.segments.length > 0),
     nodeRects: input.nodeRects.filter(isValidNodeRect).map((rect) => scaleNodeRect(rect, scale, bounds)),
     focusRects: input.focusedNodeRects
       .filter(isValidNodeRect)
@@ -126,6 +149,16 @@ export function readDiagramMinimapNodeRects(input: {
   );
 }
 
+export function readDiagramMinimapConnectors(input: {
+  content: HTMLElement;
+}): DiagramMinimapConnector[] {
+  const contentRect = input.content.getBoundingClientRect();
+
+  return readConnectorElements(input.content)
+    .map((element) => toConnector(contentRect, element))
+    .filter((connector): connector is DiagramMinimapConnector => connector !== null);
+}
+
 function readMatchingDiagramElements(content: HTMLElement, elementId: string): HTMLElement[] {
   const selector = createDiagramElementSelector(elementId);
 
@@ -201,6 +234,21 @@ function scaleNodeRect(
     top: clampRectOrigin(roundToPixel(rect.top * scale), bounds.height - height),
     width,
     height
+  };
+}
+
+function scaleConnector(
+  connector: DiagramMinimapConnector,
+  scale: number,
+  bounds: DiagramMinimapRect
+): DiagramMinimapConnector {
+  const segments = connector.segments
+    .map((segment) => scaleConnectorSegment(segment, scale, bounds))
+    .filter((segment) => segment !== null);
+
+  return {
+    arrowhead: scaleArrowhead(connector.arrowhead, scale, bounds),
+    segments
   };
 }
 
@@ -294,6 +342,237 @@ function clampRectSize(value: number, maxValue: number): number {
 
 function isValidNodeRect(rect: DiagramMinimapNodeRect): boolean {
   return hasFiniteNodeOrigin(rect) && hasFiniteNodeSize(rect);
+}
+
+function readConnectorElements(content: HTMLElement): SVGElement[] {
+  const selectors = [
+    ".flowchart-link",
+    ".messageLine0",
+    ".messageLine1",
+    ".messageLine"
+  ];
+
+  return selectors.flatMap((selector) =>
+    Array.from(content.querySelectorAll<SVGElement>(selector)).filter(
+      (element, index, collection) =>
+        element.dataset.diagramElementAuxiliary !== "true" && collection.indexOf(element) === index
+    )
+  );
+}
+
+function toConnector(contentRect: DOMRect, element: SVGElement): DiagramMinimapConnector | null {
+  const segments = readConnectorSegments(contentRect, element);
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return {
+    arrowhead: createArrowhead(segments[segments.length - 1]),
+    segments
+  };
+}
+
+function readConnectorSegments(
+  contentRect: DOMRect,
+  element: SVGElement
+): DiagramMinimapConnectorSegment[] {
+  const sampledSegments = readSampledConnectorSegments(contentRect, element);
+
+  if (sampledSegments.length > 0) {
+    return sampledSegments;
+  }
+
+  return readStraightConnectorSegments(contentRect, element);
+}
+
+function readSampledConnectorSegments(
+  contentRect: DOMRect,
+  element: SVGElement
+): DiagramMinimapConnectorSegment[] {
+  if (!hasSampledGeometryApi(element)) {
+    return [];
+  }
+
+  const totalLength = sanitizeFiniteValue(element.getTotalLength());
+
+  if (totalLength <= 0) {
+    return [];
+  }
+
+  const stepCount = Math.max(1, Math.ceil(totalLength / 24));
+  const points = Array.from({ length: stepCount + 1 }, (_, index) =>
+    toRelativePoint(contentRect, element, element.getPointAtLength((totalLength * index) / stepCount))
+  );
+
+  return toConnectorSegmentsFromPoints(points);
+}
+
+function readStraightConnectorSegments(
+  contentRect: DOMRect,
+  element: SVGElement
+): DiagramMinimapConnectorSegment[] {
+  if (isSvgLineElement(element)) {
+    return toConnectorSegmentsFromPoints([
+      readLinePoint({ contentRect, element, xAttribute: "x1", yAttribute: "y1" }),
+      readLinePoint({ contentRect, element, xAttribute: "x2", yAttribute: "y2" })
+    ]);
+  }
+
+  if (isSvgPolylineElement(element)) {
+    return toConnectorSegmentsFromPoints(
+      Array.from(element.points).map((point) => toRelativePoint(contentRect, element, point))
+    );
+  }
+
+  return [];
+}
+
+function hasSampledGeometryApi(
+  element: SVGElement
+): element is SVGElement & {
+  getPointAtLength: (distance: number) => DOMPoint;
+  getTotalLength: () => number;
+} {
+  const sampledElement = element as SVGElement & {
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  };
+
+  return (
+    typeof sampledElement.getTotalLength === "function" &&
+    typeof sampledElement.getPointAtLength === "function"
+  );
+}
+
+function isSvgLineElement(element: SVGElement): element is SVGLineElement {
+  return typeof SVGLineElement !== "undefined" && element instanceof SVGLineElement;
+}
+
+function isSvgPolylineElement(element: SVGElement): element is SVGPolylineElement {
+  return typeof SVGPolylineElement !== "undefined" && element instanceof SVGPolylineElement;
+}
+
+function toRelativePoint(
+  contentRect: DOMRect,
+  element: SVGElement,
+  point: { x: number; y: number }
+): { x: number; y: number } {
+  const svgOrigin = readSvgOrigin(contentRect, element);
+
+  return {
+    x: svgOrigin.x + point.x,
+    y: svgOrigin.y + point.y
+  };
+}
+
+function readLinePoint(input: {
+  contentRect: DOMRect;
+  element: SVGLineElement;
+  xAttribute: "x1" | "x2";
+  yAttribute: "y1" | "y2";
+}): { x: number; y: number } {
+  const svgOrigin = readSvgOrigin(input.contentRect, input.element);
+
+  return {
+    x: svgOrigin.x + sanitizeFiniteValue(input.element[input.xAttribute].baseVal.value),
+    y: svgOrigin.y + sanitizeFiniteValue(input.element[input.yAttribute].baseVal.value)
+  };
+}
+
+function readSvgOrigin(contentRect: DOMRect, element: SVGElement): { x: number; y: number } {
+  const svgRect = element.ownerSVGElement?.getBoundingClientRect();
+
+  if (svgRect === undefined) {
+    return { x: 0, y: 0 };
+  }
+
+  return {
+    x: svgRect.left - contentRect.left,
+    y: svgRect.top - contentRect.top
+  };
+}
+
+function toConnectorSegmentsFromPoints(points: Array<{ x: number; y: number }>): DiagramMinimapConnectorSegment[] {
+  return points.slice(1).flatMap((point, index) => {
+    const previousPoint = points[index];
+
+    return isValidConnectorSegment(previousPoint, point)
+      ? [{ x1: previousPoint.x, y1: previousPoint.y, x2: point.x, y2: point.y }]
+      : [];
+  });
+}
+
+function isValidConnectorSegment(
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): boolean {
+  return [start.x, start.y, end.x, end.y].every(Number.isFinite);
+}
+
+function createArrowhead(
+  segment: DiagramMinimapConnectorSegment
+): DiagramMinimapArrowhead {
+  return {
+    angle: roundToPixel((Math.atan2(segment.y2 - segment.y1, segment.x2 - segment.x1) * 180) / Math.PI),
+    x: segment.x2,
+    y: segment.y2
+  };
+}
+
+function scaleConnectorSegment(
+  segment: DiagramMinimapConnectorSegment,
+  scale: number,
+  bounds: DiagramMinimapRect
+): DiagramMinimapConnectorSegment | null {
+  if (!hasFiniteConnectorSegment(segment)) {
+    return null;
+  }
+
+  const scaled = {
+    x1: clampCoordinate(roundToPixel(segment.x1 * scale), bounds.width),
+    y1: clampCoordinate(roundToPixel(segment.y1 * scale), bounds.height),
+    x2: clampCoordinate(roundToPixel(segment.x2 * scale), bounds.width),
+    y2: clampCoordinate(roundToPixel(segment.y2 * scale), bounds.height)
+  };
+
+  return isCollapsedConnectorSegment(scaled) ? null : scaled;
+}
+
+function hasFiniteConnectorSegment(segment: DiagramMinimapConnectorSegment): boolean {
+  return [segment.x1, segment.y1, segment.x2, segment.y2].every(Number.isFinite);
+}
+
+function scaleArrowhead(
+  arrowhead: DiagramMinimapArrowhead | null,
+  scale: number,
+  bounds: DiagramMinimapRect
+): DiagramMinimapArrowhead | null {
+  if (arrowhead === null) {
+    return null;
+  }
+
+  return {
+    angle: arrowhead.angle,
+    x: clampCoordinate(roundToPixel(arrowhead.x * scale), bounds.width),
+    y: clampCoordinate(roundToPixel(arrowhead.y * scale), bounds.height)
+  };
+}
+
+function isCollapsedConnectorSegment(segment: DiagramMinimapConnectorSegment): boolean {
+  return segment.x1 === segment.x2 && segment.y1 === segment.y2;
+}
+
+function clampCoordinate(value: number, maxValue: number): number {
+  if (value < 0) {
+    return 0;
+  }
+
+  if (value > maxValue) {
+    return roundToPixel(maxValue);
+  }
+
+  return roundToPixel(value);
 }
 
 function hasStableContentMetrics(metrics: DiagramMinimapMetrics): boolean {

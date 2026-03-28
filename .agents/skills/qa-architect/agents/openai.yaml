@@ -1,0 +1,3 @@
+interface:
+  display_name: "QA Architect"
+  short_description: "Audit tests for real behavior, state, and resilience"
