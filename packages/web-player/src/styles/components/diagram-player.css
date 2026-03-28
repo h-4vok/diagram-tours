@@ -430,7 +430,6 @@
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-/* stylelint-enable selector-class-pattern */
 
 .teleprompter__btn:hover .teleprompter__kbd {
   opacity: 1;
@@ -469,6 +468,7 @@
   border-color: var(--accent-primary);
   color: #fff;
 }
+/* stylelint-enable selector-class-pattern */
 
 .error-panel {
   gap: var(--space-lg);

@@ -1070,7 +1070,7 @@
 
         <div class="teleprompter__text-area" data-testid="step-text-container">
           <div class="teleprompter__timeline" data-testid="timeline-stepper" role="tablist" aria-label="Tour steps">
-            {#each tour.steps as _step, index}
+            {#each tour.steps as _step, index (`timeline-step-${index}`)}
               <button
                 type="button"
                 class:teleprompter__timeline-step--complete={isCompletedTimelineStep(index)}

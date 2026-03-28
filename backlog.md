@@ -68,6 +68,10 @@ Cutoff date: 2026-03-17
   - Note: extend `packages/cli/test/args.test.ts` so `--version` is proven to win even when combined with other inputs such as an explicit target or browser-opening flags, preventing false-green regressions in CLI argument precedence
 - BT-021 Expand CLI missing-value sad-path coverage for option parsing
   - Note: extend `packages/cli/test/args.test.ts` to cover missing values for both `--host` and `--port`, including the realistic case where the next token is another flag, and assert actionable error text for each failure path
+- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
+  - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
+- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
+  - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
 
 ## Notes
 
