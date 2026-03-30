@@ -396,7 +396,7 @@ test("favorites pin a starred tour above the command palette results @extended",
 
   await page.getByTestId("search-hint-trigger").click();
   await page
-    .locator('[data-testid="browse-tour-row"][data-tour-slug="checkout-refund-flow"]')
+    .locator('[data-tour-slug="checkout-refund-flow"]')
     .getByTestId("favorite-toggle")
     .click();
 

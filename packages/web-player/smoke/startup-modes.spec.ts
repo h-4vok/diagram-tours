@@ -166,7 +166,7 @@ test.describe("startup modes", () => {
 async function openBrowse(page: Page, url: string): Promise<void> {
   await page.goto(url);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("search-hint-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
 }
 
