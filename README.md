@@ -163,6 +163,11 @@ Operational docs:
 
 ## Testing And Coverage
 
+Agent default:
+
+- targeted local checks on touched files/packages
+- operator runs exhaustive/full validation
+
 Operator quick path:
 
 ```bash

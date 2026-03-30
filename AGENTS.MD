@@ -6,7 +6,7 @@ Load first:
 
 ## Workflow
 - Task shape: bounded capability; user-visible, contract-visible, validation-visible, or delivery-unblocking infra.
-- Flow: contract -> test -> code -> refactor -> operator validation.
+- Flow: contract -> test -> code -> refactor -> targeted validation -> operator validation.
 - Prefer behavior tests, small pure functions, guard clauses, explicit data.
 - Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
 - Reuse examples/fixtures before new patterns.
@@ -33,16 +33,21 @@ Load first:
 - Repo-facing docs: English.
 
 ## Validation
-- Heavy checks: operator-run. Do not run `lint`, `typecheck`, `test`, `smoke`, `build`, `prepush` autonomously.
-- Default request: `Run bun run allchecks:ai and send failing summary only.`
-- `allchecks:ai` = `prepush` alias with normal logs.
-- Narrow request when needed: `Run [command]; send failing file/assertion/stack only.`
-- Do not request full logs when summary/trace is enough.
-- Analyze summary, stack trace, failing assertion, failing file.
-- TDD stays mandatory: contract -> failing test -> code -> operator validation.
-- Delivery ready only after operator confirms relevant checks passed and coverage stayed 100%.
-- Browser-visible/runtime/startup/docs-visible changes: operator should run smoke.
-- Cross-package/release-facing changes: operator should run full validation.
+- Before done: targeted checks on touched files.
+- Lint: modified JS/TS/Svelte/CSS files only.
+- Tests: affected Vitest files only. No full suite.
+- Smoke: touched smoke spec only. No full smoke.
+- Typecheck: affected package only.
+- Fix failures immediately.
+- Final message: list targeted checks passed.
+- Exhaustive checks: operator-run.
+- Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush.
+- Operator request: `Run bun run allchecks:ai; send failing summary only.`
+- Narrow request: `Run [command]; send failing file/assertion/stack only.`
+- Analyze summary, stack, failing assertion, failing file.
+- Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
+- Browser-visible/runtime/startup/docs-visible changes: operator runs smoke.
+- Cross-package/release-facing changes: operator runs full validation.
 
 ## Docs / Tracking
 - Update docs when behavior, contracts, startup flow, validation flow, or contributor workflow changes.
