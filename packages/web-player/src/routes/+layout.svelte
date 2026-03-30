@@ -1,34 +1,41 @@
 <script lang="ts">
-  import { page } from "$app/state";
+  import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import "../styles/index.css";
-  import { onMount, tick } from "svelte";
-  import { Toaster } from "svelte-sonner";
+  import { page } from "$app/state";
+  import {
+    buildBrowsePaletteSections,
+    flattenBrowsePaletteSections,
+    moveBrowsePaletteSlug,
+    readInitialBrowsePaletteSlug,
+    type BrowsePaletteItem,
+    type BrowsePaletteSection
+  } from "$lib/browse-palette";
+  import {
+    readStoredFavoriteSlugs,
+    toggleFavoriteSlug,
+    writeStoredFavoriteSlugs
+  } from "$lib/browse-favorites";
+  import {
+    readStoredRecentSlugs,
+    rememberRecentSlug,
+    writeStoredRecentSlugs
+  } from "$lib/browse-recents";
+  import { createDiagnosticDisplayItems } from "$lib/diagnostics";
+  import type { SourceTargetInfo } from "$lib/source-target";
   import {
     DEFAULT_THEME,
     getDocumentTheme,
     getStoredTheme,
     getThemeToggleLabel,
     setDocumentTheme,
-    type ThemeName,
     setStoredTheme,
-    toggleTheme
+    toggleTheme,
+    type ThemeName
   } from "$lib/theme";
   import type { ResolvedDiagramTourCollection } from "@diagram-tour/core";
-  import {
-    buildFavoriteBrowseEntries,
-    readStoredFavoriteSlugs,
-    toggleFavoriteSlug,
-    writeStoredFavoriteSlugs
-  } from "$lib/browse-favorites";
-  import {
-    buildBrowseTree,
-    collectActiveBrowseFolderIds,
-    filterBrowseTree,
-    flattenBrowseTree
-  } from "$lib/browse-tree";
-  import { createDiagnosticDisplayItems } from "$lib/diagnostics";
-  import type { SourceTargetInfo } from "$lib/source-target";
+  import { onMount, tick } from "svelte";
+  import { Toaster } from "svelte-sonner";
+  import "../styles/index.css";
 
   export let data: {
     collection: ResolvedDiagramTourCollection;
@@ -42,39 +49,36 @@
   let browsePanel: HTMLDivElement | undefined;
   let browseSearchInput: HTMLInputElement | undefined;
   let browseOpenedAt = 0;
+  let browseOpenedForPath: string | null = null;
   let browseSearch = "";
   let favoriteSlugs: string[] = [];
-  let expandedFolderIds: string[] = [];
+  let recentSlugs: string[] = [];
   let activeEntry: ResolvedDiagramTourCollection["entries"][number] | null = null;
   let activeSlug: string | null = null;
-  let browseTree = buildBrowseTree(data.collection.entries, null);
-  let activeFolderIds: string[] = [];
+  let browseShortcutHint = "Cmd K";
+  let browseSections: BrowsePaletteSection[] = [];
+  let browseItems: BrowsePaletteItem[] = [];
+  let activeBrowseSlug: string | null = null;
   let diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
-  let favoriteEntries = buildFavoriteBrowseEntries({
-    entries: data.collection.entries,
-    favoriteSlugs,
-    query: browseSearch
-  });
-  let filteredBrowseTree = browseTree;
-  let isBrowseFiltering = false;
-  let browseRows = flattenBrowseTree(browseTree, [], false);
   let isHydrated = false;
   let breadcrumbs = ["diagram-tours", "collection"];
 
   $: {
     activeSlug = readActiveSlug(page.url.pathname);
     activeEntry = readActiveEntry(data.collection.entries, activeSlug);
-    browseTree = buildBrowseTree(data.collection.entries, activeSlug);
-    activeFolderIds = collectActiveBrowseFolderIds(browseTree);
     diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
-    favoriteEntries = buildFavoriteBrowseEntries({
+    browseSections = buildBrowsePaletteSections({
       entries: data.collection.entries,
       favoriteSlugs,
-      query: browseSearch
+      query: browseSearch,
+      recentSlugs
     });
-    filteredBrowseTree = filterBrowseTree(browseTree, browseSearch);
-    isBrowseFiltering = browseSearch.trim().length > 0;
-    browseRows = flattenBrowseTree(filteredBrowseTree, expandedFolderIds, isBrowseFiltering);
+    browseItems = flattenBrowsePaletteSections(browseSections);
+    activeBrowseSlug = readInitialBrowsePaletteSlug({
+      activeSlug: activeBrowseSlug,
+      currentSlug: activeSlug,
+      items: browseItems
+    });
     breadcrumbs = readBreadcrumbs(activeEntry);
   }
 
@@ -93,7 +97,16 @@
     }
 
     closeDiagnostics();
-    await openBrowse();
+    browseOpenedAt = Date.now();
+    browseOpenedForPath = page.url.pathname;
+    isBrowseOpen = true;
+    activeBrowseSlug = readInitialBrowsePaletteSlug({
+      activeSlug: null,
+      currentSlug: activeSlug,
+      items: browseItems
+    });
+    await tick();
+    focusBrowseEntry();
   }
 
   function toggleDiagnostics(): void {
@@ -107,17 +120,11 @@
     isDiagnosticsOpen = true;
   }
 
-  async function openBrowse(): Promise<void> {
-    browseOpenedAt = Date.now();
-    expandedFolderIds = mergeExpandedFolderIds(expandedFolderIds, activeFolderIds);
-    isBrowseOpen = true;
-    await tick();
-    focusBrowseEntry();
-  }
-
   function closeBrowse(): void {
     isBrowseOpen = false;
     browseSearch = "";
+    activeBrowseSlug = null;
+    browseOpenedForPath = null;
   }
 
   function closeDiagnostics(): void {
@@ -141,12 +148,11 @@
       return;
     }
 
-    if (!shouldCloseOverlayOnEscape(event.key, isBrowseOpen, isDiagnosticsOpen)) {
+    if (handleOverlayEscape(event.key, isBrowseOpen, isDiagnosticsOpen)) {
       return;
     }
 
-    closeBrowse();
-    closeDiagnostics();
+    handleBrowsePaletteKeydown(event);
   }
 
   function handleExternalBrowseToggle(): void {
@@ -161,9 +167,12 @@
     }
 
     favoriteSlugs = readStoredFavoriteSlugs(window.localStorage);
+    recentSlugs = readStoredRecentSlugs(window.localStorage);
+    browseShortcutHint = isMacPlatform(window.navigator) ? "Cmd K" : "Ctrl K";
     setDocumentTheme(document, theme);
     previousPathname = page.url.pathname;
     isHydrated = true;
+    rememberActiveSlug(activeSlug);
     window.addEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
 
     return () => {
@@ -173,19 +182,15 @@
 
   $: if (page.url.pathname !== previousPathname) {
     previousPathname = page.url.pathname;
-    isBrowseOpen = false;
-    isDiagnosticsOpen = false;
-    browseSearch = "";
+    if (browseOpenedForPath !== page.url.pathname) {
+      closeBrowse();
+    }
+    closeDiagnostics();
+    rememberActiveSlug(activeSlug);
   }
 
   function handleBrowseSearchInput(event: Event): void {
     browseSearch = (event.currentTarget as HTMLInputElement).value;
-  }
-
-  function toggleFolder(folderId: string): void {
-    expandedFolderIds = expandedFolderIds.includes(folderId)
-      ? expandedFolderIds.filter((item) => item !== folderId)
-      : [...expandedFolderIds, folderId];
   }
 
   function toggleFavorite(slug: string): void {
@@ -197,8 +202,13 @@
     return favoriteSlugs.includes(slug);
   }
 
-  function isFolderExpanded(folderId: string): boolean {
-    return isBrowseFiltering || expandedFolderIds.includes(folderId);
+  async function navigateToBrowseSlug(slug: string): Promise<void> {
+    closeBrowse();
+    await goto(resolve(`/${slug}`));
+  }
+
+  function setActiveBrowseSlug(slug: string): void {
+    activeBrowseSlug = slug;
   }
 
   function readInitialTheme(): ThemeName {
@@ -215,10 +225,6 @@
     return slug.length === 0 ? null : slug;
   }
 
-  function mergeExpandedFolderIds(current: string[], next: string[]): string[] {
-    return Array.from(new Set([...current, ...next]));
-  }
-
   function shouldCloseOverlayOnEscape(
     key: string,
     browseOpen: boolean,
@@ -227,8 +233,39 @@
     return key === "Escape" && (browseOpen || diagnosticsOpen);
   }
 
+  function handleOverlayEscape(
+    key: string,
+    browseOpen: boolean,
+    diagnosticsOpen: boolean
+  ): boolean {
+    if (!shouldCloseOverlayOnEscape(key, browseOpen, diagnosticsOpen)) {
+      return false;
+    }
+
+    closeBrowse();
+    closeDiagnostics();
+
+    return true;
+  }
+
   function isBrowseShortcut(event: KeyboardEvent): boolean {
+    if (isEditingField(document.activeElement)) {
+      return false;
+    }
+
+    return isMetaBrowseShortcut(event) || isSlashBrowseShortcut(event);
+  }
+
+  function isMetaBrowseShortcut(event: KeyboardEvent): boolean {
     return event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey);
+  }
+
+  function isSlashBrowseShortcut(event: KeyboardEvent): boolean {
+    return event.key === "/" && !hasBrowseModifier(event);
+  }
+
+  function isEditingField(element: Element | null): boolean {
+    return element !== null && (isFormField(element) || isContentEditableField(element));
   }
 
   function readActiveEntry(
@@ -248,14 +285,106 @@
     return ["diagram-tours", entry.tour.diagram.type, entry.title];
   }
 
+  function readBrowseRowTestId(sectionId: BrowsePaletteSection["id"]): string {
+    if (sectionId === "favorites") {
+      return "browse-favorite-row";
+    }
+
+    if (sectionId === "recent") {
+      return "browse-recent-row";
+    }
+
+    return "browse-tour-row";
+  }
+
+  function readStepCountLabel(stepCount: number): string {
+    return `${stepCount} step${stepCount === 1 ? "" : "s"}`;
+  }
+
+  function rememberActiveSlug(slug: string | null): void {
+    if (!isHydrated || slug === null) {
+      return;
+    }
+
+    recentSlugs = rememberRecentSlug(recentSlugs, slug);
+    writeStoredRecentSlugs(window.localStorage, recentSlugs);
+  }
+
   function focusBrowseEntry(): void {
     if (browseSearchInput !== undefined) {
       browseSearchInput.focus();
+      browseSearchInput.select();
 
       return;
     }
 
     browsePanel?.focus();
+  }
+
+  function isMacPlatform(navigatorValue: Navigator): boolean {
+    return /mac/i.test(navigatorValue.userAgent);
+  }
+
+  function handleBrowsePaletteKeydown(event: KeyboardEvent): void {
+    if (!isBrowseOpen) {
+      return;
+    }
+
+    if (handleBrowseArrowKeydown(event)) {
+      return;
+    }
+
+    handleBrowseEnterKeydown(event, activeBrowseSlug);
+  }
+
+  function handleBrowseArrowKeydown(event: KeyboardEvent): boolean {
+    const direction = readBrowseArrowDirection(event.key);
+
+    if (direction === null) {
+      return false;
+    }
+
+    event.preventDefault();
+    activeBrowseSlug = moveBrowsePaletteSlug({
+      activeSlug: activeBrowseSlug,
+      direction,
+      items: browseItems
+    });
+
+    return true;
+  }
+
+  function handleBrowseEnterKeydown(event: KeyboardEvent, slug: string | null): void {
+    if (event.key !== "Enter" || slug === null) {
+      return;
+    }
+
+    event.preventDefault();
+    void navigateToBrowseSlug(slug);
+  }
+
+  function hasBrowseModifier(event: KeyboardEvent): boolean {
+    return event.metaKey || event.ctrlKey || event.altKey;
+  }
+
+  function readBrowseArrowDirection(key: string): -1 | 1 | null {
+    if (key === "ArrowDown") {
+      return 1;
+    }
+
+    if (key === "ArrowUp") {
+      return -1;
+    }
+
+    return null;
+  }
+
+  function isFormField(element: Element): boolean {
+    return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement;
+  }
+
+  function isContentEditableField(element: Element): boolean {
+    return element.getAttribute("contenteditable") === "true";
   }
 </script>
 
@@ -282,23 +411,16 @@
           aria-controls="browse-panel"
           on:click={() => void openBrowsePalette()}
         >
-          <span aria-hidden="true">[🔍</span>
+          <svg class="topbar__searchhinticon" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.5"></circle>
+            <path d="M10.5 10.5 14 14"></path>
+          </svg>
           <span>Search tours...</span>
-          <span class="topbar__searchhintkey">⌘K]</span>
+          <span class="topbar__searchhintkey">{browseShortcutHint}</span>
         </button>
       </div>
 
       <div class="topbar__actions" data-testid="topbar-right">
-        <button
-          type="button"
-          class="button button--secondary topbar__browsebutton"
-          data-testid="browse-trigger"
-          aria-expanded={isBrowseOpen}
-          aria-controls="browse-panel"
-          on:click={() => void openBrowsePalette()}
-        >
-          Browse
-        </button>
         {#if data.collection.skipped.length > 0}
           <div class="diagnostics-anchor">
             <button
@@ -419,141 +541,80 @@
           {/if}
 
           <label class="browse-search">
-            <span class="browse-search__label">Search tours</span>
             <input
               bind:this={browseSearchInput}
               type="text"
               class="browse-search__input"
-              placeholder="Search by title, slug, or path"
+              placeholder="Search tours, diagrams, or folders..."
               data-testid="browse-search-input"
               value={browseSearch}
               on:input={handleBrowseSearchInput}
             />
           </label>
 
-          {#if favoriteEntries.length > 0}
-            <section class="browse-favorites" data-testid="browse-favorites">
-              <p class="browse-favorites__label">Favorites</p>
-              <div class="browse-favorites__list">
-                {#each favoriteEntries as favorite (favorite.slug)}
-                  <div
-                    class:browse-row--active={favorite.slug === activeSlug}
-                    class="browse-row browse-row--favorite"
-                    data-testid="browse-favorite-row"
-                  >
-                    <a
-                      href={resolve(`/${favorite.slug}`)}
-                      class="browse-row__link"
-                      data-tour-slug={favorite.slug}
-                      on:click={closeBrowse}
-                    >
-                      <span class="browse-row__caret" aria-hidden="true"></span>
-                      <span
-                        class="browse-row__icon browse-row__icon--tour"
-                        data-testid="browse-tour-icon"
-                        aria-hidden="true"
-                      ></span>
-                      <span class="browse-row__content">
-                        <span class="browse-row__title">{favorite.title}</span>
-                      </span>
-                    </a>
-                    <button
-                      type="button"
-                      class:browse-row__favorite--active={isFavorite(favorite.slug)}
-                      class="browse-row__favorite"
-                      data-testid="favorite-toggle"
-                      aria-pressed={isFavorite(favorite.slug)}
-                      aria-label={`Toggle favorite for ${favorite.title}`}
-                      on:click|preventDefault|stopPropagation={() => toggleFavorite(favorite.slug)}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true" class="browse-row__favoriteicon">
-                        <path
-                          d="M12 3.25 14.7 8.72l6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6L3.27 9.6l6.03-.88L12 3.25Z"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            </section>
-          {/if}
-
-          {#if browseRows.length === 0}
+          {#if browseItems.length === 0}
             <div class="browse-empty-state" data-testid="browse-empty-state">
               <p>No tours match "{browseSearch}".</p>
             </div>
           {:else}
-            <nav class="browse-tree" data-testid="browse-tree">
-              {#each browseRows as row (row.node.id)}
-                {#if row.node.kind === "folder"}
-                  <button
-                    type="button"
-                    class:browse-row--active={row.node.isActiveBranch}
-                    class:browse-row--expanded={isFolderExpanded(row.node.id)}
-                    class="browse-row browse-row--folder"
-                    data-testid="browse-folder-row"
-                    data-folder-id={row.node.id}
-                    style={`--browse-depth:${row.depth};`}
-                    aria-expanded={isFolderExpanded(row.node.id)}
-                    on:click={() => toggleFolder(row.node.id)}
-                  >
-                    <span class="browse-row__caret" aria-hidden="true">
-                      {isFolderExpanded(row.node.id) ? "-" : "+"}
-                    </span>
-                    <span
-                      class="browse-row__icon browse-row__icon--folder"
-                      data-testid="browse-folder-icon"
-                      aria-hidden="true"
-                    ></span>
-                    <span class="browse-row__content">
-                      <span class="browse-row__title browse-row__title--folder">
-                        {row.node.displayName}
-                      </span>
-                    </span>
-                  </button>
-                {:else}
-                  {@const tourNode = row.node}
-                  <div
-                    class:browse-row--active={tourNode.isActive}
-                    class="browse-row browse-row--tour"
-                    data-testid="browse-tour-row"
-                    data-tour-slug={tourNode.slug}
-                    style={`--browse-depth:${row.depth};`}
-                  >
-                    <a
-                      href={resolve(`/${tourNode.slug}`)}
-                      class="browse-row__link"
-                      on:click={closeBrowse}
-                    >
-                      <span class="browse-row__caret" aria-hidden="true"></span>
-                      <span
-                        class="browse-row__icon browse-row__icon--tour"
-                        data-testid="browse-tour-icon"
-                        aria-hidden="true"
-                      ></span>
-                      <span class="browse-row__content">
-                        <span class="browse-row__title">{tourNode.title}</span>
-                      </span>
-                    </a>
-                    <button
-                      type="button"
-                      class:browse-row__favorite--active={isFavorite(tourNode.slug)}
-                      class="browse-row__favorite"
-                      data-testid="favorite-toggle"
-                      aria-pressed={isFavorite(tourNode.slug)}
-                      aria-label={`Toggle favorite for ${tourNode.title}`}
-                      on:click|preventDefault|stopPropagation={() => toggleFavorite(tourNode.slug)}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true" class="browse-row__favoriteicon">
-                        <path
-                          d="M12 3.25 14.7 8.72l6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6L3.27 9.6l6.03-.88L12 3.25Z"
-                        />
-                      </svg>
-                    </button>
+            <div class="browse-results" data-testid="browse-tree" role="listbox" aria-label="Browse tours">
+              {#each browseSections as section (section.id)}
+                <section
+                  class:browse-favorites={section.id === "favorites"}
+                  class="browse-section"
+                  data-testid={section.id === "favorites" ? "browse-favorites" : undefined}
+                >
+                  <p class="browse-section__label">{section.title}</p>
+                  <div class="browse-section__list">
+                    {#each section.items as item (`${section.id}:${item.slug}`)}
+                      <div
+                        class:browse-row--active={item.slug === activeBrowseSlug}
+                        class:browse-row--current={item.slug === activeSlug}
+                        class="browse-row browse-row--tour"
+                        data-testid={readBrowseRowTestId(section.id)}
+                        data-tour-slug={item.slug}
+                      >
+                        <button
+                          type="button"
+                          role="option"
+                          class="browse-row__action"
+                          aria-selected={item.slug === activeBrowseSlug}
+                          on:click={() => void navigateToBrowseSlug(item.slug)}
+                          on:focus={() => setActiveBrowseSlug(item.slug)}
+                          on:mousemove={() => setActiveBrowseSlug(item.slug)}
+                        >
+                          <span
+                            class={`browse-row__icon browse-row__icon--${item.diagramType}`}
+                            data-testid="browse-tour-icon"
+                            aria-hidden="true"
+                          ></span>
+                          <span class="browse-row__content">
+                            <span class="browse-row__title">{item.title}</span>
+                            <span class="browse-row__path">{item.sourcePath}</span>
+                          </span>
+                          <span class="browse-row__meta">{readStepCountLabel(item.stepCount)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          class:browse-row__favorite--active={isFavorite(item.slug)}
+                          class="browse-row__favorite"
+                          data-testid="favorite-toggle"
+                          aria-pressed={isFavorite(item.slug)}
+                          aria-label={`Toggle favorite for ${item.title}`}
+                          on:click|preventDefault|stopPropagation={() => toggleFavorite(item.slug)}
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" class="browse-row__favoriteicon">
+                            <path
+                              d="M12 3.25 14.7 8.72l6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6L3.27 9.6l6.03-.88L12 3.25Z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    {/each}
                   </div>
-                {/if}
+                </section>
               {/each}
-            </nav>
+            </div>
           {/if}
         </div>
       {/if}

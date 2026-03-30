@@ -36,7 +36,10 @@ test("docs shell browse navigation changes tours without breaking the player @co
     "reverse a payment"
   );
 
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("search-hint-trigger").click();
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
+  await page.waitForTimeout(400);
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
   await page.getByTestId("browse-search-input").fill("decision");
   await expect(page.getByText("Decision Flow")).toBeVisible();
   await page.getByText("Decision Flow").click();
@@ -49,8 +52,8 @@ test("browse search keeps long queries strict enough to avoid unrelated fuzzy ma
   await page.goto("/checkout-refund-flow");
 
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
-  await expect(page.getByTestId("browse-trigger")).toBeVisible();
-  await page.getByTestId("browse-trigger").click();
+  await expect(page.getByTestId("search-hint-trigger")).toBeVisible();
+  await page.getByTestId("search-hint-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await page.getByTestId("browse-search-input").fill("release");
 
@@ -387,11 +390,11 @@ test("clicking a repeated node opens a chooser with matching steps @extended", a
   await expect(page).toHaveURL(/\/navigation-viewport-stability\?step=3$/);
 });
 
-test("favorites pin a starred tour above the browse tree @extended", async ({ page }) => {
+test("favorites pin a starred tour above the command palette results @extended", async ({ page }) => {
   await page.goto("/checkout-refund-flow");
   await expectDiagramVisible(page);
 
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("search-hint-trigger").click();
   await page
     .locator('[data-testid="browse-tour-row"][data-tour-slug="checkout-refund-flow"]')
     .getByTestId("favorite-toggle")
