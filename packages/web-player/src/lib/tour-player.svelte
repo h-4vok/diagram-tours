@@ -4,7 +4,6 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { onMount } from "svelte";
-  import { fade, fly } from "svelte/transition";
   import { toast } from "svelte-sonner";
 
   import {
@@ -116,6 +115,21 @@
 
   async function goNext(): Promise<void> {
     await goToStepIndex(state.stepIndex + 1);
+  }
+
+  function handleWindowKeyDown(event: KeyboardEvent): void {
+    if (shouldIgnoreKeyboardNavigation(event)) {
+      return;
+    }
+
+    const navigationDirection = readNavigationDirection(event.key);
+
+    if (navigationDirection === null) {
+      return;
+    }
+
+    event.preventDefault();
+    void runKeyboardNavigation(navigationDirection);
   }
 
   async function zoomIn(): Promise<void> {
@@ -967,6 +981,38 @@
     return content?.querySelector("svg") ?? null;
   }
 
+  function shouldIgnoreKeyboardNavigation(event: KeyboardEvent): boolean {
+    return event.defaultPrevented || hasNavigationModifierKeys(event) || isTypingTarget(event.target);
+  }
+
+  function hasNavigationModifierKeys(event: KeyboardEvent): boolean {
+    return [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean);
+  }
+
+  function readNavigationDirection(key: string): "next" | "previous" | null {
+    if (key === "ArrowLeft") {
+      return "previous";
+    }
+
+    return key === "ArrowRight" ? "next" : null;
+  }
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    return target instanceof HTMLElement && (
+      target.isContentEditable ||
+      target.closest("input, textarea, select, [contenteditable='true']") !== null
+    );
+  }
+
+  async function runKeyboardNavigation(direction: "next" | "previous"): Promise<void> {
+    if (direction === "previous") {
+      await goPrevious();
+      return;
+    }
+
+    await goNext();
+  }
+
   function readRenderedZoomSvg(
     context: { container: HTMLDivElement; content: HTMLDivElement } | null
   ): SVGSVGElement | null {
@@ -984,14 +1030,6 @@
     });
   }
 
-  function isCurrentTimelineStep(index: number): boolean {
-    return index === state.stepIndex;
-  }
-
-  function isCompletedTimelineStep(index: number): boolean {
-    return index < state.stepIndex;
-  }
-
   function createZoomContext(context: {
     container: HTMLDivElement;
     content: HTMLDivElement;
@@ -1005,7 +1043,7 @@
   }
 </script>
 
-<svelte:window on:pointerdown={handleWindowPointerDown} />
+<svelte:window on:keydown={handleWindowKeyDown} on:pointerdown={handleWindowPointerDown} />
 
 <section class="player-canvas" data-testid="player-canvas">
   <div
@@ -1050,7 +1088,10 @@
       </div>
     {/if}
 
-    <aside class="teleprompter" data-testid="teleprompter">
+    <aside
+      class="teleprompter"
+      data-testid="teleprompter"
+    >
       <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
       
       <div class="teleprompter__content" data-testid="step-overlay">
@@ -1064,41 +1105,20 @@
             aria-label="Previous step"
           >
             <span class="teleprompter__btn-icon">←</span>
-            <kbd class="teleprompter__kbd">[ ← ]</kbd>
           </button>
         </div>
 
         <div class="teleprompter__text-area" data-testid="step-text-container">
-          <div class="teleprompter__timeline" data-testid="timeline-stepper" role="tablist" aria-label="Tour steps">
-            {#each tour.steps as _step, index (`timeline-step-${index}`)}
-              <button
-                type="button"
-                class:teleprompter__timeline-step--complete={isCompletedTimelineStep(index)}
-                class:teleprompter__timeline-step--current={isCurrentTimelineStep(index)}
-                class="teleprompter__timeline-step"
-                data-testid="timeline-step-button"
-                aria-current={isCurrentTimelineStep(index) ? "step" : undefined}
-                aria-label={`Go to step ${index + 1}`}
-                on:click={() => void goToStepIndex(index)}
-              >
-                {index + 1}
-              </button>
-            {/each}
-          </div>
           <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
-          {#key state.stepIndex}
-            <div in:fly={{ y: 4, duration: 200, delay: 100 }} out:fade={{ duration: 100 }}>
-              <p data-testid="step-text" class="teleprompter__text">
-                {#each createStepTextSegments(state.step.text) as segment, index (`${state.stepIndex}-${index}`)}
-                  {#if segment.isCode}
-                    <code class="teleprompter__code">{segment.content}</code>
-                  {:else}
-                    {segment.content}
-                  {/if}
-                {/each}
-              </p>
-            </div>
-          {/key}
+          <p data-testid="step-text" class="teleprompter__text">
+            {#each createStepTextSegments(state.step.text) as segment, index (`${state.stepIndex}-${index}`)}
+              {#if segment.isCode}
+                <code class="teleprompter__code">{segment.content}</code>
+              {:else}
+                {segment.content}
+              {/if}
+            {/each}
+          </p>
         </div>
 
         <div class="teleprompter__nav-right">
@@ -1111,7 +1131,6 @@
             aria-label="Next step"
           >
             <span class="teleprompter__btn-icon">→</span>
-            <kbd class="teleprompter__kbd">[ Space ]</kbd>
           </button>
         </div>
       </div>

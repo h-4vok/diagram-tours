@@ -1,6 +1,6 @@
 version: 1
 title: Viewport Centering
-diagram: ./viewport-centering.mmd
+diagram: ./navigation-viewport-centering.mmd
 
 steps:
   - focus:

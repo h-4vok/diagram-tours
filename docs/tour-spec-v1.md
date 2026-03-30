@@ -26,7 +26,7 @@ Example:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -67,14 +67,14 @@ Must be a non-empty string.
 Required.
 
 ```yaml
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 ```
 
 Must be a non-empty string path to a Mermaid diagram source.
 
 Supported authored targets include:
 
-- standalone Mermaid files such as `./payment-flow.mmd`
+- standalone Mermaid files such as `./checkout-payment-flow.mmd`
 - Markdown files with fenced Mermaid blocks such as `./country-checklist.md`
 
 If a Markdown file contains multiple Mermaid blocks, the path must include a fragment that selects one block:
@@ -235,7 +235,7 @@ The current parser includes contextual information such as the tour source path 
 Example:
 
 ```text
-Tour "examples/checkout/payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
+Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
 ## Mermaid Requirements

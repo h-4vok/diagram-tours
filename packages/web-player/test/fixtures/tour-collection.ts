@@ -16,7 +16,7 @@ export const resolvedRefundFlowTour: ResolvedDiagramTour = {
       { id: "payment_gateway", kind: "node", label: "Payment Gateway" },
       { id: "receipt", kind: "node", label: "Receipt" }
     ],
-    path: "./refund-flow.mmd",
+    path: "./checkout-refund-flow.mmd",
     source: `flowchart LR
   customer[Customer] --> refund_service[Refund Service]
   refund_service --> payment_gateway[Payment Gateway]

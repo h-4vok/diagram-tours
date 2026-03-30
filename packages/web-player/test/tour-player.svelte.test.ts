@@ -136,6 +136,26 @@ describe("tour-player.svelte", () => {
     expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
   });
 
+  it("renders inline code references inside the teleprompter text", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: {
+        ...resolvedPaymentFlowTour,
+        steps: [
+          {
+            ...resolvedPaymentFlowTour.steps[0],
+            text: "Focus `API Gateway` before continuing."
+          },
+          ...resolvedPaymentFlowTour.steps.slice(1)
+        ]
+      }
+    });
+
+    expect(await screen.findByText("API Gateway", { selector: "code" })).toBeDefined();
+    expect(screen.queryByTestId("timeline-step-button")).toBeNull();
+  });
+
   it("renders the minimap on desktop, shows focused nodes, and groups controls in a camera cluster", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,

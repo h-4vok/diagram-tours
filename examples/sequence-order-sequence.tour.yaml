@@ -1,6 +1,6 @@
 version: 1
 title: Order Sequence
-diagram: ./order-sequence.mmd
+diagram: ./sequence-order-sequence.mmd
 
 steps:
   - focus:

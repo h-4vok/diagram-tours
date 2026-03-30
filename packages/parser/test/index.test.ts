@@ -1,4 +1,5 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
+import type * as FsPromises from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -428,20 +429,20 @@ describe("@diagram-tour/parser", () => {
 
   it("builds a one-tour collection from a single diagram file target", async () => {
     const collection = await loadResolvedTourCollection(
-      resolve(EXAMPLES_ROOT, "./checkout/payment-flow.mmd")
+      resolve(EXAMPLES_ROOT, "./checkout-payment-flow.mmd")
     );
 
     expect(collection.entries).toHaveLength(1);
     expect(collection.entries[0]).toMatchObject({
-      slug: "payment-flow",
-      sourcePath: "payment-flow.mmd",
-      title: "Payment Flow",
+      slug: "checkout-payment-flow",
+      sourcePath: "checkout-payment-flow.mmd",
+      title: "Checkout Payment Flow",
       tour: {
         sourceKind: "generated"
       }
     });
     expect(collection.entries[0]?.tour.steps.map((step) => step.text)).toEqual([
-      "Overview of Payment Flow.",
+      "Overview of Checkout Payment Flow.",
       "Focus on Client.",
       "Focus on API Gateway.",
       "Focus on Validation Service.",
@@ -464,17 +465,18 @@ describe("@diagram-tour/parser", () => {
     });
 
     const collection = await loadResolvedTourCollection(resolve(sequenceRoot, "./diagrams/order-sequence.mmd"));
+    const entry = readCollectionEntryAt(collection, 0);
 
     expect(collection.entries).toHaveLength(1);
-    expect(collection.entries[0]?.tour.diagram.type).toBe("sequence");
-    expect(collection.entries[0]?.tour.steps.map((step) => step.text)).toEqual([
+    expect(entry.tour.diagram.type).toBe("sequence");
+    expect(entry.tour.steps.map((step) => step.text)).toEqual([
       "Overview of Order Sequence.",
       "Focus on User.",
       "Focus on API Gateway.",
       "Focus on Send request."
     ]);
-    expect(collection.entries[0]?.tour.diagram.source).toContain("user->>api: Send request");
-    expect(collection.entries[0]?.tour.diagram.source).not.toContain("[request_sent]");
+    expect(entry.tour.diagram.source).toContain("user->>api: Send request");
+    expect(entry.tour.diagram.source).not.toContain("[request_sent]");
   });
 
   it("builds a generated collection from a single markdown diagram file target", async () => {
@@ -867,6 +869,7 @@ describe("@diagram-tour/parser", () => {
     });
 
     const collection = await loadResolvedTourCollection(fallbackRoot);
+    const releaseEntry = readCollectionEntryAt(collection, 1);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
       "ops/--release-candidate",
@@ -878,13 +881,13 @@ describe("@diagram-tour/parser", () => {
       "generated",
       "generated"
     ]);
-    expect(collection.entries[1]?.tour.steps).toHaveLength(3);
-    expect(collection.entries[1]?.tour.steps[0]).toEqual({
+    expect(releaseEntry.tour.steps).toHaveLength(3);
+    expect(releaseEntry.tour.steps[0]).toEqual({
       focus: [],
       index: 1,
       text: "Overview of Release."
     });
-    expect(collection.entries[0]?.tour.title).toBe("Release Candidate");
+    expect(readCollectionEntryAt(collection, 0).tour.title).toBe("Release Candidate");
     expect(collection.skipped).toEqual([]);
   });
 
@@ -968,9 +971,10 @@ describe("@diagram-tour/parser", () => {
     });
 
     const collection = await loadResolvedTourCollection(fallbackRoot);
+    const entry = readCollectionEntryAt(collection, 0);
 
-    expect(collection.entries[0]?.tour.title).toBe("Diagram");
-    expect(collection.entries[0]?.tour.steps[0]?.text).toBe("Overview of Diagram.");
+    expect(entry.tour.title).toBe("Diagram");
+    expect(entry.tour.steps[0]?.text).toBe("Overview of Diagram.");
   });
 
   it("keeps skipped authored tour errors while still generating a fallback from the diagram", async () => {
@@ -1015,18 +1019,18 @@ describe("@diagram-tour/parser", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout/decision-flow",
-      "checkout/payment-flow",
-      "checkout/refund-flow",
-      "navigation/viewport-centering",
-      "navigation/viewport-stability",
-      "ops/huge-system",
-      "ops/incident-response",
-      "ops/parallel-onboarding",
-      "ops/release-pipeline",
-      "sequence/order-sequence",
-      "support/support-decision-tree",
-      "support/support-handoff"
+      "checkout-decision-flow",
+      "checkout-payment-flow",
+      "checkout-refund-flow",
+      "navigation-viewport-centering",
+      "navigation-viewport-stability",
+      "ops-huge-system",
+      "ops-incident-response",
+      "ops-parallel-onboarding",
+      "ops-release-pipeline",
+      "sequence-order-sequence",
+      "support-support-decision-tree",
+      "support-support-handoff"
     ]);
   });
 
@@ -1055,7 +1059,7 @@ describe("@diagram-tour/parser", () => {
   it("rethrows unexpected markdown discovery errors", async () => {
     vi.resetModules();
     vi.doMock("node:fs/promises", async () => {
-      const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+      const actual = (await vi.importActual("node:fs/promises")) as typeof FsPromises;
 
       return {
         ...actual,
@@ -1125,6 +1129,17 @@ async function createTempDiagramDirectory(input: Record<string, string>): Promis
   );
 
   return dir;
+}
+
+function readCollectionEntryAt(
+  collection: Awaited<ReturnType<typeof loadResolvedTourCollection>>,
+  index: number
+) {
+  const entry = collection.entries[index];
+
+  expect(entry).toBeDefined();
+
+  return entry!;
 }
 
 function normalizePath(path: string): string {

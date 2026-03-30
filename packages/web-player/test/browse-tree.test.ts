@@ -14,7 +14,7 @@ const entries = [
     sourcePath: "payments/core/payment-flow/payment-flow.tour.yaml",
     title: "Payment Flow",
     tour: {
-      diagram: createDiagram("./payment-flow.mmd"),
+      diagram: createDiagram("./checkout-payment-flow.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Payment Flow",
@@ -26,7 +26,7 @@ const entries = [
     sourcePath: "payments/support/refund-flow/refund-flow.tour.yaml",
     title: "Refund Flow",
     tour: {
-      diagram: createDiagram("./refund-flow.mmd"),
+      diagram: createDiagram("./checkout-refund-flow.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Refund Flow",
@@ -38,7 +38,7 @@ const entries = [
     sourcePath: "ops/release/release-pipeline/release-pipeline.tour.yaml",
     title: "Release Pipeline",
     tour: {
-      diagram: createDiagram("./release-pipeline.mmd"),
+      diagram: createDiagram("./ops-release-pipeline.mmd"),
       sourceKind: "authored",
       steps: [],
       title: "Release Pipeline",

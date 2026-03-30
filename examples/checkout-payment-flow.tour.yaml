@@ -1,6 +1,6 @@
 version: 1
 title: Payment Flow
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 
 steps:
   - focus:

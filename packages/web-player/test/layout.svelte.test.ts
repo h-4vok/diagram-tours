@@ -241,8 +241,8 @@ describe("+layout.svelte", () => {
         collection: singleTourCollection,
         sourceTarget: {
           kind: "file" as const,
-          label: "payment-flow.tour.yaml",
-          path: "/repo/examples/checkout/payment-flow.tour.yaml"
+          label: "checkout-payment-flow.tour.yaml",
+          path: "/repo/examples/checkout-payment-flow.tour.yaml"
         }
       }
     });
@@ -250,7 +250,7 @@ describe("+layout.svelte", () => {
     await fireEvent.click(screen.getByTestId("browse-trigger"));
 
     expect((await screen.findByTestId("preview-target-notice")).textContent).toContain(
-      "Previewing payment-flow.tour.yaml"
+      "Previewing checkout-payment-flow.tour.yaml"
     );
   });
 

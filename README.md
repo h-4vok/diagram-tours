@@ -41,13 +41,13 @@ diagram-tours ./docs/architecture
 Open a single tour file directly:
 
 ```bash
-diagram-tours ./examples/checkout/payment-flow.tour.yaml
+diagram-tours ./examples/checkout-payment-flow.tour.yaml
 ```
 
 Open a single Mermaid diagram directly:
 
 ```bash
-diagram-tours ./examples/checkout/payment-flow.mmd
+diagram-tours ./examples/checkout-payment-flow.mmd
 ```
 
 Open a Markdown file that contains Mermaid fences directly:
@@ -106,7 +106,7 @@ Version 1 tour files look like this:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -185,7 +185,7 @@ Other available commands:
 - `bun run smoke:full`
 - `bun run prepush`
 
-The example library is grouped into topical folders such as `checkout/`, `navigation/`, `ops/`, `sequence/`, and `support/` so the repo browser stays readable.
+The shipped example library lives directly under `examples/` with flat, domain-prefixed stems such as `checkout-payment-flow` and `ops-huge-system`.
 
 ## Repository Packages
 

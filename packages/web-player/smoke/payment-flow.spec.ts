@@ -4,23 +4,23 @@ import { expectDevServerToFail, startDevServer } from "./dev-server";
 test("docs shell browse navigation changes tours without breaking the player @core", async ({
   page
 }) => {
-  await page.goto("/checkout/decision-flow?step=3");
+  await page.goto("/checkout-decision-flow?step=3");
 
   await expect(page.getByRole("link", { name: "diagram-tours" })).toBeVisible();
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
   await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Decision Flow");
   await expect(page.getByTestId("search-hint-trigger")).toBeVisible();
   await expect(page.getByRole("link", { name: "GitHub" })).toBeVisible();
-  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
   await page.getByTestId("search-hint-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
   await expect(page.getByTestId("browse-search-input")).toBeVisible();
-  await expect(page.getByTestId("browse-folder-row").first()).toBeVisible();
+  await expect(page.getByTestId("browse-tour-row").first()).toBeVisible();
   await expect(page.getByTestId("step-text-container")).toContainText(
     "human or audited service"
   );
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
-  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] [data-node-id="review"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')).toHaveCount(2);
   await expect(
@@ -31,7 +31,7 @@ test("docs shell browse navigation changes tours without breaking the player @co
   await expect(page.getByText("Refund Flow")).toBeVisible();
   await page.getByText("Refund Flow").click();
 
-  await expect(page).toHaveURL(/\/checkout\/refund-flow$/);
+  await expect(page).toHaveURL(/\/checkout-refund-flow$/);
   await expect(page.getByTestId("step-text-container")).toContainText(
     "reverse a payment"
   );
@@ -41,12 +41,12 @@ test("docs shell browse navigation changes tours without breaking the player @co
   await expect(page.getByText("Decision Flow")).toBeVisible();
   await page.getByText("Decision Flow").click();
 
-  await expect(page).toHaveURL(/\/checkout\/decision-flow$/);
+  await expect(page).toHaveURL(/\/checkout-decision-flow$/);
   await expect(page.getByTestId("step-text")).toBeVisible();
 });
 
 test("browse search keeps long queries strict enough to avoid unrelated fuzzy matches @extended", async ({ page }) => {
-  await page.goto("/checkout/refund-flow");
+  await page.goto("/checkout-refund-flow");
 
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
   await expect(page.getByTestId("browse-trigger")).toBeVisible();
@@ -62,7 +62,7 @@ test("browse search keeps long queries strict enough to avoid unrelated fuzzy ma
 test("diagram canvas owns horizontal overflow instead of the document body @extended", async ({
   page
 }) => {
-  await page.goto("/checkout/decision-flow");
+  await page.goto("/checkout-decision-flow");
 
   await expect(page.getByTestId("diagram-container")).toBeVisible();
   await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Decision Flow");
@@ -74,7 +74,7 @@ test("diagram canvas owns horizontal overflow instead of the document body @exte
 test("focused areas stay reasonably centered through viewport-centering examples @extended", async ({
   page
 }) => {
-  await page.goto("/navigation/viewport-centering");
+  await page.goto("/navigation-viewport-centering");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expectFocusedAreaNearViewportCenter(page, ["build"]);
@@ -89,7 +89,7 @@ test("focused areas stay reasonably centered through viewport-centering examples
 });
 
 test("deep-linked step changes reuse the same Mermaid svg @core", async ({ page }) => {
-  await page.goto("/checkout/decision-flow?step=2");
+  await page.goto("/checkout-decision-flow?step=2");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
 
@@ -106,7 +106,7 @@ test("deep-linked step changes reuse the same Mermaid svg @core", async ({ page 
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/checkout\/decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] svg')).toHaveAttribute(
     "data-test-instance-id",
     diagramInstanceId
@@ -116,7 +116,7 @@ test("deep-linked step changes reuse the same Mermaid svg @core", async ({ page 
 test("huge-system stress fixture remains navigable across step changes @extended", async ({
   page
 }) => {
-  await page.goto("/ops/huge-system?step=5");
+  await page.goto("/ops-huge-system?step=5");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(
@@ -128,7 +128,7 @@ test("huge-system stress fixture remains navigable across step changes @extended
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/ops\/huge-system\?step=6$/);
+  await expect(page).toHaveURL(/\/ops-huge-system\?step=6$/);
   await expect(page.getByTestId("step-text-container")).toContainText("distant focus");
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="compliance"]')
@@ -136,9 +136,9 @@ test("huge-system stress fixture remains navigable across step changes @extended
 });
 
 test("huge-system first step starts at a readable focus scale @extended", async ({ page }) => {
-  await page.goto("/ops/huge-system");
+  await page.goto("/ops-huge-system");
 
-  await expect(page).toHaveURL(/\/ops\/huge-system$/);
+  await expect(page).toHaveURL(/\/ops-huge-system$/);
   await expectDiagramVisible(page);
   await expectFocusedAreaNearViewportCenter(page, ["edge"], {
     x: 280,
@@ -151,7 +151,7 @@ test("huge-system first step starts at a readable focus scale @extended", async 
 test("connector labels remain readable as context in a branching diagram @extended", async ({
   page
 }) => {
-  await page.goto("/ops/incident-response?step=2");
+  await page.goto("/ops-incident-response?step=2");
 
   await expect(page.locator('[data-testid="diagram-container"] svg')).toBeVisible();
   await expect(
@@ -165,7 +165,7 @@ test("connector labels remain readable as context in a branching diagram @extend
 });
 
 test("long step text does not break the usable diagram area @extended", async ({ page }) => {
-  await page.goto("/ops/incident-response?step=4");
+  await page.goto("/ops-incident-response?step=4");
 
   await expectDiagramVisible(page);
 
@@ -182,7 +182,7 @@ test("long step text does not break the usable diagram area @extended", async ({
 });
 
 test("theme selection persists across reloads and direct navigation @extended", async ({ page }) => {
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 
@@ -193,7 +193,7 @@ test("theme selection persists across reloads and direct navigation @extended", 
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 
-  await page.goto("/checkout/refund-flow");
+  await page.goto("/checkout-refund-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 });
@@ -202,7 +202,7 @@ test("first load defaults to dark mode until a preference is chosen @core", asyn
   await page.addInitScript(() => {
     window.localStorage.removeItem("diagram-tour-theme");
   });
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 });
@@ -210,7 +210,7 @@ test("first load defaults to dark mode until a preference is chosen @core", asyn
 test("selected steps keep a focused-node contract while the default dark mode remains usable @extended", async ({
   page
 }) => {
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 
@@ -238,12 +238,12 @@ test("unknown tours show a guided 404 with a single recovery action @extended", 
 });
 
 test("empty-focus steps keep viewport behavior stable @extended", async ({ page }) => {
-  await page.goto("/navigation/viewport-centering?step=3");
+  await page.goto("/navigation-viewport-centering?step=3");
   await expectDiagramVisible(page);
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/navigation\/viewport-centering\?step=4$/);
+  await expect(page).toHaveURL(/\/navigation-viewport-centering\?step=4$/);
   await expect(
     page.locator('[data-testid="diagram-container"] [data-focus-state="focused"]')
   ).toHaveCount(0);
@@ -260,7 +260,7 @@ test("empty-focus steps keep viewport behavior stable @extended", async ({ page 
 });
 
 test("desktop minimap stays visible and tracks the focused step @extended", async ({ page }) => {
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("camera-control-cluster")).toBeVisible();
   await expect(page.getByTestId("camera-control-panel")).toBeVisible();
@@ -271,13 +271,15 @@ test("desktop minimap stays visible and tracks the focused step @extended", asyn
   expect(await page.getByTestId("minimap-node-marker").count()).toBeGreaterThan(3);
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 
-  await page.getByTestId("timeline-step-button").nth(2).click();
+  await page.getByTestId("next-button").click();
+  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=2$/);
+  await page.getByTestId("next-button").click();
   await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);
 });
 
 test("zoom controls resize the active diagram and return cleanly @extended", async ({ page }) => {
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expectCameraPanelToContainControls(page);
 
@@ -304,7 +306,7 @@ test("collapsed minimap keeps zoom controls inside the same camera panel @extend
   await page.addInitScript(() => {
     window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
   });
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
 
   await expect(page.getByTestId("camera-control-panel")).toBeVisible();
@@ -315,7 +317,7 @@ test("collapsed minimap keeps zoom controls inside the same camera panel @extend
 });
 
 test("clicking the minimap pans the main diagram viewport @extended", async ({ page }) => {
-  await page.goto("/ops/huge-system");
+  await page.goto("/ops-huge-system");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-surface")).toBeVisible();
 
@@ -334,7 +336,7 @@ test("clicking the minimap pans the main diagram viewport @extended", async ({ p
 });
 
 test("dragging the minimap viewport rectangle pans the main diagram viewport @extended", async ({ page }) => {
-  await page.goto("/ops/huge-system");
+  await page.goto("/ops-huge-system");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-viewport-rect")).toBeVisible();
 
@@ -353,7 +355,7 @@ test("dragging the minimap viewport rectangle pans the main diagram viewport @ex
 });
 
 test("clicking a node jumps directly to its matching step @core", async ({ page }) => {
-  await page.goto("/checkout/refund-flow");
+  await page.goto("/checkout-refund-flow");
   await expectDiagramVisible(page);
 
   await page
@@ -363,12 +365,12 @@ test("clicking a node jumps directly to its matching step @core", async ({ page 
       element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     });
 
-  await expect(page).toHaveURL(/\/checkout\/refund-flow\?step=2$/);
+  await expect(page).toHaveURL(/\/checkout-refund-flow\?step=2$/);
   await expect(page.getByTestId("step-text-container")).toContainText("Payment Gateway");
 });
 
 test("clicking a repeated node opens a chooser with matching steps @extended", async ({ page }) => {
-  await page.goto("/navigation/viewport-stability");
+  await page.goto("/navigation-viewport-stability");
   await expectDiagramVisible(page);
 
   await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click({
@@ -382,16 +384,16 @@ test("clicking a repeated node opens a chooser with matching steps @extended", a
   await expect(page.getByTestId("node-step-choice")).toHaveCount(2);
   await page.getByTestId("node-step-choice").nth(1).click();
 
-  await expect(page).toHaveURL(/\/navigation\/viewport-stability\?step=3$/);
+  await expect(page).toHaveURL(/\/navigation-viewport-stability\?step=3$/);
 });
 
 test("favorites pin a starred tour above the browse tree @extended", async ({ page }) => {
-  await page.goto("/checkout/refund-flow");
+  await page.goto("/checkout-refund-flow");
   await expectDiagramVisible(page);
 
   await page.getByTestId("browse-trigger").click();
   await page
-    .locator('[data-testid="browse-tour-row"][data-tour-slug="checkout/refund-flow"]')
+    .locator('[data-testid="browse-tour-row"][data-tour-slug="checkout-refund-flow"]')
     .getByTestId("favorite-toggle")
     .click();
 
@@ -399,17 +401,21 @@ test("favorites pin a starred tour above the browse tree @extended", async ({ pa
   await expect(page.getByTestId("browse-favorite-row")).toContainText("Refund Flow");
 });
 
-test("timeline pills jump directly between steps @extended", async ({ page }) => {
-  await page.goto("/checkout/payment-flow");
+test("teleprompter navigation advances between steps @extended", async ({ page }) => {
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
 
-  await page.getByTestId("timeline-step-button").nth(2).click();
+  await page.getByTestId("next-button").click();
+  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=2$/);
+  await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/checkout\/payment-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=3$/);
   await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
 });
 
 test("issues popover presents a readable diagnostics hierarchy @extended", async ({ page }) => {
+  test.slow();
+
   const server = await startDevServer({
     port: 4181,
     promptInputs: ["1", "n", "", ""]
@@ -434,7 +440,7 @@ test("issues popover presents a readable diagnostics hierarchy @extended", async
 
 test("small screens hide the minimap automatically @extended", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 640 });
-  await page.goto("/checkout/payment-flow");
+  await page.goto("/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("step-overlay")).toBeVisible();
   await expect(page.getByTestId("minimap-shell")).toHaveCount(0);
@@ -444,14 +450,14 @@ test("generated fallback tours render a minimal overview and node-by-node walkth
   page
 }) => {
   const server = await startDevServer({
-    args: ["./examples/checkout/payment-flow.mmd"],
+    args: ["./examples/checkout-payment-flow.mmd"],
     port: 4183
   });
 
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Payment Flow.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Checkout Payment Flow.");
 
     await page.getByTestId("next-button").click();
 
@@ -467,7 +473,7 @@ test("generated fallback tours render a minimal overview and node-by-node walkth
 test("authored sequence tours focus participants and messages, and sequence elements stay clickable @extended", async ({
   page
 }) => {
-  await page.goto("/sequence/order-sequence");
+  await page.goto("/sequence-order-sequence");
   await expectDiagramVisible(page);
 
   await expect(page.getByTestId("step-text-container")).toContainText("Customer");
@@ -486,7 +492,7 @@ test("authored sequence tours focus participants and messages, and sequence elem
       }
     });
 
-  await expect(page).toHaveURL(/\/sequence\/order-sequence\?step=3$/);
+  await expect(page).toHaveURL(/\/sequence-order-sequence\?step=3$/);
   await expect(page.getByTestId("step-text-container")).toContainText("Enqueue fulfillment");
   await expect(
     page.locator(
@@ -504,21 +510,21 @@ test("authored sequence tours focus participants and messages, and sequence elem
       }
     });
 
-  await expect(page).toHaveURL(/\/sequence\/order-sequence\?step=1$/);
+  await expect(page).toHaveURL(/\/sequence-order-sequence\?step=1$/);
 });
 
 test("generated fallback sequence tours include participants before tagged messages @extended", async ({
   page
 }) => {
   const server = await startDevServer({
-    args: ["./examples/support/support-handoff.mmd"],
+    args: ["./examples/support-support-handoff.mmd"],
     port: 4187
   });
 
   try {
     await page.goto(server.baseUrl);
     await expectDiagramVisible(page);
-    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Support Handoff.");
+    await expect(page.getByTestId("step-text-container")).toContainText("Overview of Support Support Handoff.");
 
     await page.getByTestId("next-button").click();
     await expect(page.getByTestId("step-text-container")).toContainText("Focus on Customer.");

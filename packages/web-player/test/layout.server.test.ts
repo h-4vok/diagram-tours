@@ -26,18 +26,18 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout/decision-flow",
-      "checkout/payment-flow",
-      "checkout/refund-flow",
-      "navigation/viewport-centering",
-      "navigation/viewport-stability",
-      "ops/huge-system",
-      "ops/incident-response",
-      "ops/parallel-onboarding",
-      "ops/release-pipeline",
-      "sequence/order-sequence",
-      "support/support-decision-tree",
-      "support/support-handoff"
+      "checkout-decision-flow",
+      "checkout-payment-flow",
+      "checkout-refund-flow",
+      "navigation-viewport-centering",
+      "navigation-viewport-stability",
+      "ops-huge-system",
+      "ops-incident-response",
+      "ops-parallel-onboarding",
+      "ops-release-pipeline",
+      "sequence-order-sequence",
+      "support-support-decision-tree",
+      "support-support-handoff"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
     expect(result.sourceTarget).toEqual({
@@ -62,44 +62,44 @@ describe("+layout.server", () => {
       "Release Pipeline",
       "Order Sequence",
       "Support Decision Tree",
-      "Support Handoff"
+      "Support Support Handoff"
     ]);
     expect(result.collection.skipped).toEqual([]);
     expect(result.sourceTarget.kind).toBe("directory");
   });
 
   it("loads the viewport stability example with an empty-focus step", async () => {
-    const entry = await loadExampleEntry("navigation/viewport-stability");
+    const entry = await loadExampleEntry("navigation-viewport-stability");
 
     expectViewportStabilityExample(entry);
   });
 
   it("loads the huge system example as a discoverable stress-test tour", async () => {
-    const entry = await loadExampleEntry("ops/huge-system");
+    const entry = await loadExampleEntry("ops-huge-system");
 
     expectHugeSystemExample(entry);
   });
 
   it("loads the authored sequence example with participant and message focus", async () => {
-    const entry = await loadExampleEntry("sequence/order-sequence");
+    const entry = await loadExampleEntry("sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
   });
 
   it("loads the viewport centering example with top, bottom, grouped, and empty focus steps", async () => {
-    const entry = await loadExampleEntry("navigation/viewport-centering");
+    const entry = await loadExampleEntry("navigation-viewport-centering");
 
     expectViewportCenteringExample(entry);
   });
 
   it("loads a generated fallback sequence example from the examples directory", async () => {
-    const entry = await loadExampleEntry("support/support-handoff");
+    const entry = await loadExampleEntry("support-support-handoff");
 
     expectSupportHandoffExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout/payment-flow.tour.yaml");
+    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.tour.yaml");
     process.env.DIAGRAM_TOUR_SOURCE_TARGET = target;
 
     const result = (await load({} as never)) as {
@@ -108,16 +108,16 @@ describe("+layout.server", () => {
     };
 
     expect(result.collection.entries).toHaveLength(1);
-    expect(result.collection.entries[0]?.slug).toBe("payment-flow");
+    expect(result.collection.entries[0]?.slug).toBe("checkout-payment-flow");
     expect(result.sourceTarget).toEqual({
       kind: "file",
-      label: "payment-flow.tour.yaml",
+      label: "checkout-payment-flow.tour.yaml",
       path: target
     });
   });
 
   it("loads a generated fallback collection from a diagram file target", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout/payment-flow.mmd");
+    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.mmd");
     const result = await loadForTarget(target);
 
     expectGeneratedDiagramPreview(result, target);
@@ -288,10 +288,10 @@ function expectSupportHandoffExample(
   const tour = readTour(entry);
   const steps = tour.steps;
 
-  expect(readTitle(entry)).toBe("Support Handoff");
+  expect(readTitle(entry)).toBe("Support Support Handoff");
   expect(tour.sourceKind).toBe("generated");
   expect(tour.diagram.type).toBe("sequence");
-  expect(steps[0]?.text).toBe("Overview of Support Handoff.");
+  expect(steps[0]?.text).toBe("Overview of Support Support Handoff.");
   expect(readPrimaryFocusIds(steps)).toEqual([
     undefined,
     "customer",
@@ -352,12 +352,12 @@ function expectGeneratedDiagramPreview(
 
   expect(result.collection.entries).toHaveLength(1);
   expect(entry).toBeDefined();
-  expect(entry!.slug).toBe("payment-flow");
+    expect(entry!.slug).toBe("checkout-payment-flow");
   expect(entry!.tour.sourceKind).toBe("generated");
-  expect(entry!.tour.steps[0]!.text).toBe("Overview of Payment Flow.");
+  expect(entry!.tour.steps[0]!.text).toBe("Overview of Checkout Payment Flow.");
   expect(result.sourceTarget).toEqual({
     kind: "file",
-    label: "payment-flow.mmd",
+    label: "checkout-payment-flow.mmd",
     path: target
   });
 }
