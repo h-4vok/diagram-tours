@@ -162,6 +162,12 @@ describe("browse-tree", () => {
     expect(filterBrowseTree(tree, "ops/release")).toHaveLength(1);
   });
 
+  it("returns the original tree when the filter query is empty", () => {
+    const tree = buildBrowseTree(entries, null);
+
+    expect(filterBrowseTree(tree, "")).toEqual(tree);
+  });
+
   it("falls back to ordered-character fuzzy matching for tours", () => {
     const tree = buildBrowseTree(entries, null);
 

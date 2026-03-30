@@ -7,6 +7,7 @@ import {
   rememberRecentSlug,
   writeStoredRecentSlugs
 } from "../src/lib/browse-recents";
+import { vi } from "vitest";
 
 describe("browse-recents", () => {
   it("reads stored recent slugs and ignores malformed values", () => {
@@ -23,6 +24,14 @@ describe("browse-recents", () => {
 
   it("returns an empty list when no recent state has been stored", () => {
     expect(readStoredRecentSlugs(window.localStorage)).toEqual([]);
+  });
+
+  it("reads recent slugs from a storage adapter when the payload is a valid array", () => {
+    expect(readStoredRecentSlugs(createStorage('["payment-flow"]'))).toEqual(["payment-flow"]);
+  });
+
+  it("returns an empty list when the stored recent payload is not an array", () => {
+    expect(readStoredRecentSlugs(createStorage('{"slug":"payment-flow"}'))).toEqual([]);
   });
 
   it("moves the newest slug to the front and caps the list", () => {
@@ -51,3 +60,14 @@ describe("browse-recents", () => {
     expect(window.localStorage.getItem(RECENT_STORAGE_KEY)).toBe('["payment-flow","refund-flow"]');
   });
 });
+
+function createStorage(initialValue: string | null): Storage {
+  return {
+    clear: vi.fn(),
+    getItem: vi.fn(() => initialValue),
+    key: vi.fn(),
+    length: 0,
+    removeItem: vi.fn(),
+    setItem: vi.fn()
+  };
+}
