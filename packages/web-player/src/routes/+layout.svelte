@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { page } from "$app/state";
+  import { toast } from "svelte-sonner";
   import {
     buildBrowsePaletteSections,
     flattenBrowsePaletteSections,
@@ -48,8 +49,10 @@
   let previousPathname = "";
   let browsePanel: HTMLDivElement | undefined;
   let browseSearchInput: HTMLInputElement | undefined;
+  let diagnosticsAnchor: HTMLDivElement | undefined;
   let browseOpenedAt = 0;
   let browseOpenedForPath: string | null = null;
+  let diagnosticsPanelStyle = "";
   let browseSearch = "";
   let favoriteSlugs: string[] = [];
   let recentSlugs: string[] = [];
@@ -117,6 +120,7 @@
     }
 
     closeBrowse();
+    syncDiagnosticsPanelPosition();
     isDiagnosticsOpen = true;
   }
 
@@ -129,6 +133,12 @@
 
   function closeDiagnostics(): void {
     isDiagnosticsOpen = false;
+    diagnosticsPanelStyle = "";
+  }
+
+  async function copyDiagnosticPath(path: string): Promise<void> {
+    await navigator.clipboard.writeText(path);
+    toast.success("Path copied to clipboard.");
   }
 
   function handleBrowseBackdropClick(): void {
@@ -157,6 +167,10 @@
 
   function handleExternalBrowseToggle(): void {
     void openBrowsePalette();
+  }
+
+  function handleWindowResize(): void {
+    syncDiagnosticsPanelPosition();
   }
 
   onMount(() => {
@@ -386,12 +400,24 @@
   function isContentEditableField(element: Element): boolean {
     return element.getAttribute("contenteditable") === "true";
   }
+
+  function syncDiagnosticsPanelPosition(): void {
+    if (diagnosticsAnchor === undefined) {
+      return;
+    }
+
+    const bounds = diagnosticsAnchor.getBoundingClientRect();
+    const top = Math.round(bounds.bottom + 8);
+    const right = Math.max(16, Math.round(window.innerWidth - bounds.right));
+
+    diagnosticsPanelStyle = `top: ${top}px; right: ${right}px;`;
+  }
 </script>
 
-<svelte:window on:keydown={handleWindowKeydown} />
+<svelte:window on:keydown={handleWindowKeydown} on:resize={handleWindowResize} />
 
 <div class="theme-root" data-theme={theme} data-hydrated={isHydrated} data-testid="theme-root">
-  <Toaster richColors position="top-right" />
+  <Toaster richColors position="bottom-right" />
 
   <div class="app-shell">
     <header class="topbar">
@@ -421,57 +447,24 @@
       </div>
 
       <div class="topbar__actions" data-testid="topbar-right">
-        {#if data.collection.skipped.length > 0}
-          <div class="diagnostics-anchor">
-            <button
-              type="button"
-              class="button button--secondary diagnostics-trigger"
-              class:diagnostics-trigger--active={isDiagnosticsOpen}
-              data-testid="diagnostics-trigger"
-              aria-expanded={isDiagnosticsOpen}
-              aria-controls="diagnostics-panel"
-              on:click={toggleDiagnostics}
-            >
-              <span class="diagnostics-trigger__icon" aria-hidden="true">!</span>
-              <span class="diagnostics-trigger__label">Issues</span>
-              <span class="diagnostics-trigger__count" data-testid="diagnostics-count">
-                {data.collection.skipped.length}
-              </span>
-            </button>
+        <div bind:this={diagnosticsAnchor} class="diagnostics-anchor">
+          <button
+            type="button"
+            class="button button--secondary diagnostics-trigger"
+            class:diagnostics-trigger--active={isDiagnosticsOpen}
+            data-testid="diagnostics-trigger"
+            aria-expanded={isDiagnosticsOpen}
+            aria-controls="diagnostics-panel"
+            on:click={toggleDiagnostics}
+          >
+            <span class="diagnostics-trigger__icon" aria-hidden="true">!</span>
+            <span class="diagnostics-trigger__label">Issues</span>
+            <span class="diagnostics-trigger__count" data-testid="diagnostics-count">
+              {data.collection.skipped.length}
+            </span>
+          </button>
 
-            {#if isDiagnosticsOpen}
-              <div
-                id="diagnostics-panel"
-                class="diagnostics-panel"
-                data-testid="diagnostics-panel"
-                tabindex="-1"
-              >
-                <div class="diagnostics-panel__summary">
-                  <p class="diagnostics-panel__title">Skipped tours</p>
-                  <p class="diagnostics-panel__copy" data-testid="diagnostics-summary">
-                    {data.collection.skipped.length}
-                    {data.collection.skipped.length === 1
-                      ? " invalid tour was omitted from the collection."
-                      : " invalid tours were omitted from the collection."}
-                  </p>
-                </div>
-
-                <div class="diagnostics-list" data-testid="diagnostics-list">
-                  {#each diagnosticItems as diagnostic (diagnostic.path)}
-                    <article class="diagnostics-item" data-testid="diagnostics-item">
-                      <p class="diagnostics-item__title">{diagnostic.title}</p>
-                      <p class="diagnostics-item__path">{diagnostic.path}</p>
-                      <p class="diagnostics-item__error">{diagnostic.summary}</p>
-                      {#if diagnostic.detail !== null}
-                        <p class="diagnostics-item__detail">{diagnostic.detail}</p>
-                      {/if}
-                    </article>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-          </div>
-        {/if}
+        </div>
         <a
           class="topbar__link"
           href="https://github.com/h-4vok/diagram-tours"
@@ -515,6 +508,66 @@
         data-testid="browse-backdrop"
         on:click={handleBrowseBackdropClick}
       ></button>
+    {/if}
+
+
+    {#if isDiagnosticsOpen}
+      <div
+        id="diagnostics-panel"
+        class="diagnostics-panel"
+        data-testid="diagnostics-panel"
+        tabindex="-1"
+        style={diagnosticsPanelStyle}
+      >
+        <div class="diagnostics-panel__header">
+          <div class="diagnostics-panel__summary">
+            <p class="diagnostics-panel__title">Issues Detected</p>
+            <p class="diagnostics-panel__copy" data-testid="diagnostics-summary">
+              {data.collection.skipped.length > 0
+                ? `${data.collection.skipped.length} skipped tour${data.collection.skipped.length === 1 ? "" : "s"} in current workspace.`
+                : "All clear. No issues found in current workspace."}
+            </p>
+          </div>
+          <span class="diagnostics-panel__badge" data-testid="diagnostics-panel-count">
+            {data.collection.skipped.length}
+          </span>
+        </div>
+
+        {#if diagnosticItems.length === 0}
+          <div class="diagnostics-empty" data-testid="diagnostics-empty-state">
+            <span class="diagnostics-empty__icon" aria-hidden="true">?</span>
+            <p class="diagnostics-empty__title">All clear</p>
+            <p class="diagnostics-empty__copy">No issues found in current workspace.</p>
+          </div>
+        {:else}
+          <div class="diagnostics-list" data-testid="diagnostics-list">
+            {#each diagnosticItems as diagnostic (diagnostic.path)}
+              <article class="diagnostics-item" data-testid="diagnostics-item">
+                <div class="diagnostics-item__context">
+                  <code class="diagnostics-item__path" title={diagnostic.path}>{diagnostic.path}</code>
+                  <button
+                    type="button"
+                    class="diagnostics-item__copy"
+                    data-testid="diagnostics-copy-path"
+                    aria-label={`Copy ${diagnostic.path}`}
+                    on:click={() => void copyDiagnosticPath(diagnostic.path)}
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p class="diagnostics-item__error">{diagnostic.summary}</p>
+                {#if diagnostic.code !== null}
+                  <p class="diagnostics-item__detail">
+                    <code class="diagnostics-item__code">{diagnostic.code}</code>
+                  </p>
+                {:else if diagnostic.detail !== null}
+                  <p class="diagnostics-item__detail">{diagnostic.detail}</p>
+                {/if}
+              </article>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
 
     <div class="app-canvas">

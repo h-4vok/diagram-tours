@@ -179,7 +179,8 @@ async function expectRepoWideBrowse(page: Page): Promise<void> {
 
 async function expectExamplesBrowse(page: Page): Promise<void> {
   await expect(page.getByTestId("preview-target-notice")).toHaveCount(0);
-  await expect(page.getByTestId("diagnostics-trigger")).toHaveCount(0);
+  await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();
+  await expect(page.getByTestId("diagnostics-count")).toHaveText("0");
   await expectBrowseSearchEmpty(page, "alpha");
   await expectBrowseSearchEmpty(page, "beta");
   await expectBrowseSearchMatch(page, "release", "Release Pipeline");

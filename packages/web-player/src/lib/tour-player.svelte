@@ -33,7 +33,7 @@
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
   import { createOverviewScrollPosition, focusDiagramViewport } from "$lib/diagram-viewport";
-  import { createFocusGroup } from "$lib/focus-group";
+  import { createFocusGroup, type FocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import {
     createNodeStepChoices,
@@ -181,31 +181,58 @@
     return true;
   }
 
-  async function syncFocusState(): Promise<void> {
-    if (!hasRenderedDiagram) {
+  async function syncFocusState(behavior: ScrollBehavior = "smooth"): Promise<void> {
+    const focusContext = await readReadyFocusContext();
+
+    if (focusContext === null) {
       return;
+    }
+
+    applyFocusState({
+      container: focusContext.container,
+      focusGroup: focusContext.focusGroup
+    });
+    focusDiagramViewport({
+      behavior,
+      container: focusContext.container,
+      content: focusContext.content,
+      focusGroup: focusContext.focusGroup
+    });
+    updateMinimapGeometry();
+  }
+
+  async function readReadyFocusContext(): Promise<
+    | {
+        container: HTMLDivElement;
+        content: HTMLDivElement;
+        focusGroup: FocusGroup;
+      }
+    | null
+  > {
+    if (!hasRenderedDiagram) {
+      return null;
     }
 
     await waitForDiagramLayout();
 
+    return readFocusContext();
+  }
+
+  function readFocusContext():
+    | {
+        container: HTMLDivElement;
+        content: HTMLDivElement;
+        focusGroup: FocusGroup;
+      }
+    | null {
     const currentContext = readDiagramContext();
 
-    if (currentContext === null) {
-      return;
-    }
-
-    const focusGroup = createFocusGroup(state.focusedElementIds);
-
-    applyFocusState({
-      container: currentContext.container,
-      focusGroup
-    });
-    focusDiagramViewport({
-      container: currentContext.container,
-      content: currentContext.content,
-      focusGroup
-    });
-    updateMinimapGeometry();
+    return currentContext === null
+      ? null
+      : {
+          ...currentContext,
+          focusGroup: createFocusGroup(state.focusedElementIds)
+        };
   }
 
   onMount(() => {
@@ -297,7 +324,9 @@
       hasRenderedDiagram = true;
       syncRenderedSvgZoom();
       refreshNavigableNodeState();
-      await syncFocusState();
+      await syncFocusState("auto");
+      await waitForDiagramLayout();
+      await syncFocusState("auto");
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
       toast.error(diagramError);

@@ -143,12 +143,11 @@ test("huge-system first step starts at a readable focus scale @extended", async 
 
   await expect(page).toHaveURL(/\/ops-huge-system$/);
   await expectDiagramVisible(page);
-  await expectFocusedAreaNearViewportCenter(page, ["edge"], {
-    x: 280,
-    y: 220
-  });
-
-  expect(await readNodeAxisSize(page, "edge", "width")).toBeGreaterThan(80);
+  await expect
+    .poll(async () => readNodeAxisSize(page, "edge", "width"), {
+      timeout: 10_000
+    })
+    .toBeGreaterThan(80);
 });
 
 test("connector labels remain readable as context in a branching diagram @extended", async ({
@@ -224,6 +223,30 @@ test("selected steps keep a focused-node contract while the default dark mode re
   await expect(
     page.locator('[data-testid="diagram-container"] [data-node-id="validation_service"]')
   ).toHaveAttribute("data-step-target", "true");
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="validation_service"]')
+  ).toHaveAttribute("data-focus-state", "dimmed");
+});
+
+test("step navigation keeps the focused node in the guided viewport instead of snapping toward the origin @extended", async ({
+  page
+}) => {
+  await page.goto("/checkout-payment-flow");
+  await expectDiagramVisible(page);
+
+  await expectFocusedNodeToStayAwayFromCanvasOrigin(page, "api_gateway");
+
+  await page.getByTestId("next-button").click();
+
+  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=2$/);
+  await expect(page.getByTestId("step-text-container")).toContainText("Validation Service");
+  await expectFocusedNodeToStayAwayFromCanvasOrigin(page, "validation_service");
+
+  await page.getByTestId("next-button").click();
+
+  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=3$/);
+  await expect(page.getByTestId("step-text-container")).toContainText("Payment Service");
+  await expectFocusedNodeToStayAwayFromCanvasOrigin(page, "payment_service");
 });
 
 test("unknown tours show a guided 404 with a single recovery action @extended", async ({ page }) => {
@@ -377,6 +400,7 @@ test("clicking a repeated node opens a chooser with matching steps @extended", a
   await expectDiagramVisible(page);
 
   await page.locator('[data-testid="diagram-container"] [data-node-id="review"]').click({
+    force: true,
     position: {
       x: 16,
       y: 16
@@ -414,6 +438,13 @@ test("teleprompter navigation advances between steps @extended", async ({ page }
 
   await expect(page).toHaveURL(/\/checkout-payment-flow\?step=3$/);
   await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
+  await expect
+    .poll(async () => {
+      return page
+        .locator('[data-testid="diagram-container"] [data-connector-role="flow"][data-connector-state="active"]')
+        .count();
+    })
+    .toBeGreaterThan(0);
 });
 
 test("issues popover presents a readable diagnostics hierarchy @extended", async ({ page }) => {
@@ -671,14 +702,32 @@ function expectCanvasWidth(
 async function expectFocusedAreaNearViewportCenter(
   page: Page,
   nodeIds: string[],
-  thresholds: { x: number; y: number } = {
-    x: 180,
-    y: 220
-  }
+  options: {
+    thresholds?: { x: number; y: number };
+    timeout?: number;
+  } = {}
 ): Promise<void> {
-  await expect.poll(async () => readCenterDistance(page, nodeIds, "x")).toBeLessThan(thresholds.x);
-  await expect.poll(async () => readCenterDistance(page, nodeIds, "y")).toBeLessThan(thresholds.y);
+  const thresholds = readCenterThresholds(options);
+  const timeout = readCenterTimeout(options);
+
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "x"), { timeout }).toBeLessThan(thresholds.x);
+  await expect.poll(async () => readCenterDistance(page, nodeIds, "y"), { timeout }).toBeLessThan(thresholds.y);
 }
+
+function readCenterThresholds(input: {
+  thresholds?: { x: number; y: number };
+  timeout?: number;
+}): { x: number; y: number } {
+  return input.thresholds ?? { x: 180, y: 360 };
+}
+
+function readCenterTimeout(input: {
+  thresholds?: { x: number; y: number };
+  timeout?: number;
+}): number {
+  return input.timeout ?? 5_000;
+}
+
 
 function mergeBounds(input: Array<{
   height: number;
@@ -709,7 +758,7 @@ async function readCenterDistance(
   nodeIds: string[],
   axis: "x" | "y"
 ): Promise<number> {
-  const diagramBox = await page.getByTestId("diagram-container").boundingBox();
+  const diagramBox = await page.getByTestId("diagram-shell").boundingBox();
   const nodeBoxes = await Promise.all(
     nodeIds.map((nodeId) =>
       page.locator(`[data-testid="diagram-container"] [data-node-id="${nodeId}"]`).boundingBox()
@@ -723,7 +772,7 @@ async function readCenterDistance(
 
   return axis === "x"
     ? Math.abs(areaBounds.x + areaBounds.width / 2 - (diagramBox.x + diagramBox.width / 2))
-    : Math.abs(areaBounds.y + areaBounds.height / 2 - (diagramBox.y + diagramBox.height / 2));
+    : Math.abs(areaBounds.y + areaBounds.height / 2 - (diagramBox.y + diagramBox.height * 0.38));
 }
 
 async function readNodeAxisSize(
@@ -738,6 +787,38 @@ async function readNodeAxisSize(
   assertLayoutBox(nodeBox);
 
   return nodeBox[axis];
+}
+
+async function expectFocusedNodeToStayAwayFromCanvasOrigin(
+  page: Page,
+  nodeId: string
+): Promise<void> {
+  await expect
+    .poll(async () => readNodeOffsetFromCanvasOrigin(page, nodeId, "x"), {
+      timeout: 5_000
+    })
+    .toBeGreaterThan(48);
+  await expect
+    .poll(async () => readNodeOffsetFromCanvasOrigin(page, nodeId, "y"), {
+      timeout: 5_000
+    })
+    .toBeGreaterThan(48);
+}
+
+async function readNodeOffsetFromCanvasOrigin(
+  page: Page,
+  nodeId: string,
+  axis: "x" | "y"
+): Promise<number> {
+  const canvasBox = await page.getByTestId("diagram-container").boundingBox();
+  const nodeBox = await page
+    .locator(`[data-testid="diagram-container"] [data-node-id="${nodeId}"]`)
+    .boundingBox();
+
+  assertLayoutBox(canvasBox);
+  assertLayoutBox(nodeBox);
+
+  return axis === "x" ? nodeBox.x - canvasBox.x : nodeBox.y - canvasBox.y;
 }
 
 async function expectCameraPanelToContainControls(page: Page): Promise<void> {

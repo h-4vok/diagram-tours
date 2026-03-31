@@ -39,6 +39,11 @@ describe("+layout.svelte", () => {
     window.localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     pageState.url = new URL("https://example.test/payment-flow");
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(() => Promise.resolve())
+      }
+    });
   });
 
   it("renders the top bar and a single command-palette trigger", async () => {
@@ -264,7 +269,7 @@ describe("+layout.svelte", () => {
     );
   });
 
-  it("surfaces skipped-tour diagnostics in a topbar popover", async () => {
+  it("surfaces skipped-tour diagnostics in a structured topbar popover", async () => {
     render(Layout, {
       data: {
         collection: {
@@ -272,7 +277,7 @@ describe("+layout.svelte", () => {
           skipped: [
             {
               sourcePath: "broken.tour.yaml",
-              error: "broken"
+              error: "step 1 focus references unknown Mermaid node id 'ghost'"
             }
           ]
         },
@@ -283,13 +288,30 @@ describe("+layout.svelte", () => {
     expect(screen.getByTestId("diagnostics-count").textContent).toBe("1");
     await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
 
-    expect(
-      (await screen.findByTestId("diagnostics-summary")).textContent?.replace(/\s+/g, " ").trim()
-    ).toBe("1 invalid tour was omitted from the collection.");
+    expect((await screen.findByTestId("diagnostics-summary")).textContent).toContain(
+      "1 skipped tour in current workspace."
+    );
+    expect(screen.getByTestId("diagnostics-panel-count").textContent).toBe("1");
 
     const diagnosticsItem = await screen.findByTestId("diagnostics-item");
 
     expect(diagnosticsItem.textContent).toContain("broken.tour.yaml");
     expect(diagnosticsItem.textContent).toContain("broken");
+    expect(within(diagnosticsItem).getByText("ghost")).toBeDefined();
+  });
+
+  it("shows a zero state when no diagnostics exist", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    expect(screen.getByTestId("diagnostics-count").textContent).toBe("0");
+    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
+
+    expect(await screen.findByTestId("diagnostics-empty-state")).toBeDefined();
+    expect(screen.getByText("All clear")).toBeDefined();
   });
 });

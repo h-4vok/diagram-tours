@@ -72,6 +72,10 @@ Cutoff date: 2026-03-17
   - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
 - BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
   - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
+- BT-024 Split smoke coverage into one spec file per behavior slice
+  - Note: break up large smoke files such as `packages/web-player/smoke/payment-flow.spec.ts` into smaller focused specs so targeted agent validation can run only the touched smoke file instead of a giant mixed suite
+- BT-025 Add max-lines-per-file guardrails across code and tests
+  - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 
 ## Notes
 
