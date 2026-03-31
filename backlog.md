@@ -18,6 +18,9 @@ Cutoff date: 2026-03-17
 ### Done
 
 - Moved to [`backlog.done.md`](backlog.done.md) to keep the active backlog smaller.
+- BT-004 Layout polish and highlight hierarchy
+  - Current state: the player now uses the redesigned fullscreen shell, layered controls, and non-geometric focus styling so highlighted nodes stay in place while stepping through the tour
+  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/smoke/payment-flow.spec.ts`
 
 ### Partial
 
@@ -25,10 +28,6 @@ Cutoff date: 2026-03-17
   - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
   - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
   - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/diagnostics.ts`
-- BT-004 Layout polish and highlight hierarchy
-  - Current state: the player now uses an immersive fullscreen shell with an overlay top bar, dynamic breadcrumbs, centered search hint with keyboard shortcut (`Ctrl/Cmd+K`), a consolidated bottom-right camera cluster (minimap + segmented zoom), and standardized z-index layers for canvas, controls, teleprompter, palette, and toasts
-  - Gap: connectors, labels, and fine-grained visual hierarchy still need a dedicated follow-up polish pass
-  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/layout/page.css`, `packages/web-player/src/styles/components/cards.css`, `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
 - BT-005 Wizard path retry UX
   - Current state: invalid explicit paths fail clearly during wizard input validation
   - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
