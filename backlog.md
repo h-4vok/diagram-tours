@@ -15,13 +15,6 @@ Initial source: a contrast between [`docs/reqs.md`](docs/reqs.md), the current c
 
 Cutoff date: 2026-03-17
 
-### Done
-
-- Moved to [`backlog.done.md`](backlog.done.md) to keep the active backlog smaller.
-- BT-004 Layout polish and highlight hierarchy
-  - Current state: the player now uses the redesigned fullscreen shell, layered controls, and non-geometric focus styling so highlighted nodes stay in place while stepping through the tour
-  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/smoke/payment-flow.spec.ts`
-
 ### Partial
 
 - BT-003 Author diagnostics
@@ -71,8 +64,6 @@ Cutoff date: 2026-03-17
   - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
 - BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
   - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
-- BT-024 Split smoke coverage into one spec file per behavior slice
-  - Note: break up large smoke files such as `packages/web-player/smoke/payment-flow.spec.ts` into smaller focused specs so targeted agent validation can run only the touched smoke file instead of a giant mixed suite
 - BT-025 Add max-lines-per-file guardrails across code and tests
   - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 

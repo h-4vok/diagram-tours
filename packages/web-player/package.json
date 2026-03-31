@@ -16,10 +16,7 @@
     "preview": "node build",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "svelte-kit sync && vitest run --config ./vitest.config.ts --coverage",
-    "smoke": "bun run smoke:core",
-    "smoke:core": "playwright test --config ./playwright.config.ts --grep @core",
-    "smoke:extended": "playwright test --config ./playwright.config.ts --grep @extended --workers 2",
-    "smoke:full": "playwright test --config ./playwright.config.ts --workers 2",
+    "smoke": "playwright test --config ./playwright.config.ts",
     "lint": "eslint . --max-warnings 0 && stylelint \"src/styles/**/*.css\" --max-warnings 0"
   },
   "dependencies": {

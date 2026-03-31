@@ -182,7 +182,6 @@ Other available commands:
 - `bun run typecheck`
 - `bun run test`
 - `bun run smoke`
-- `bun run smoke:full`
 - `bun run prepush`
 
 The shipped example library lives directly under `examples/` with flat, domain-prefixed stems such as `checkout-payment-flow` and `ops-huge-system`.

@@ -8,6 +8,14 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- Moved to [`backlog.done.md`](backlog.done.md) to keep the active backlog smaller.
+- BT-024 Smoke suite split by file and unified smoke command
+  - Current state: each smoke file now contains one test, the browser suite runs through a single `bun run smoke`, and the docs tell agents to run only the relevant file for the current task
+  - Evidence: `packages/web-player/smoke/*.spec.ts`, `packages/web-player/package.json`, `package.json`, `docs/testing/smoke-tests.md`
+- BT-004 Layout polish and highlight hierarchy
+  - Current state: the player now uses the redesigned fullscreen shell, layered controls, and non-geometric focus styling so highlighted nodes stay in place while stepping through the tour
+  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/smoke/payment-flow.*.spec.ts`
+
 - Default dark mode for first-time users
   - Current state: the web player now boots into dark mode until a stored preference exists, while still honoring explicit light/dark selections across hydration and subsequent navigation
   - Testing expectation: theme helper coverage, layout coverage, and smoke coverage validate the first-load default plus persistence behavior
@@ -84,10 +92,10 @@ Cutoff date: 2026-03-17
   - Evidence: `package.json`, `scripts/build-coverage-dashboard.ts`, `scripts/vitest.config.ts`, `docs/testing/coverage.md`
 - Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
   - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
-- Rebalance smoke coverage into core smoke vs extended pre-push coverage
-  - Current state: `bun run smoke` now runs a smaller tagged core browser suite for packaged-runtime startup and critical navigation confidence, while broader browser scenarios run through an extended suite included in `bun run prepush`
-  - Testing expectation: script coverage and Playwright selection validate that every existing browser scenario remains covered in either the core or extended tier, with `prepush` still exercising the full browser surface before handoff
-  - Evidence: `package.json`, `packages/web-player/package.json`, `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
+- Rebalance smoke coverage into a single suite with file-level targeting
+  - Current state: `bun run smoke` runs the full browser suite, while individual smoke files stay small enough for targeted agent execution when a task only touches one behavior
+  - Testing expectation: script coverage and Playwright discovery validate that each browser scenario lives in one file and that the full suite still runs cleanly for human and CI checks
+  - Evidence: `package.json`, `packages/web-player/package.json`, `packages/web-player/smoke/*.spec.ts`, `docs/testing/smoke-tests.md`
 - Support for more complex diagram types, including Mermaid sequence diagrams
   - Current state: version 1 now supports Mermaid flowcharts plus Mermaid sequence diagrams with addressable participants and tagged messages, generated fallback steps, `focus`/`{{ref}}` resolution, minimap markers, viewport centering, and click-to-step navigation
   - Scope note: notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs still remain out of scope
