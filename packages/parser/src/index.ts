@@ -4,6 +4,7 @@ import { basename, dirname, relative, resolve } from "node:path";
 
 import {
   SUPPORTED_TOUR_VERSION,
+  type DiagnosticLocation,
   type DiagramElement,
   type DiagramTour,
   type DiagramType,
@@ -11,9 +12,11 @@ import {
   type ResolvedDiagramTourCollection,
   type ResolvedDiagramTourCollectionEntry,
   type SkippedResolvedDiagramTour,
+  type TourDiagnostic,
   type TourStep
 } from "@diagram-tour/core";
 import { parse as parseYaml } from "yaml";
+import { createTourDiagnostic } from "./diagnostics.js";
 
 const FLOWCHART_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
@@ -84,6 +87,24 @@ type SequenceDiagramModel = {
   participants: DiagramElement[];
   renderSource: string;
 };
+export interface TourValidationIssue {
+  diagnostic: TourDiagnostic;
+  sourceId: string;
+  sourcePath: string;
+}
+
+export interface TourValidationReport {
+  issues: TourValidationIssue[];
+  total: number;
+  valid: number;
+}
+
+type ValidationTargetState = Exclude<Awaited<ReturnType<typeof resolveValidationTarget>>, null>;
+type ValidationTargetReport = {
+  countedSourceIds: string[];
+  invalidSourceIds: string[];
+  issues: TourValidationIssue[];
+};
 
 export async function loadResolvedTour(tourPath: string): Promise<ResolvedDiagramTour> {
   const absoluteTourPath = resolve(tourPath);
@@ -107,7 +128,274 @@ export async function loadResolvedTourCollection(
     return createSingleEntryCollection(absoluteTarget);
   }
 
-  return createDiscoveredTourCollection(absoluteTarget);
+  const collection = await createDiscoveredTourCollection(absoluteTarget);
+
+  assertDiscoveredEntries(collection.entries.length, absoluteTarget);
+
+  return collection;
+}
+
+export async function validateResolvedTourTargets(
+  sourceTargets: string[]
+): Promise<TourValidationReport> {
+  const issues: TourValidationIssue[] = [];
+  const countedSourceIds = new Set<string>();
+  const invalidSourceIds = new Set<string>();
+  const seenIssueIds = new Set<string>();
+
+  for (const target of readValidationTargets(sourceTargets)) {
+    appendValidationReport({
+      countedSourceIds,
+      invalidSourceIds,
+      issues,
+      seenIssueIds,
+      targetReport: await validateResolvedTourTarget(target)
+    });
+  }
+
+  issues.sort((left, right) => left.sourceId.localeCompare(right.sourceId));
+
+  return {
+    issues,
+    total: countedSourceIds.size,
+    valid: countedSourceIds.size - invalidSourceIds.size
+  };
+}
+
+async function validateResolvedTourTarget(target: string): Promise<ValidationTargetReport> {
+  const absoluteTarget = resolve(target);
+  const targetState = await resolveValidationTarget(absoluteTarget);
+
+  if (targetState === null) {
+    return createMissingValidationTargetReport(absoluteTarget, target);
+  }
+
+  if (targetState.kind === "unsupported") {
+    return createUnsupportedValidationTargetReport(targetState.absolutePath, target);
+  }
+
+  return await readValidationTargetIssues(targetState, target);
+}
+
+async function readValidationTargetIssues(
+  targetState: ValidationTargetState,
+  target: string
+): Promise<ValidationTargetReport> {
+  try {
+    const collection = await readValidationTargetCollection(targetState);
+
+    const noValidToursReport = readNoValidToursReport(collection, targetState.absolutePath, target);
+
+    if (noValidToursReport !== null) {
+      return noValidToursReport;
+    }
+
+    return readValidationCollectionReport(collection, targetState);
+  } catch (error) {
+    return createUnexpectedValidationReport(targetState.absolutePath, target, error);
+  }
+}
+
+function readNoValidToursReport(
+  collection: ResolvedDiagramTourCollection,
+  absoluteTarget: string,
+  target: string
+): ValidationTargetReport | null {
+  if (collection.entries.length === 0 && collection.skipped.length === 0) {
+    return createNoValidToursReport(absoluteTarget, target);
+  }
+
+  return null;
+}
+
+function readValidationCollectionReport(
+  collection: ResolvedDiagramTourCollection,
+  targetState: ValidationTargetState
+): ValidationTargetReport {
+  return {
+    countedSourceIds: [
+      ...collection.entries.map((entry) => readValidationEntrySourceId(targetState, entry.sourcePath)),
+      ...collection.skipped.map((skipped) => skipped.sourceId)
+    ],
+    invalidSourceIds: collection.skipped.map((skipped) => skipped.sourceId),
+    issues: collection.skipped.map((skipped) => ({
+      diagnostic: skipped.diagnostic,
+      sourceId: skipped.sourceId,
+      sourcePath: skipped.sourcePath
+    }))
+  };
+}
+
+function readValidationEntrySourceId(
+  targetState: ValidationTargetState,
+  sourcePath: string
+): string {
+  return normalizePath(resolve(readValidationTargetSourceRoot(targetState), sourcePath));
+}
+
+function readValidationTargetSourceRoot(targetState: ValidationTargetState): string {
+  return targetState.kind === "directory" ? targetState.absolutePath : dirname(targetState.absolutePath);
+}
+
+function createMissingValidationTargetReport(
+  absoluteTarget: string,
+  target: string
+): ValidationTargetReport {
+  return {
+    countedSourceIds: [],
+    invalidSourceIds: [],
+    issues: [createMissingValidationTargetIssue(absoluteTarget, target)]
+  };
+}
+
+function createUnsupportedValidationTargetReport(
+  absoluteTarget: string,
+  target: string
+): ValidationTargetReport {
+  return {
+    countedSourceIds: [],
+    invalidSourceIds: [],
+    issues: [createUnsupportedValidationTargetIssue(absoluteTarget, target)]
+  };
+}
+
+async function readValidationTargetCollection(
+  targetState: Exclude<Awaited<ReturnType<typeof resolveValidationTarget>>, null>
+): Promise<ResolvedDiagramTourCollection> {
+  if (targetState.kind === "directory") {
+    return await createDiscoveredTourCollection(targetState.absolutePath);
+  }
+
+  return await createValidationSingleEntryCollection(targetState.absolutePath);
+}
+
+async function createValidationSingleEntryCollection(
+  absolutePath: string
+): Promise<ResolvedDiagramTourCollection> {
+  try {
+    return await createSingleEntryCollection(absolutePath);
+  } catch (error) {
+    return {
+      entries: [],
+      skipped: [createSkippedTourEntry(absolutePath, dirname(absolutePath), error)]
+    };
+  }
+}
+
+function createNoValidToursReport(absoluteTarget: string, target: string): ValidationTargetReport {
+  return {
+    countedSourceIds: [],
+    invalidSourceIds: [],
+    issues: [createNoValidToursIssue(absoluteTarget, target)]
+  };
+}
+
+function createUnexpectedValidationReport(
+  absoluteTarget: string,
+  target: string,
+  error: unknown
+): ValidationTargetReport {
+  return {
+    countedSourceIds: [],
+    invalidSourceIds: [],
+    issues: [createUnexpectedValidationIssue(absoluteTarget, target, error)]
+  };
+}
+
+function readValidationTargets(sourceTargets: string[]): string[] {
+  return sourceTargets.length > 0 ? sourceTargets : ["."];
+}
+
+function appendValidationReport(input: {
+  countedSourceIds: Set<string>;
+  invalidSourceIds: Set<string>;
+  issues: TourValidationIssue[];
+  seenIssueIds: Set<string>;
+  targetReport: ValidationTargetReport;
+}): void {
+  for (const countedSourceId of input.targetReport.countedSourceIds) {
+    input.countedSourceIds.add(countedSourceId);
+  }
+
+  for (const invalidSourceId of input.targetReport.invalidSourceIds) {
+    input.invalidSourceIds.add(invalidSourceId);
+  }
+
+  appendValidationIssues(input.issues, input.seenIssueIds, input.targetReport.issues);
+}
+
+function appendValidationIssues(
+  issues: TourValidationIssue[],
+  seenIssueIds: Set<string>,
+  targetIssues: TourValidationIssue[]
+): void {
+  for (const issue of targetIssues) {
+    appendValidationIssue(issues, seenIssueIds, issue);
+  }
+}
+
+function createMissingValidationTargetIssue(absoluteTarget: string, target: string): TourValidationIssue {
+  return {
+    diagnostic: {
+      code: null,
+      location: null,
+      message: `Path does not exist: ${normalizePath(absoluteTarget)}`
+    },
+    sourceId: normalizePath(absoluteTarget),
+    sourcePath: normalizePath(target)
+  };
+}
+
+function createUnsupportedValidationTargetIssue(
+  absoluteTarget: string,
+  target: string
+): TourValidationIssue {
+  return {
+    diagnostic: {
+      code: null,
+      location: null,
+      message: `Expected a .tour.yaml, .mmd, .mermaid, .md file, or a directory: ${normalizePath(absoluteTarget)}`
+    },
+    sourceId: normalizePath(absoluteTarget),
+    sourcePath: normalizePath(target)
+  };
+}
+
+function createNoValidToursIssue(absoluteTarget: string, target: string): TourValidationIssue {
+  return {
+    diagnostic: {
+      code: null,
+      location: null,
+      message: `No valid tours or diagrams were discovered in source target "${normalizePath(absoluteTarget)}".`
+    },
+    sourceId: normalizePath(absoluteTarget),
+    sourcePath: normalizePath(target)
+  };
+}
+
+function createUnexpectedValidationIssue(
+  absoluteTarget: string,
+  target: string,
+  error: unknown
+): TourValidationIssue {
+  return {
+    diagnostic: createTourDiagnostic(error),
+    sourceId: normalizePath(absoluteTarget),
+    sourcePath: normalizePath(target)
+  };
+}
+
+function appendValidationIssue(
+  issues: TourValidationIssue[],
+  seenIssueIds: Set<string>,
+  issue: TourValidationIssue
+): void {
+  if (seenIssueIds.has(issue.sourceId)) {
+    return;
+  }
+
+  seenIssueIds.add(issue.sourceId);
+  issues.push(issue);
 }
 
 async function createSingleEntryCollection(
@@ -142,7 +430,6 @@ async function createDiscoveredTourCollection(
     sourceRoot
   });
   result.entries.sort((left, right) => left.slug.localeCompare(right.slug));
-  assertDiscoveredEntries(result.entries.length, sourceRoot);
 
   return result;
 }
@@ -224,9 +511,13 @@ function createSkippedTourEntry(
   sourceRoot: string,
   error: unknown
 ): SkippedResolvedDiagramTour {
+  const diagnostic = createTourDiagnostic(error);
+
   return {
-    sourcePath: normalizePath(relative(sourceRoot, absoluteTourPath)),
-    error: (error as Error).message
+    diagnostic,
+    error: diagnostic.message,
+    sourceId: normalizePath(absoluteTourPath),
+    sourcePath: normalizePath(relative(sourceRoot, absoluteTourPath))
   };
 }
 
@@ -1428,7 +1719,36 @@ function ensureContextualError(error: unknown, context: TourContext): Error {
     return error;
   }
 
-  return new Error(createTourMessage(context, error.message));
+  return createContextualError(error, context);
+}
+
+function createContextualError(error: Error, context: TourContext): Error {
+  const diagnostic = createTourDiagnostic(error);
+  const contextualError = new Error(createTourMessage(context, diagnostic.message));
+
+  attachContextualLocation(contextualError, diagnostic.location);
+  attachContextualCode(contextualError, diagnostic.code);
+
+  return contextualError;
+}
+
+function attachContextualLocation(
+  error: Error,
+  location: DiagnosticLocation | null
+): void {
+  if (location === null) {
+    return;
+  }
+
+  (error as Error & { location?: DiagnosticLocation | null }).location = location;
+}
+
+function attachContextualCode(error: Error, code: string | null): void {
+  if (code === null) {
+    return;
+  }
+
+  (error as Error & { code?: string | null }).code = code;
 }
 
 function normalizePath(path: string): string {
@@ -1437,4 +1757,76 @@ function normalizePath(path: string): string {
 
 function normalizeNewlines(value: string): string {
   return value.replaceAll("\r\n", "\n");
+}
+
+async function resolveValidationTarget(
+  absolutePath: string
+): Promise<
+  | {
+      absolutePath: string;
+      kind: "directory" | "file";
+    }
+  | {
+      absolutePath: string;
+      kind: "unsupported";
+    }
+  | null
+> {
+  try {
+    const stats = await stat(absolutePath);
+
+    return readValidationTargetStats(absolutePath, stats);
+  } catch {
+    return null;
+  }
+}
+
+function readValidationTargetStats(
+  absolutePath: string,
+  stats: Awaited<ReturnType<typeof stat>>
+):
+  | {
+      absolutePath: string;
+      kind: "directory" | "file";
+    }
+  | {
+      absolutePath: string;
+      kind: "unsupported";
+    } {
+  if (stats.isDirectory()) {
+    return {
+      absolutePath,
+      kind: "directory"
+    };
+  }
+
+  return readValidationTargetFile(absolutePath);
+}
+
+function readValidationTargetFile(
+  absolutePath: string
+):
+  | {
+      absolutePath: string;
+      kind: "file";
+    }
+  | {
+      absolutePath: string;
+      kind: "unsupported";
+    } {
+  if (isSupportedValidationFile(absolutePath)) {
+    return {
+      absolutePath,
+      kind: "file"
+    };
+  }
+
+  return {
+    absolutePath,
+    kind: "unsupported"
+  };
+}
+
+function isSupportedValidationFile(absolutePath: string): boolean {
+  return [TOUR_FILE_SUFFIX, ...DIAGRAM_FILE_SUFFIXES].some((suffix) => absolutePath.endsWith(suffix));
 }

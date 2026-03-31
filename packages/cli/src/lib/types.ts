@@ -1,6 +1,6 @@
 export type BrowserPreference = "always" | "never" | "prompt";
 
-export type StartupMode = "direct" | "version" | "wizard";
+export type StartupMode = "direct" | "validate" | "version" | "wizard";
 
 export interface ParsedCliArgs {
   browser: BrowserPreference;
@@ -9,6 +9,7 @@ export interface ParsedCliArgs {
   mode: StartupMode;
   port: number | null;
   target: string | null;
+  targets: string[];
 }
 
 export interface ResolvedLaunchOptions {

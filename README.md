@@ -77,6 +77,21 @@ When you pass a directory, Mermaid file, or `*.tour.yaml` path directly:
 - the local URL is printed
 - the browser does not open unless you ask for it with `--open`
 
+## Validate Tours
+
+Use `diagram-tours validate` to check one or more tour targets without starting the browser:
+
+```bash
+diagram-tours validate
+diagram-tours validate ./examples
+diagram-tours validate ./examples/checkout-payment-flow.tour.yaml ./docs
+```
+
+- no args means `.`.
+- folders are recursive.
+- output stays short and actionable.
+- one issue per line.
+
 ## Key Flags
 
 ```text

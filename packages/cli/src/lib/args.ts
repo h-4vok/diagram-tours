@@ -14,7 +14,7 @@ export function parseCliArgs(input: string[]): ParsedCliArgs {
       continue;
     }
 
-    assignTarget(state, value);
+    assignPositional(state, value);
   }
 
   return finalizeState(state);
@@ -25,8 +25,10 @@ function createInitialState() {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
     mode: "wizard" as ParsedCliArgs["mode"],
+    hasLaunchFlags: false,
     port: null as number | null,
-    target: null as string | null
+    target: null as string | null,
+    targets: [] as string[]
   };
 }
 
@@ -43,6 +45,36 @@ function readFlag(
   }
 
   return handler(input, index, state);
+}
+
+function assignPositional(state: ReturnType<typeof createInitialState>, value: string): void {
+  if (isValidateMode(state)) {
+    appendValidateTarget(state, value);
+    return;
+  }
+
+  if (isValidateCommand(state, value)) {
+    enableValidateMode(state);
+    return;
+  }
+
+  assignTarget(state, value);
+}
+
+function isValidateMode(state: ReturnType<typeof createInitialState>): boolean {
+  return state.mode === "validate";
+}
+
+function appendValidateTarget(state: ReturnType<typeof createInitialState>, value: string): void {
+  state.targets.push(value);
+}
+
+function isValidateCommand(state: ReturnType<typeof createInitialState>, value: string): boolean {
+  return state.target === null && value === "validate";
+}
+
+function enableValidateMode(state: ReturnType<typeof createInitialState>): void {
+  state.mode = "validate";
 }
 
 function readFlagValue(flag: string, value: string | undefined): string {
@@ -78,6 +110,8 @@ function assignBrowserPreference(
   state: ReturnType<typeof createInitialState>,
   browser: Exclude<BrowserPreference, "prompt">
 ): void {
+  state.hasLaunchFlags = true;
+
   if (state.browser !== "prompt" && state.browser !== browser) {
     throw new Error("Choose either --open or --no-open.");
   }
@@ -95,16 +129,53 @@ function assignTarget(state: ReturnType<typeof createInitialState>, target: stri
 
 function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
   if (state.mode === "version") {
-    return {
-      browser: "never",
-      hasExplicitTarget: false,
-      host: state.host,
-      mode: "version",
-      port: null,
-      target: null
-    };
+    return finalizeVersionState(state);
   }
 
+  if (state.mode === "validate") {
+    return finalizeValidateState(state);
+  }
+
+  return finalizeDirectOrWizardState(state);
+}
+
+function finalizeVersionState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  return {
+    browser: "never",
+    hasExplicitTarget: false,
+    host: state.host,
+    mode: "version",
+    port: null,
+    target: null,
+    targets: []
+  };
+}
+
+function finalizeValidateState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  assertValidateLaunchFlags(state.hasLaunchFlags);
+  const targets = readValidateTargets(state.targets);
+  return {
+    browser: "never",
+    hasExplicitTarget: true,
+    host: state.host,
+    mode: "validate",
+    port: null,
+    target: targets[0]!,
+    targets
+  };
+}
+
+function assertValidateLaunchFlags(hasLaunchFlags: boolean): void {
+  if (hasLaunchFlags) {
+    throw new Error("validate does not accept browser or server flags.");
+  }
+}
+
+function readValidateTargets(targets: string[]): string[] {
+  return targets.length === 0 ? ["."] : targets;
+}
+
+function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
   const hasExplicitTarget = state.target !== null;
 
   return {
@@ -113,7 +184,8 @@ function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliA
     host: state.host,
     mode: readMode(hasExplicitTarget),
     port: state.port,
-    target: state.target
+    target: state.target,
+    targets: state.target === null ? [] : [state.target]
   };
 }
 
@@ -138,18 +210,22 @@ const FLAG_HANDLERS: Partial<Record<
   ) => number
 >> = {
   "--host"(input, index, state) {
+    state.hasLaunchFlags = true;
     state.host = readFlagValue("--host", input[index + 1]);
     return index + 1;
   },
   "--port"(input, index, state) {
+    state.hasLaunchFlags = true;
     state.port = readPort(readFlagValue("--port", input[index + 1]));
     return index + 1;
   },
   "--open"(_input, index, state) {
+    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "always");
     return index;
   },
   "--no-open"(_input, index, state) {
+    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "never");
     return index;
   },

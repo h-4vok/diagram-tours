@@ -12,6 +12,9 @@ Cutoff date: 2026-03-17
 - BT-024 Smoke suite split by file and unified smoke command
   - Current state: each smoke file now contains one test, the browser suite runs through a single `bun run smoke`, and the docs tell agents to run only the relevant file for the current task
   - Evidence: `packages/web-player/smoke/*.spec.ts`, `packages/web-player/package.json`, `package.json`, `docs/testing/smoke-tests.md`
+- BT-012 Standalone `tour.yaml` validation command with author-friendly diagnostics
+  - Current state: `diagram-tours validate` now checks `.` by default, accepts files and folders, recurses through subfolders, and shares structured diagnostics with the web player
+  - Evidence: `packages/parser/src/index.ts`, `packages/cli/src/lib/cli.ts`, `packages/cli/test/cli.test.ts`, `packages/web-player/src/lib/diagnostics.ts`, `docs/authoring-guide.md`
 - BT-004 Layout polish and highlight hierarchy
   - Current state: the player now uses the redesigned fullscreen shell, layered controls, and non-geometric focus styling so highlighted nodes stay in place while stepping through the tour
   - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/smoke/payment-flow.*.spec.ts`

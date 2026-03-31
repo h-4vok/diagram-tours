@@ -10,7 +10,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "wizard",
       port: null,
-      target: null
+      target: null,
+      targets: []
     });
   });
 
@@ -21,7 +22,8 @@ describe("parseCliArgs", () => {
       host: "0.0.0.0",
       mode: "direct",
       port: null,
-      target: "./examples"
+      target: "./examples",
+      targets: ["./examples"]
     });
   });
 
@@ -32,7 +34,32 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "direct",
       port: null,
-      target: "./examples/checkout-payment-flow.tour.yaml"
+      target: "./examples/checkout-payment-flow.tour.yaml",
+      targets: ["./examples/checkout-payment-flow.tour.yaml"]
+    });
+  });
+
+  it("reads validate targets and defaults to the current directory", () => {
+    expect(parseCliArgs(["validate"])).toEqual({
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "validate",
+      port: null,
+      target: ".",
+      targets: ["."]
+    });
+  });
+
+  it("reads multiple validate targets", () => {
+    expect(parseCliArgs(["validate", "./examples", "./docs"])).toEqual({
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "validate",
+      port: null,
+      target: "./examples",
+      targets: ["./examples", "./docs"]
     });
   });
 
@@ -43,7 +70,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "wizard",
       port: 9000,
-      target: null
+      target: null,
+      targets: []
     });
   });
 
@@ -54,7 +82,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "version",
       port: null,
-      target: null
+      target: null,
+      targets: []
     });
   });
 
@@ -65,7 +94,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "version",
       port: null,
-      target: null
+      target: null,
+      targets: []
     });
   });
 
@@ -76,7 +106,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "direct",
       port: null,
-      target: "./examples"
+      target: "./examples",
+      targets: ["./examples"]
     });
   });
 
@@ -87,7 +118,8 @@ describe("parseCliArgs", () => {
       host: "127.0.0.1",
       mode: "direct",
       port: null,
-      target: "./examples"
+      target: "./examples",
+      targets: ["./examples"]
     });
   });
 
@@ -108,6 +140,12 @@ describe("parseCliArgs", () => {
   it("rejects conflicting browser flags", () => {
     expect(() => parseCliArgs(["--open", "--no-open"])).toThrow(
       "Choose either --open or --no-open."
+    );
+  });
+
+  it("rejects validate with browser or server flags", () => {
+    expect(() => parseCliArgs(["validate", "--port", "9000"])).toThrow(
+      "validate does not accept browser or server flags."
     );
   });
 

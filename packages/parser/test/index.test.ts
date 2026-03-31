@@ -6,7 +6,15 @@ import { dirname, join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadResolvedTour, loadResolvedTourCollection } from "../src/index";
+import {
+  createTourDiagnostic,
+  formatTourDiagnostic
+} from "../src/diagnostics.js";
+import {
+  loadResolvedTour,
+  loadResolvedTourCollection,
+  validateResolvedTourTargets
+} from "../src/index";
 
 const FIXTURE_TOUR_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -21,10 +29,118 @@ const EXAMPLES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..
 const ORIGINAL_CWD = process.cwd();
 
 afterEach(() => {
+  vi.restoreAllMocks();
   process.chdir(ORIGINAL_CWD);
 });
 
 describe("@diagram-tour/parser", () => {
+  it("creates structured diagnostics from direct error metadata", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke "ghost"'), {
+      code: "E_PARSE",
+      location: { column: 4, line: 2 }
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: "E_PARSE",
+      location: { column: 4, line: 2 },
+      message: 'step 1 focus broke "ghost"'
+    });
+    expect(
+      formatTourDiagnostic("broken.tour.yaml", {
+        code: "E_PARSE",
+        location: { column: 4, line: 2 },
+        message: "step 1 focus broke"
+      })
+    ).toBe("broken.tour.yaml:2:4 step 1 focus broke");
+  });
+
+  it("falls back to quoted codes and linePos locations", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke "ghost"'), {
+      linePos: [{ col: 4, line: 2 }]
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: "ghost",
+      location: { column: 4, line: 2 },
+      message: 'step 1 focus broke "ghost"'
+    });
+    expect(
+      formatTourDiagnostic("broken.tour.yaml", {
+        code: "ghost",
+        location: null,
+        message: "step 1 focus broke"
+      })
+    ).toBe("broken.tour.yaml step 1 focus broke");
+  });
+
+  it("treats an explicit null location as missing", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      location: null
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
+    });
+  });
+
+  it("ignores malformed line positions", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      linePos: [undefined]
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
+    });
+  });
+
+  it("ignores empty line position arrays", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      linePos: []
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
+    });
+  });
+
+  it("ignores null line positions", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      linePos: [null]
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
+    });
+  });
+
+  it("falls back to a generic diagnostic for non-errors", () => {
+    expect(createTourDiagnostic("bad")).toEqual({
+      code: null,
+      location: null,
+      message: "failed unexpectedly"
+    });
+  });
+
+  it("treats blank diagnostic codes as missing", () => {
+    const error = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      code: "   "
+    });
+
+    expect(createTourDiagnostic(error)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
+    });
+  });
+
   it("loads a valid linear tour into a resolved player-ready model", async () => {
     const result = await loadResolvedTour(FIXTURE_TOUR_PATH);
 
@@ -413,6 +529,48 @@ describe("@diagram-tour/parser", () => {
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
       `Tour "${normalizePath(tourPath)}": ENOENT: no such file or directory`
     );
+  });
+
+  it("wraps file-system errors without a diagnostic code", async () => {
+    vi.resetModules();
+    vi.doMock("node:fs/promises", async () => {
+      const actual = (await vi.importActual("node:fs/promises")) as typeof FsPromises;
+
+      return {
+        ...actual,
+        async readFile(
+          path: Parameters<typeof actual.readFile>[0],
+          options?: Parameters<typeof actual.readFile>[1]
+        ) {
+          if (String(path).endsWith("tour.yaml")) {
+            throw new Error("boom");
+          }
+
+          return actual.readFile(path, options as never);
+        }
+      };
+    });
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Missing File Error Code",
+        "diagram: ./missing-diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The API Gateway exists."
+      ].join("\n")
+    });
+
+    const parser = await import("../src/index");
+
+    await expect(parser.loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": boom`
+    );
+    vi.doUnmock("node:fs/promises");
+    vi.resetModules();
   });
 
   it("builds a one-tour collection from a single file target", async () => {
@@ -853,12 +1011,16 @@ describe("@diagram-tour/parser", () => {
       "invalid-tour/invalid",
       "nested/beta-tour/beta"
     ]);
-    expect(collection.skipped).toEqual([
-      {
-        sourcePath: "invalid-tour/invalid.tour.yaml",
-        error: `Tour "${normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml"))}": step 1 focus references unknown Mermaid node id "missing_node"`
-      }
-    ]);
+    expect(collection.skipped).toHaveLength(1);
+    expect(collection.skipped[0]).toMatchObject({
+      diagnostic: {
+        code: "missing_node",
+        location: null,
+        message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+      },
+      sourceId: normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml")),
+      sourcePath: "invalid-tour/invalid.tour.yaml"
+    });
   });
 
   it("discovers generated fallback tours from standalone mermaid files", async () => {
@@ -999,6 +1161,193 @@ describe("@diagram-tour/parser", () => {
     ]);
   });
 
+  it("validates dot and returns discovery issues without dropping skipped tours", async () => {
+    process.chdir(DISCOVERY_FIXTURE_ROOT);
+
+    const report = await validateResolvedTourTargets([]);
+
+    expect(report).toMatchObject({
+      total: 4,
+      valid: 3
+    });
+    expect(report.issues).toHaveLength(1);
+    expect(report.issues[0]).toMatchObject({
+      diagnostic: {
+        code: "missing_node",
+        location: null,
+        message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+      },
+      sourcePath: "invalid-tour/invalid.tour.yaml"
+    });
+  });
+
+  it("dedupes overlapping validation targets", async () => {
+    const report = await validateResolvedTourTargets([
+      DISCOVERY_FIXTURE_ROOT,
+      DISCOVERY_FIXTURE_ROOT
+    ]);
+
+    expect(report).toMatchObject({
+      total: 4,
+      valid: 3
+    });
+    expect(report.issues).toHaveLength(1);
+    expect(report.issues[0]?.sourcePath).toBe("invalid-tour/invalid.tour.yaml");
+  });
+
+  it("reports a missing validation target", async () => {
+    const missingTarget = "./missing-tour";
+
+    const report = await validateResolvedTourTargets([missingTarget]);
+
+    expect(report).toMatchObject({
+      total: 0,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: null,
+          message: `Path does not exist: ${normalizePath(resolve(missingTarget))}`
+        },
+        sourceId: normalizePath(resolve(missingTarget)),
+        sourcePath: normalizePath(missingTarget)
+      }
+    ]);
+  });
+
+  it("reports an unsupported validation target", async () => {
+    const unsupportedTarget = "./package.json";
+
+    const report = await validateResolvedTourTargets([unsupportedTarget]);
+
+    expect(report).toMatchObject({
+      total: 0,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: null,
+          message: `Expected a .tour.yaml, .mmd, .mermaid, .md file, or a directory: ${normalizePath(resolve(unsupportedTarget))}`
+        },
+        sourceId: normalizePath(resolve(unsupportedTarget)),
+        sourcePath: normalizePath(unsupportedTarget)
+      }
+    ]);
+  });
+
+  it("validates a direct invalid file target", async () => {
+    const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toHaveLength(1);
+    expect(report.issues[0]).toMatchObject({
+      diagnostic: {
+        code: "missing_node",
+        location: null,
+        message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+      },
+      sourceId: normalizePath(invalidFilePath),
+      sourcePath: "invalid.tour.yaml"
+    });
+  });
+
+  it("validates a direct valid file target", async () => {
+    const report = await validateResolvedTourTargets([FIXTURE_TOUR_PATH]);
+
+    expect(report).toEqual({
+      issues: [],
+      total: 1,
+      valid: 1
+    });
+  });
+
+  it("reports a generic issue when a folder has no supported tours", async () => {
+    const emptyRoot = await createTempDiagramDirectory({});
+
+    const report = await validateResolvedTourTargets([emptyRoot]);
+
+    expect(report).toMatchObject({
+      total: 0,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: null,
+          message: `No valid tours or diagrams were discovered in source target "${normalizePath(emptyRoot)}".`
+        },
+        sourceId: normalizePath(emptyRoot),
+        sourcePath: normalizePath(emptyRoot)
+      }
+    ]);
+  });
+
+  it("wraps unexpected directory discovery errors during validation", async () => {
+    const discoveryRoot = await createTempDiagramDirectory({
+      "broken.tour.yaml": [
+        "version: 1",
+        "title: Broken",
+        "diagram: ./missing.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      Broken."
+      ].join("\n")
+    });
+
+    vi.resetModules();
+    vi.doMock("node:fs/promises", async () => {
+      const actual = (await vi.importActual("node:fs/promises")) as typeof FsPromises;
+
+      return {
+        ...actual,
+        async readdir(
+          path: Parameters<typeof actual.readdir>[0],
+          options?: Parameters<typeof actual.readdir>[1]
+        ) {
+          if (String(path) === discoveryRoot) {
+            throw new Error("boom");
+          }
+
+          return actual.readdir(path, options as never);
+        }
+      };
+    });
+
+    const parser = await import("../src/index");
+    const report = await parser.validateResolvedTourTargets([discoveryRoot]);
+
+    expect(report).toEqual({
+      issues: [
+        {
+          diagnostic: {
+            code: null,
+            location: null,
+            message: "boom"
+          },
+          sourceId: normalizePath(discoveryRoot),
+          sourcePath: normalizePath(discoveryRoot)
+        }
+      ],
+      total: 0,
+      valid: 0
+    });
+
+    vi.doUnmock("node:fs/promises");
+    vi.resetModules();
+  });
+
   it("fails when a single-file target is invalid", async () => {
     const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
 
@@ -1051,6 +1400,36 @@ describe("@diagram-tour/parser", () => {
     await expect(parser.loadResolvedTour(tourPath)).rejects.toThrow(
       `Tour "${normalizePath(tourPath)}": failed unexpectedly`
     );
+
+    vi.doUnmock("yaml");
+    vi.resetModules();
+  });
+
+  it("preserves location metadata when wrapping parser errors", async () => {
+    vi.resetModules();
+    vi.doMock("yaml", () => ({
+      parse() {
+        const error = new Error("broken yaml");
+
+        (error as Error & { code?: string; location?: { column: number; line: number } }).code =
+          "YAML_ERR";
+        (error as Error & { code?: string; location?: { column: number; line: number } }).location =
+          { column: 3, line: 2 };
+        throw error;
+      }
+    }));
+
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: "version: 1"
+    });
+    const parser = await import("../src/index");
+
+    await expect(parser.loadResolvedTour(tourPath)).rejects.toMatchObject({
+      code: "YAML_ERR",
+      location: { column: 3, line: 2 },
+      message: `Tour "${normalizePath(tourPath)}": broken yaml`
+    });
 
     vi.doUnmock("yaml");
     vi.resetModules();

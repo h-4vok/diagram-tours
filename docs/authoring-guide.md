@@ -185,8 +185,9 @@ A practical local loop is:
 
 1. start the player against the target you want to edit
 2. iterate on Mermaid and YAML together
-3. run `bun run test`
-4. run `bun run smoke` if viewport or interaction behavior changed
+3. run `diagram-tours validate` on the file or folder you changed
+4. run `bun run test`
+5. run `bun run smoke` if viewport or interaction behavior changed
 
 For the published product flow, use the global CLI:
 
@@ -196,6 +197,8 @@ diagram-tours ./examples/checkout-payment-flow.mmd
 diagram-tours ./fixtures/markdown/checklist.md
 diagram-tours ./examples
 diagram-tours
+diagram-tours validate ./examples/checkout-payment-flow.tour.yaml
+diagram-tours validate ./examples
 ```
 
 For repository contributor work, the Bun helpers still exist:
