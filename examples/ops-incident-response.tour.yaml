@@ -1,6 +1,6 @@
 version: 1
 title: Incident Response
-diagram: ./incident-response.mmd
+diagram: ./ops-incident-response.mmd
 
 steps:
   - focus:

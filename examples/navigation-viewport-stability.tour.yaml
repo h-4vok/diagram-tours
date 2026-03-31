@@ -1,6 +1,6 @@
 version: 1
 title: Viewport Stability
-diagram: ./viewport-stability.mmd
+diagram: ./navigation-viewport-stability.mmd
 
 steps:
   - focus:

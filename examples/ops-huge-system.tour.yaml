@@ -1,6 +1,6 @@
 version: 1
 title: Huge System Stress Test
-diagram: ./huge-system.mmd
+diagram: ./ops-huge-system.mmd
 
 steps:
   - focus:

@@ -17,7 +17,7 @@ describe("diagram viewport helpers", () => {
     ).toEqual({
       mode: "focus",
       scrollLeft: 160,
-      scrollTop: 70
+      scrollTop: 118
     });
   });
 
@@ -40,7 +40,7 @@ describe("diagram viewport helpers", () => {
     expect(forwardInstruction).toEqual({
       mode: "focus",
       scrollLeft: 10,
-      scrollTop: 45
+      scrollTop: 93
     });
     expect(reversedInstruction).toEqual(forwardInstruction);
   });
@@ -131,7 +131,7 @@ describe("diagram viewport helpers", () => {
 
     expect(readScrollPosition(fixture.container)).toEqual({
       scrollLeft: 340,
-      scrollTop: 270
+      scrollTop: 318
     });
   });
 
@@ -190,7 +190,7 @@ describe("diagram viewport helpers", () => {
 
     expect(readScrollPosition(fixture.container)).toEqual({
       scrollLeft: 340,
-      scrollTop: 270
+      scrollTop: 318
     });
   });
 
@@ -268,7 +268,7 @@ describe("diagram viewport helpers", () => {
 
     expect(readScrollPosition(fixture.container)).toEqual({
       scrollLeft: 340,
-      scrollTop: 270
+      scrollTop: 318
     });
   });
 
@@ -346,7 +346,7 @@ describe("diagram viewport helpers", () => {
 
     expect(readScrollPosition(fixture.container)).toEqual({
       scrollLeft: 340,
-      scrollTop: 270
+      scrollTop: 318
     });
   });
 
@@ -404,7 +404,7 @@ describe("diagram viewport helpers", () => {
 
     expect(readScrollPosition(fixture.container)).toEqual({
       scrollLeft: 340,
-      scrollTop: 270
+      scrollTop: 318
     });
 
     assignScrollPosition(fixture.container, { scrollLeft: 21, scrollTop: 19 });

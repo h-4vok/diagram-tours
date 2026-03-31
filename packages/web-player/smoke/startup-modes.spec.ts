@@ -12,7 +12,7 @@ test.describe("startup modes", () => {
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
 
       await expectRepoWideBrowse(page);
       expect(server.output).toContain(server.baseUrl);
@@ -28,7 +28,7 @@ test.describe("startup modes", () => {
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
 
       await expectExamplesBrowse(page);
     } finally {
@@ -38,7 +38,7 @@ test.describe("startup modes", () => {
 
   test("explicit single-file startup limits browse to one tour @core", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/checkout/payment-flow.tour.yaml"],
+      args: ["./examples/checkout-payment-flow.tour.yaml"],
       port: 4176
     });
 
@@ -47,7 +47,7 @@ test.describe("startup modes", () => {
 
       await expectSingleTourBrowse(page, {
         expectedTitle: "Payment Flow",
-        filename: "payment-flow.tour.yaml",
+        filename: "checkout-payment-flow.tour.yaml",
         unexpectedTitle: "Refund Flow"
       });
     } finally {
@@ -64,7 +64,7 @@ test.describe("startup modes", () => {
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/checkout/payment-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
 
       await expectRepoWideBrowse(page);
     } finally {
@@ -79,7 +79,7 @@ test.describe("startup modes", () => {
     });
 
     try {
-      await openBrowse(page, `${server.baseUrl}/checkout/refund-flow`);
+      await openBrowse(page, `${server.baseUrl}/checkout-refund-flow`);
 
       await expectExamplesBrowse(page);
     } finally {
@@ -90,7 +90,7 @@ test.describe("startup modes", () => {
   test("interactive file selection matches single-file startup @extended", async ({ page }) => {
     const server = await startDevServer({
       port: 4179,
-      promptInputs: ["3", "./examples/checkout/payment-flow.tour.yaml", "n", "", ""]
+      promptInputs: ["3", "./examples/checkout-payment-flow.tour.yaml", "n", "", ""]
     });
 
     try {
@@ -98,7 +98,7 @@ test.describe("startup modes", () => {
 
       await expectSingleTourBrowse(page, {
         expectedTitle: "Payment Flow",
-        filename: "payment-flow.tour.yaml",
+        filename: "checkout-payment-flow.tour.yaml",
         unexpectedTitle: "Refund Flow"
       });
     } finally {
@@ -108,7 +108,7 @@ test.describe("startup modes", () => {
 
   test("interactive startup skips the prompt when a target is explicit @extended", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/checkout/refund-flow.tour.yaml"],
+      args: ["./examples/checkout-refund-flow.tour.yaml"],
       port: 4180
     });
 
@@ -117,7 +117,7 @@ test.describe("startup modes", () => {
 
       await expectSingleTourBrowse(page, {
         expectedTitle: "Refund Flow",
-        filename: "refund-flow.tour.yaml",
+        filename: "checkout-refund-flow.tour.yaml",
         unexpectedTitle: "Payment Flow"
       });
       expect(server.output).not.toContain("Choose what to open:");
@@ -129,16 +129,16 @@ test.describe("startup modes", () => {
 
   test("explicit diagram startup generates a fallback tour preview @core", async ({ page }) => {
     const server = await startDevServer({
-      args: ["./examples/checkout/payment-flow.mmd"],
+      args: ["./examples/checkout-payment-flow.mmd"],
       port: 4182
     });
 
     try {
       await openBrowse(page, server.baseUrl);
 
-      await expect(page.getByTestId("preview-target-notice")).toContainText("payment-flow.mmd");
-      await expect(readBrowsePanel(page).getByText("Payment Flow", { exact: true })).toBeVisible();
-      await expect(page.getByTestId("step-text")).toContainText("Overview of Payment Flow.");
+      await expect(page.getByTestId("preview-target-notice")).toContainText("checkout-payment-flow.mmd");
+      await expect(readBrowsePanel(page).getByText("Checkout Payment Flow", { exact: true })).toBeVisible();
+      await expect(page.getByTestId("step-text")).toContainText("Overview of Checkout Payment Flow.");
     } finally {
       await server.stop();
     }
@@ -166,7 +166,7 @@ test.describe("startup modes", () => {
 async function openBrowse(page: Page, url: string): Promise<void> {
   await page.goto(url);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-hydrated", "true");
-  await page.getByTestId("browse-trigger").click();
+  await page.getByTestId("search-hint-trigger").click();
   await expect(page.getByTestId("browse-panel")).toBeVisible();
 }
 
@@ -179,7 +179,8 @@ async function expectRepoWideBrowse(page: Page): Promise<void> {
 
 async function expectExamplesBrowse(page: Page): Promise<void> {
   await expect(page.getByTestId("preview-target-notice")).toHaveCount(0);
-  await expect(page.getByTestId("diagnostics-trigger")).toHaveCount(0);
+  await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();
+  await expect(page.getByTestId("diagnostics-count")).toHaveText("0");
   await expectBrowseSearchEmpty(page, "alpha");
   await expectBrowseSearchEmpty(page, "beta");
   await expectBrowseSearchMatch(page, "release", "Release Pipeline");

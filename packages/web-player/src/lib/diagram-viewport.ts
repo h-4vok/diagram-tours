@@ -1,6 +1,8 @@
 import type { FocusGroup } from "$lib/focus-group";
 
 const MIN_SCROLL_DELTA = 8;
+const VIEWPORT_FOCUS_X_RATIO = 0.5;
+const VIEWPORT_FOCUS_Y_RATIO = 0.38;
 
 export interface DiagramNodeRect {
   left: number;
@@ -37,6 +39,7 @@ export function createViewportInstruction(input: {
 }
 
 export function focusDiagramViewport(input: {
+  behavior?: ScrollBehavior;
   container: HTMLElement;
   content: HTMLElement;
   focusGroup: FocusGroup;
@@ -47,22 +50,37 @@ export function focusDiagramViewport(input: {
     return;
   }
 
-  const focusedNodeRects = readElementRects(input.content, input.focusGroup.elementIds);
+  const instruction = readViewportInstruction(input);
 
-  if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
+  if (instruction === null) {
     return;
   }
 
   applyViewportInstruction({
+    behavior: input.behavior,
     container: input.container,
-    instruction: createViewportInstruction({
-      focusedNodeRects,
-      metrics: readViewportMetrics({
-        container: input.container,
-        content: input.content
-      })
-    }),
+    instruction,
     previousPosition
+  });
+}
+
+function readViewportInstruction(input: {
+  container: HTMLElement;
+  content: HTMLElement;
+  focusGroup: FocusGroup;
+}): DiagramViewportInstruction | null {
+  const focusedNodeRects = readElementRects(input.content, input.focusGroup.elementIds);
+
+  if (shouldPreserveCurrentViewport(input.focusGroup, focusedNodeRects)) {
+    return null;
+  }
+
+  return createViewportInstruction({
+    focusedNodeRects,
+    metrics: readViewportMetrics({
+      container: input.container,
+      content: input.content
+    })
   });
 }
 
@@ -100,11 +118,11 @@ function createFocusInstruction(input: {
   return {
     mode: "focus",
     scrollLeft: clampScrollTarget(
-      bounds.left + bounds.width / 2 - input.metrics.viewportWidth / 2,
+      bounds.left + bounds.width / 2 - input.metrics.viewportWidth * VIEWPORT_FOCUS_X_RATIO,
       input.metrics.contentWidth - input.metrics.viewportWidth
     ),
     scrollTop: clampScrollTarget(
-      bounds.top + bounds.height / 2 - input.metrics.viewportHeight / 2,
+      bounds.top + bounds.height / 2 - input.metrics.viewportHeight * VIEWPORT_FOCUS_Y_RATIO,
       input.metrics.contentHeight - input.metrics.viewportHeight
     )
   };
@@ -126,13 +144,14 @@ function shouldPreserveCurrentViewport(
 }
 
 function applyViewportInstruction(input: {
+  behavior?: ScrollBehavior;
   container: HTMLElement;
   instruction: DiagramViewportInstruction;
   previousPosition: { scrollLeft: number; scrollTop: number };
 }): void {
   const nextPosition = resolveNextScrollPosition(input.instruction, input.previousPosition);
 
-  writeScrollPosition(input.container, nextPosition);
+  writeScrollPosition(input.container, nextPosition, input.behavior);
 }
 
 function resolveNextScrollPosition(
@@ -279,11 +298,12 @@ function writeScrollPosition(
   position: {
     scrollLeft: number;
     scrollTop: number;
-  }
+  },
+  behavior: ScrollBehavior = "smooth"
 ): void {
   if (typeof container.scrollTo === "function") {
     container.scrollTo({
-      behavior: "smooth",
+      behavior,
       left: position.scrollLeft,
       top: position.scrollTop
     });

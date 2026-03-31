@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyFocusState,
@@ -9,7 +9,8 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { mermaidRender } = vi.hoisted(() => ({
+const { mermaidInitialize, mermaidRender } = vi.hoisted(() => ({
+  mermaidInitialize: vi.fn(),
   mermaidRender: vi.fn(async () => ({
     svg: [
       '<svg width="100%" style="max-width: 1440px;" viewBox="0 0 1440 960">',
@@ -24,12 +25,18 @@ const { mermaidRender } = vi.hoisted(() => ({
 
 vi.mock("mermaid", () => ({
   default: {
-    initialize: vi.fn(),
+    initialize: mermaidInitialize,
     render: mermaidRender
   }
 }));
 
 describe("mermaid diagram helpers", () => {
+  beforeEach(() => {
+    mermaidInitialize.mockClear();
+    mermaidRender.mockClear();
+    clearThemeTokens();
+  });
+
   it("adds app-owned node classes to the Mermaid source", () => {
     const source = createRenderableDiagramSource(resolvedPaymentFlowTour.diagram);
 
@@ -55,12 +62,34 @@ describe("mermaid diagram helpers", () => {
 
   it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
     const container = document.createElement("div");
+    document.documentElement.style.setProperty("--bg-base", "#101820");
+    document.documentElement.style.setProperty("--bg-surface", "#16202a");
+    document.documentElement.style.setProperty("--text-primary", "#eef4ff");
+    document.documentElement.style.setProperty("--border-subtle", "#2a3440");
+    document.documentElement.style.setProperty("--color-node-base-fill", "#18212c");
+    document.documentElement.style.setProperty("--color-node-base-stroke", "#324152");
+    document.documentElement.style.setProperty("--color-node-base-text", "#eef4ff");
 
     await renderMermaidDiagram({
       container,
       diagram: resolvedPaymentFlowTour.diagram
     });
 
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startOnLoad: false,
+        theme: "base",
+        themeVariables: expect.objectContaining({
+          background: "#101820",
+          fontFamily: "Geist, Inter, Segoe UI, system-ui, sans-serif",
+          lineColor: "#324152",
+          mainBkg: "#18212c",
+          primaryTextColor: "#eef4ff",
+          secondaryColor: "#16202a",
+          textColor: "#eef4ff"
+        })
+      })
+    );
     expect(mermaidRender).toHaveBeenCalledTimes(1);
     expect(container.querySelector('[data-node-id="api_gateway"]')).not.toBeNull();
     expect(container.querySelector('[data-node-label="API Gateway"]')).not.toBeNull();
@@ -74,6 +103,26 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "",
       width: "1440"
     });
+  });
+
+  it("falls back to Mermaid theme defaults when CSS tokens are missing", async () => {
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: resolvedPaymentFlowTour.diagram
+    });
+
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        themeVariables: expect.objectContaining({
+          background: "#0e1116",
+          lineColor: "#30363d",
+          mainBkg: "#1c2128",
+          primaryTextColor: "#e6edf3"
+        })
+      })
+    );
   });
 
   it("keeps Mermaid sizing untouched when the rendered svg has no viewBox", async () => {
@@ -231,6 +280,8 @@ describe("mermaid diagram helpers", () => {
       '<div data-node-id="api_gateway"></div>',
       '<div data-node-id="validation_service"></div>',
       '<div data-node-id="payment_service"></div>',
+      '<path data-connector-role="flow" data-connector-source-id="api_gateway" data-connector-target-id="payment_service"></path>',
+      '<path data-connector-role="flow" data-connector-source-id="validation_service" data-connector-target-id="payment_service"></path>',
       '<div class="edgeLabel" data-connector-role="label"><div>Yes</div></div>'
     ].join("");
 
@@ -244,7 +295,9 @@ describe("mermaid diagram helpers", () => {
     expect(readFocusState(container, "payment_service")).toBe("focused");
     expect(container.dataset.focusGroupMode).toBe("group");
     expect(container.dataset.focusGroupSize).toBe("2");
-    expect(container.querySelector('[data-connector-state="context"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-connector-state="context"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-connector-role="flow"][data-connector-state="active"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-connector-role="flow"][data-connector-state="context"]')).toHaveLength(1);
 
     applyFocusState({
       container,
@@ -256,6 +309,312 @@ describe("mermaid diagram helpers", () => {
     expect(container.hasAttribute("data-focus-group-mode")).toBe(false);
     expect(container.hasAttribute("data-focus-group-size")).toBe(false);
     expect(container.querySelector('[data-connector-state="context"]')).toBeNull();
+    expect(container.querySelector('[data-connector-role="flow"]')?.hasAttribute("data-connector-state")).toBe(
+      false
+    );
+  });
+
+  it("annotates untagged flowchart connectors during focus application", async () => {
+    const container = document.createElement("div");
+
+    container.innerHTML = [
+      '<svg viewBox="0 0 960 640">',
+      '<g class="diagram_tour_node_api_gateway" data-diagram-element-id="api_gateway" data-diagram-element-kind="node"></g>',
+      '<g class="diagram_tour_node_validation_service" data-diagram-element-id="validation_service" data-diagram-element-kind="node"></g>',
+      '<path class="flowchart-link"></path>',
+      "</svg>"
+    ].join("");
+
+    await withFlowchartGeometryMocks(async () => {
+      applyFocusState({
+        container,
+        focusGroup: createFocusGroup(["api_gateway", "validation_service"])
+      });
+    });
+
+    expect(container.querySelector('[data-connector-role="flow"]')).not.toBeNull();
+    expect(container.querySelector('[data-connector-state="active"]')).not.toBeNull();
+  });
+
+  it("annotates direct flowchart connectors and cloned markers with source and target ids", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        "<defs>",
+        '<marker id="flow-arrow"><path d="M0 0 L10 5 L0 10 z"></path></marker>',
+        "</defs>",
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<path class="flowchart-link" marker-end="url(#flow-arrow)"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartGeometryMocks(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+      expectAnnotatedFlowchartConnector(container);
+    });
+  });
+
+  it("annotates flowchart connectors from encoded Mermaid edge ids", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_payment_service"></g>',
+        '<g class="diagram_tour_node_payment_provider"></g>',
+        '<path class="flowchart-link" data-id="L_payment_service_payment_provider_0"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    const connector = readRequiredElement(container, ".flowchart-link");
+
+    expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("payment_service");
+    expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("payment_provider");
+  });
+
+  it("annotates flowchart connectors from Mermaid source and target classes", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<path class="flowchart-link LS-api_gateway LE-validation_service"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    const connector = readRequiredElement(container, ".flowchart-link");
+
+    expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("api_gateway");
+    expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("validation_service");
+  });
+
+  it("annotates straight SVG line connectors from geometry when sampled paths are unavailable", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<line class="flowchart-link" x1="180" y1="100" x2="280" y2="100"></line>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    const connector = readRequiredElement(container, ".flowchart-link");
+
+    expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("api_gateway");
+    expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("validation_service");
+  });
+
+  it("annotates SVG polyline connectors from geometry when they expose multiple points", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<polyline class="flowchart-link" points="180,100 230,100 280,100"></polyline>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    const connector = readRequiredElement(container, ".flowchart-link");
+
+    expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("api_gateway");
+    expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("validation_service");
+  });
+
+  it("skips geometry-only connector annotation when node bounds are invalid", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<path class="flowchart-link"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withInvalidFlowchartBounds(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelector(".flowchart-link")?.hasAttribute("data-connector-role")).toBe(false);
+  });
+
+  it("skips sampled connector annotation when sampled geometry has no usable length", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<path class="flowchart-link"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withZeroLengthFlowchartGeometry(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelector(".flowchart-link")?.hasAttribute("data-connector-role")).toBe(false);
+  });
+
+  it("skips polyline connector annotation when points are missing or malformed", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<polyline class="flowchart-link"></polyline>',
+        '<polyline class="flowchart-link" points="180,100 invalid"></polyline>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelectorAll('[data-connector-role="flow"]')).toHaveLength(0);
+  });
+
+  it("annotates SVG polyline connectors from native point lists when available", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<polyline class="flowchart-link"></polyline>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withPolylinePointListMocks(async () => {
+      await withFlowchartBoundsOnly(async () => {
+        await renderMermaidDiagram({
+          container,
+          diagram: resolvedPaymentFlowTour.diagram
+        });
+      });
+    });
+
+    const connector = readRequiredElement(container, ".flowchart-link");
+
+    expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("api_gateway");
+    expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("validation_service");
+  });
+
+  it("skips line connector annotation when coordinates are missing and no node can be inferred", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<line class="flowchart-link"></line>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelector(".flowchart-link")?.hasAttribute("data-connector-role")).toBe(false);
+  });
+
+  it("skips flowchart connector annotation when Mermaid edge metadata is unusable", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_api_gateway"></g>',
+        '<g class="diagram_tour_node_validation_service"></g>',
+        '<path class="flowchart-link" data-id="invalid-edge-id"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelector(".flowchart-link")?.hasAttribute("data-connector-role")).toBe(false);
+  });
+
+  it("skips encoded edge ids when they do not start with a known source node id", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_payment_service"></g>',
+        '<g class="diagram_tour_node_payment_provider"></g>',
+        '<path class="flowchart-link" data-id="L_unknown_payment_provider_0"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({
+        container,
+        diagram: resolvedPaymentFlowTour.diagram
+      });
+    });
+
+    expect(container.querySelector(".flowchart-link")?.hasAttribute("data-connector-role")).toBe(false);
   });
 
   it("renders a sequence diagram and annotates participant and message elements", async () => {
@@ -582,6 +941,16 @@ function expectAnnotatedSequenceMarker(container: HTMLElement): void {
   expect(readRequiredAttribute(messageLine, "marker-end")).toBe("url(#arrowhead-request_sent)");
 }
 
+function expectAnnotatedFlowchartConnector(container: HTMLElement): void {
+  const connector = readRequiredElement(container, ".flowchart-link");
+
+  expect(readRequiredAttribute(connector, "data-connector-role")).toBe("flow");
+  expect(readRequiredAttribute(connector, "data-connector-source-id")).toBe("api_gateway");
+  expect(readRequiredAttribute(connector, "data-connector-target-id")).toBe("validation_service");
+  expect(readRequiredAttribute(connector, "marker-end")).toContain("flow-arrow-flow-0-marker-end");
+  expect(container.querySelector('[data-connector-role="flow-marker"]')).not.toBeNull();
+}
+
 function readSequenceMarker(container: HTMLElement): Element | null {
   return container.querySelector("#arrowhead-request_sent");
 }
@@ -609,4 +978,231 @@ function readRequiredAttribute(element: Element | null, name: string): string {
 
 function readMessageLineAttribute(container: HTMLElement, name: string): string {
   return readRequiredAttribute(readRequiredElement(container, ".messageLine0"), name);
+}
+
+function installFlowchartGeometryMocks(
+  svgGraphicsPrototype: SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  }
+): void {
+  svgGraphicsPrototype.getBBox = function mockGetBBox() {
+    return readMockSvgBounds(this);
+  };
+  svgGraphicsPrototype.getTotalLength = function mockGetTotalLength() {
+    return this.classList.contains("flowchart-link") ? 240 : 0;
+  };
+  svgGraphicsPrototype.getPointAtLength = function mockGetPointAtLength(distance: number) {
+    return {
+      x: distance === 0 ? 180 : 280,
+      y: 100
+    } as DOMPoint;
+  };
+}
+
+function installFlowchartBoundsOnlyMocks(
+  svgGraphicsPrototype: SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  }
+): void {
+  svgGraphicsPrototype.getBBox = function mockGetBBox() {
+    return readMockSvgBounds(this);
+  };
+  svgGraphicsPrototype.getPointAtLength = undefined;
+  svgGraphicsPrototype.getTotalLength = undefined;
+}
+
+function installInvalidFlowchartBoundsMocks(
+  svgGraphicsPrototype: SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  }
+): void {
+  svgGraphicsPrototype.getBBox = function mockGetBBox() {
+    return { height: 0, width: 0, x: Number.NaN, y: 0 } as SVGRect;
+  };
+  svgGraphicsPrototype.getPointAtLength = undefined;
+  svgGraphicsPrototype.getTotalLength = undefined;
+}
+
+function installZeroLengthFlowchartGeometryMocks(
+  svgGraphicsPrototype: SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  }
+): void {
+  installFlowchartBoundsOnlyMocks(svgGraphicsPrototype);
+  svgGraphicsPrototype.getTotalLength = function mockGetTotalLength() {
+    return 0;
+  };
+  svgGraphicsPrototype.getPointAtLength = function mockGetPointAtLength() {
+    return { x: 0, y: 0 } as DOMPoint;
+  };
+}
+
+function readMockSvgBounds(element: Element): SVGRect {
+  const bounds = readMockSvgBoundsByClass(element);
+
+  return bounds ?? ({ height: 0, width: 0, x: 0, y: 0 } as SVGRect);
+}
+
+function readMockSvgBoundsByClass(element: Element): SVGRect | null {
+  const boundsByClass = new Map<string, SVGRect>([
+    ["diagram_tour_node_api_gateway", { height: 80, width: 140, x: 40, y: 60 } as SVGRect],
+    ["diagram_tour_node_validation_service", { height: 80, width: 160, x: 280, y: 60 } as SVGRect],
+    ["diagram_tour_node_payment_service", { height: 80, width: 160, x: 460, y: 60 } as SVGRect],
+    ["diagram_tour_node_payment_provider", { height: 80, width: 180, x: 700, y: 60 } as SVGRect]
+  ]);
+
+  return Array.from(boundsByClass.entries()).find(([className]) => element.classList.contains(className))?.[1] ?? null;
+}
+
+async function withPolylinePointListMocks(run: () => Promise<void>): Promise<void> {
+  const descriptor = Object.getOwnPropertyDescriptor(SVGElement.prototype, "points");
+
+  Object.defineProperty(SVGElement.prototype, "points", {
+    configurable: true,
+    get() {
+      if ((this as SVGElement).tagName.toLowerCase() !== "polyline") {
+        return undefined;
+      }
+
+      return {
+        getItem(index: number) {
+          return [{ x: 180, y: 100 }, { x: 230, y: 100 }, { x: 280, y: 100 }][index] as SVGPoint;
+        },
+        length: 3
+      } as SVGPointList;
+    }
+  });
+
+  try {
+    await run();
+  } finally {
+    if (descriptor === undefined) {
+      delete (SVGElement.prototype as SVGElement & { points?: SVGPointList }).points;
+    } else {
+      Object.defineProperty(SVGElement.prototype, "points", descriptor);
+    }
+  }
+}
+
+function clearThemeTokens(): void {
+  [
+    "--bg-base",
+    "--bg-surface",
+    "--text-primary",
+    "--border-subtle",
+    "--color-node-base-fill",
+    "--color-node-base-stroke",
+    "--color-node-base-text"
+  ].forEach((token) => {
+    document.documentElement.style.removeProperty(token);
+  });
+}
+
+function restoreFlowchartGeometryMocks(
+  svgGraphicsPrototype: SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  },
+  original: {
+    getBBox: (() => SVGRect) | undefined;
+    getPointAtLength: ((distance: number) => DOMPoint) | undefined;
+    getTotalLength: (() => number) | undefined;
+  }
+): void {
+  svgGraphicsPrototype.getBBox = original.getBBox;
+  svgGraphicsPrototype.getPointAtLength = original.getPointAtLength;
+  svgGraphicsPrototype.getTotalLength = original.getTotalLength;
+}
+
+async function withFlowchartGeometryMocks(run: () => Promise<void>): Promise<void> {
+  const svgGraphicsPrototype = SVGElement.prototype as SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  };
+  const original = {
+    getBBox: svgGraphicsPrototype.getBBox,
+    getPointAtLength: svgGraphicsPrototype.getPointAtLength,
+    getTotalLength: svgGraphicsPrototype.getTotalLength
+  };
+
+  installFlowchartGeometryMocks(svgGraphicsPrototype);
+
+  try {
+    await run();
+  } finally {
+    restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
+  }
+}
+
+async function withFlowchartBoundsOnly(run: () => Promise<void>): Promise<void> {
+  const svgGraphicsPrototype = SVGElement.prototype as SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  };
+  const original = {
+    getBBox: svgGraphicsPrototype.getBBox,
+    getPointAtLength: svgGraphicsPrototype.getPointAtLength,
+    getTotalLength: svgGraphicsPrototype.getTotalLength
+  };
+
+  installFlowchartBoundsOnlyMocks(svgGraphicsPrototype);
+
+  try {
+    await run();
+  } finally {
+    restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
+  }
+}
+
+async function withInvalidFlowchartBounds(run: () => Promise<void>): Promise<void> {
+  const svgGraphicsPrototype = SVGElement.prototype as SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  };
+  const original = {
+    getBBox: svgGraphicsPrototype.getBBox,
+    getPointAtLength: svgGraphicsPrototype.getPointAtLength,
+    getTotalLength: svgGraphicsPrototype.getTotalLength
+  };
+
+  installInvalidFlowchartBoundsMocks(svgGraphicsPrototype);
+
+  try {
+    await run();
+  } finally {
+    restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
+  }
+}
+
+async function withZeroLengthFlowchartGeometry(run: () => Promise<void>): Promise<void> {
+  const svgGraphicsPrototype = SVGElement.prototype as SVGElement & {
+    getBBox?: () => SVGRect;
+    getPointAtLength?: (distance: number) => DOMPoint;
+    getTotalLength?: () => number;
+  };
+  const original = {
+    getBBox: svgGraphicsPrototype.getBBox,
+    getPointAtLength: svgGraphicsPrototype.getPointAtLength,
+    getTotalLength: svgGraphicsPrototype.getTotalLength
+  };
+
+  installZeroLengthFlowchartGeometryMocks(svgGraphicsPrototype);
+
+  try {
+    await run();
+  } finally {
+    restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
+  }
 }

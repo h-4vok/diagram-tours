@@ -1,6 +1,6 @@
 version: 1
 title: Release Pipeline
-diagram: ./release-pipeline.mmd
+diagram: ./ops-release-pipeline.mmd
 
 steps:
   - focus:

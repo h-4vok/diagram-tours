@@ -1,6 +1,6 @@
 version: 1
 title: Support Decision Tree
-diagram: ./support-decision-tree.mmd
+diagram: ./support-support-decision-tree.mmd
 
 steps:
   - focus:

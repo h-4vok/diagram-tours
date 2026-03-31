@@ -17,90 +17,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
-- Default dark mode for first-time users
-  - Current state: the web player now boots into dark mode until a stored preference exists, while still honoring explicit light/dark selections across hydration and subsequent navigation
-  - Testing expectation: theme helper coverage, layout coverage, and smoke coverage validate the first-load default plus persistence behavior
-  - Evidence: `packages/web-player/src/lib/theme.ts`, `packages/web-player/src/app.html`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/smoke/payment-flow.spec.ts`
-- Zoom controls
-  - Current state: the player now exposes overlay zoom controls with bounded zoom-in, zoom-out, and reset actions, preserving the current viewport position while resizing the rendered Mermaid SVG
-  - Testing expectation: zoom helper coverage, player component coverage, and smoke coverage validate zoom math, control state, and visible diagram resizing
-  - Evidence: `packages/web-player/src/lib/diagram-zoom.ts`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/test/diagram-zoom.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
-- Animated viewport transitions
-  - Current state: zoom changes now animate both the SVG resize and the viewport recentering pass, extending the existing smooth step-focus motion into explicit user-driven viewport transitions
-  - Testing expectation: player and smoke coverage validate zoom-triggered viewport updates without breaking navigation state
-  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
-- BT-001 True zoom-to-fit
-  - Current state: the player now exposes a Fit action that computes a real zoom-to-fit scale, applies it to the rendered SVG, and recenters the diagram so the current content fits the viewport
-  - Testing expectation: zoom helper coverage, player component coverage, and smoke coverage validate fit math, control behavior, and visible diagram framing
-  - Evidence: `packages/web-player/src/lib/diagram-zoom.ts`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/cards.css`, `packages/web-player/test/diagram-zoom.test.ts`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
-
-- Diagram-first fallback tours for raw Mermaid inputs
-  - Current state: directories and direct file targets can now load `.mmd` and `.mermaid` diagrams without authored YAML, with generated overview-plus-node walkthroughs and duplicate suppression when a tour file already owns the same diagram
-  - Testing expectation: parser, CLI, web-player, and smoke coverage validate generated fallback discovery, direct diagram startup, mixed authored/generated collections, and clear failure when no supported inputs exist
-  - Evidence: `packages/parser/src/index.ts`, `packages/cli/src/lib/target.ts`, `packages/cli/src/lib/cli.ts`, `packages/web-player/smoke/startup-modes.spec.ts`
-- Mermaid + YAML parser, including node resolution and `{{node_id}}` references
-  - Evidence: `packages/parser/src/index.ts`
-- Tour validation, focus-node validation, and text-reference validation
-  - Evidence: `packages/parser/src/index.ts`
-- Shared `core` model for tours, collections, steps, and slugs
-  - Evidence: `packages/core/src/index.ts`
-- Step-by-step navigation (`Previous` / `Next`)
-  - Evidence: `packages/web-player/src/lib/player-state.ts`
-- Deep linking with 1-based `?step=` and clamping of invalid values
-  - Evidence: `packages/web-player/src/routes/[...tourSlug]/+page.server.ts`
-- Node highlighting through `data-node-id` and `data-focus-state`
-  - Evidence: `packages/web-player/src/lib/mermaid-diagram.ts`
-- Multi-focus and empty-focus semantics
-  - Evidence: `packages/web-player/src/lib/mermaid-diagram.ts`
-- Pan-based viewport control for single-focus, grouped-focus, and neutral states
-  - Evidence: `packages/web-player/src/lib/diagram-viewport.ts`
-- Canvas-first layout with top bar, step overlay, and floating browse panel
-  - Evidence: `packages/web-player/src/routes/+layout.svelte`
-- Desktop-first navigation minimap with click-to-pan, viewport dragging, focus markers, responsive auto-hide, and persisted collapsed state
-  - Note: the step overlay now stacks above the minimap in the bottom-right overlay column
-  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/lib/diagram-minimap.ts`, `packages/web-player/test/diagram-minimap.test.ts`
-- Theme toggle and theme persistence
-  - Evidence: `packages/web-player/src/routes/+layout.svelte`
-- Recursive discovery of `*.tour.yaml`
-  - Evidence: `packages/parser/src/index.ts`
-- Preview of either a single tour file or a directory source target
-  - Evidence: `packages/web-player/src/lib/source-target.ts`
-- Slug-based routing for multiple tours
-  - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/[...tourSlug]/+page.server.ts`
-- Guided recovery for unknown tours
-  - Evidence: `packages/web-player/src/routes/+error.svelte`
-- Browse panel with explorer-style tour navigation
-  - Current state: real folder-based tree, compact folders, text search with lightweight fuzzy matching, folder/diagram iconography, active-branch expansion, and local favorites pinned above the tree
-  - Note: skipped-tour details live in an `Issues` badge in the top bar to keep navigation and diagnostics separate
-  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/browse-tree.ts`, `packages/web-player/test/browse-tree.test.ts`
-- Node click navigation to jump to associated steps
-  - Current state: clickable Mermaid nodes jump directly when they map to one step, or open a chooser popover when they map to multiple steps
-  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/lib/tour-step-links.ts`, `packages/web-player/test/tour-player.svelte.test.ts`
-- Visual step timeline
-  - Current state: the step overlay includes compact numbered pills for direct step jumps with current/completed/upcoming states
-  - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/test/tour-player.svelte.test.ts`
-- Editor preview startup flows
-  - Current state: supports `bun run dev <target>` for either a directory or a tour file, plus `bun run dev:interactive` for console-driven source-target selection
-  - Note: the runtime source of truth remains `DIAGRAM_TOUR_SOURCE_TARGET`, but startup scripts now provide a friendlier developer workflow
-  - Evidence: `package.json`, `scripts/dev-web-player.ts`, `scripts/dev-web-player-interactive.ts`, `scripts/dev-web-player-lib.ts`, `packages/web-player/src/lib/source-target.ts`
-- Global `diagram-tours` npm/Bun CLI
-  - Current state: the repository now includes a publishable `packages/cli` package named `diagram-tours`, a no-arg wizard, direct directory/file startup, localhost-first port selection, browser-open controls, and a packaged Node web-player runtime
-  - Testing expectation: CLI unit coverage, packaged-runtime smoke coverage, and build validation all exercise the publishable path rather than only the repo-local Bun dev flow
-  - Evidence: `packages/cli/package.json`, `packages/cli/src/lib/cli.ts`, `packages/web-player/package.json`, `packages/web-player/playwright.config.ts`
-- Unified coverage dashboard for monorepo unit tests
-  - Current state: package-level test ownership and `100%` guardrails stay in place, while `bun run coverage` now writes a single root entrypoint at `coverage/index.html` with drill-down links for `core`, `parser`, `web-player`, `cli`, and `scripts`
-  - Testing expectation: unit coverage validates the dashboard generator and keeps script coverage visible instead of leaving it outside the main report flow
-  - Evidence: `package.json`, `scripts/build-coverage-dashboard.ts`, `scripts/vitest.config.ts`, `docs/testing/coverage.md`
-- Smoke coverage for load, deep linking, viewport behavior, theme switching, large diagrams, startup modes, node-step navigation, favorites, diagnostics, and timeline
-  - Evidence: `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
-- Rebalance smoke coverage into core smoke vs extended pre-push coverage
-  - Current state: `bun run smoke` now runs a smaller tagged core browser suite for packaged-runtime startup and critical navigation confidence, while broader browser scenarios run through an extended suite included in `bun run prepush`
-  - Testing expectation: script coverage and Playwright selection validate that every existing browser scenario remains covered in either the core or extended tier, with `prepush` still exercising the full browser surface before handoff
-  - Evidence: `package.json`, `packages/web-player/package.json`, `packages/web-player/smoke/payment-flow.spec.ts`, `packages/web-player/smoke/startup-modes.spec.ts`, `docs/testing/smoke-tests.md`
-- Support for more complex diagram types, including Mermaid sequence diagrams
-  - Current state: version 1 now supports Mermaid flowcharts plus Mermaid sequence diagrams with addressable participants and tagged messages, generated fallback steps, `focus`/`{{ref}}` resolution, minimap markers, viewport centering, and click-to-step navigation
-  - Scope note: notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs still remain out of scope
-  - Evidence: `packages/core/src/index.ts`, `packages/parser/src/index.ts`, `packages/web-player/src/lib/mermaid-diagram.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
+- Moved to [`backlog.done.md`](backlog.done.md) to keep the active backlog smaller.
+- BT-004 Layout polish and highlight hierarchy
+  - Current state: the player now uses the redesigned fullscreen shell, layered controls, and non-geometric focus styling so highlighted nodes stay in place while stepping through the tour
+  - Evidence: `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/smoke/payment-flow.spec.ts`
 
 ### Partial
 
@@ -108,10 +28,6 @@ Cutoff date: 2026-03-17
   - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
   - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
   - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/diagnostics.ts`
-- BT-004 Layout polish and highlight hierarchy
-  - Current state: the workspace has been heavily refined, but `reqs.md` still marks this area as open and it remains a reasonable ongoing polish stream
-  - Gap: connectors, labels, and fine-grained visual hierarchy can still improve
-  - Evidence: `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
 - BT-005 Wizard path retry UX
   - Current state: invalid explicit paths fail clearly during wizard input validation
   - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
@@ -145,6 +61,20 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - BT-018 Explicit viewport constraints
   - Note: no current implementation was found in the repository
+- BT-019 Enforce LOC limits in Linters (Hard Boundaries)
+  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 150) in the web-player package to ensure modularity and context efficiency
+- BT-020 Strengthen CLI version-mode argument precedence coverage
+  - Note: extend `packages/cli/test/args.test.ts` so `--version` is proven to win even when combined with other inputs such as an explicit target or browser-opening flags, preventing false-green regressions in CLI argument precedence
+- BT-021 Expand CLI missing-value sad-path coverage for option parsing
+  - Note: extend `packages/cli/test/args.test.ts` to cover missing values for both `--host` and `--port`, including the realistic case where the next token is another flag, and assert actionable error text for each failure path
+- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
+  - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
+- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
+  - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
+- BT-024 Split smoke coverage into one spec file per behavior slice
+  - Note: break up large smoke files such as `packages/web-player/smoke/payment-flow.spec.ts` into smaller focused specs so targeted agent validation can run only the touched smoke file instead of a giant mixed suite
+- BT-025 Add max-lines-per-file guardrails across code and tests
+  - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 
 ## Notes
 

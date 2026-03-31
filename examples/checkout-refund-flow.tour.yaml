@@ -1,6 +1,6 @@
 version: 1
 title: Refund Flow
-diagram: ./refund-flow.mmd
+diagram: ./checkout-refund-flow.mmd
 
 steps:
   - focus:

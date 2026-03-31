@@ -1,6 +1,6 @@
 version: 1
 title: Parallel Onboarding
-diagram: ./parallel-onboarding.mmd
+diagram: ./ops-parallel-onboarding.mmd
 
 steps:
   - focus:

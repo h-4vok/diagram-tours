@@ -1,6 +1,6 @@
 version: 1
 title: Decision Flow
-diagram: ./decision-flow.mmd
+diagram: ./checkout-decision-flow.mmd
 
 steps:
   - focus:

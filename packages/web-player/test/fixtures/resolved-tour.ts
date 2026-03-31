@@ -13,7 +13,7 @@ export const resolvedPaymentFlowTour: ResolvedDiagramTour = {
       { id: "payment_provider", kind: "node", label: "Payment Provider" },
       { id: "response", kind: "node", label: "Response" }
     ],
-    path: "./payment-flow.mmd",
+    path: "./checkout-payment-flow.mmd",
     source: `flowchart LR
   client[Client] --> api_gateway[API Gateway]
   api_gateway --> validation_service[Validation Service]
