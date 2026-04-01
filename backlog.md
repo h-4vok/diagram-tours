@@ -40,8 +40,6 @@ Cutoff date: 2026-03-17
   - Note: add a CLI command that can create a new `*.tour.yaml` from scratch, or inspect an existing Mermaid source and scaffold a starter tour with the right `diagram` target and step structure
 - BT-011 Installable authoring reference for AI agents and repository tooling
   - Note: add a command that installs a reusable Markdown reference describing the `tour.yaml` standard so files like `AGENTS.md` or other agent instructions can point to one stable doc for Codex, Claude Code, and similar tools
-- BT-012 Standalone `tour.yaml` validation command with author-friendly diagnostics
-  - Note: add a CLI validation command that checks whether a tour file is valid and reports detailed, actionable errors including source locations such as line information when available
 - BT-013 Adoption and onboarding strategy for people and AI assistants
   - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
   - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work

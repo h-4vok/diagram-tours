@@ -5,6 +5,7 @@ import { readCliVersion } from "../src/lib/version.js";
 const resolveServerBindingMock = vi.fn();
 const startWebServerMock = vi.fn();
 const validateTargetPathMock = vi.fn();
+const validateResolvedTourTargetsMock = vi.fn();
 const runWizardMock = vi.fn();
 const loadResolvedTourCollectionMock = vi.fn();
 const questionMock = vi.fn();
@@ -47,16 +48,23 @@ vi.mock("../src/lib/wizard.js", () => {
 
 vi.mock("@diagram-tour/parser", () => {
   return {
-    loadResolvedTourCollection: loadResolvedTourCollectionMock
+    loadResolvedTourCollection: loadResolvedTourCollectionMock,
+    validateResolvedTourTargets: validateResolvedTourTargetsMock
   };
 });
 
 describe("runCli", () => {
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
   beforeEach(() => {
     questionMock.mockResolvedValue("");
     loadResolvedTourCollectionMock.mockResolvedValue({ entries: [], skipped: [] });
+    validateResolvedTourTargetsMock.mockResolvedValue({
+      issues: [],
+      total: 0,
+      valid: 0
+    });
     resolveServerBindingMock.mockResolvedValue({ host: "127.0.0.1", port: 7733 });
     startWebServerMock.mockResolvedValue({
       child: createChild(),
@@ -75,11 +83,13 @@ describe("runCli", () => {
     closeMock.mockReset();
     questionMock.mockReset();
     loadResolvedTourCollectionMock.mockReset();
+    validateResolvedTourTargetsMock.mockReset();
     resolveServerBindingMock.mockReset();
     startWebServerMock.mockReset();
     validateTargetPathMock.mockReset();
     runWizardMock.mockReset();
     process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
   });
 
   it("validates an explicit target and does not open the browser by default", async () => {
@@ -120,6 +130,107 @@ describe("runCli", () => {
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
+  });
+
+  it("runs validate against the current directory when no paths are provided", async () => {
+    const opener = { open: vi.fn() };
+    const writes: string[] = [];
+
+    process.stdout.write = vi.fn((text: string) => {
+      writes.push(text);
+      return true;
+    }) as never;
+
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["validate"], opener);
+
+    expect(exitCode).toBe(0);
+    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["."]);
+    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
+    expect(startWebServerMock).not.toHaveBeenCalled();
+    expect(opener.open).not.toHaveBeenCalled();
+    expect(writes.join("")).toBe("0/0 tours valid.\n");
+  });
+
+  it("prints validation failures and exits non-zero", async () => {
+    const opener = { open: vi.fn() };
+    const stdoutWrites: string[] = [];
+    const stderrWrites: string[] = [];
+
+    validateResolvedTourTargetsMock.mockResolvedValue({
+      issues: [
+        {
+          diagnostic: {
+            code: "yaml.parse",
+            location: { column: 4, line: 2 },
+            message: "title is required"
+          },
+          sourceId: "C:/repo/docs/checklist.tour.yaml",
+          sourcePath: "docs/checklist.tour.yaml"
+        }
+      ],
+      total: 1,
+      valid: 0
+    });
+
+    process.stdout.write = vi.fn((text: string) => {
+      stdoutWrites.push(text);
+      return true;
+    }) as never;
+    process.stderr.write = vi.fn((text: string) => {
+      stderrWrites.push(text);
+      return true;
+    }) as never;
+
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["validate", "./docs"], opener);
+
+    expect(exitCode).toBe(1);
+    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["./docs"]);
+    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
+    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml:2:4 title is required");
+    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
+    expect(startWebServerMock).not.toHaveBeenCalled();
+    expect(opener.open).not.toHaveBeenCalled();
+  });
+
+  it("prints validation failures without a location", async () => {
+    const opener = { open: vi.fn() };
+    const stdoutWrites: string[] = [];
+    const stderrWrites: string[] = [];
+
+    validateResolvedTourTargetsMock.mockResolvedValue({
+      issues: [
+        {
+          diagnostic: {
+            code: null,
+            location: null,
+            message: "title is required"
+          },
+          sourceId: "C:/repo/docs/checklist.tour.yaml",
+          sourcePath: "docs/checklist.tour.yaml"
+        }
+      ],
+      total: 1,
+      valid: 0
+    });
+
+    process.stdout.write = vi.fn((text: string) => {
+      stdoutWrites.push(text);
+      return true;
+    }) as never;
+    process.stderr.write = vi.fn((text: string) => {
+      stderrWrites.push(text);
+      return true;
+    }) as never;
+
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["validate", "./docs"], opener);
+
+    expect(exitCode).toBe(1);
+    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
+    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml title is required");
+    expect(stderrWrites.join("")).not.toContain("C:/repo/docs/checklist.tour.yaml:2:4");
   });
 
   it("preflights a markdown target before startup", async () => {

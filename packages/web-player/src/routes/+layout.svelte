@@ -563,6 +563,13 @@
                 {:else if diagnostic.detail !== null}
                   <p class="diagnostics-item__detail">{diagnostic.detail}</p>
                 {/if}
+                {#if diagnostic.location !== null}
+                  <p class="diagnostics-item__detail">
+                    <code class="diagnostics-item__code">
+                      {diagnostic.location.line}:{diagnostic.location.column}
+                    </code>
+                  </p>
+                {/if}
               </article>
             {/each}
           </div>

@@ -276,8 +276,14 @@ describe("+layout.svelte", () => {
           ...resolvedTourCollection,
           skipped: [
             {
+              diagnostic: {
+                code: "ghost",
+                location: { column: 4, line: 2 },
+                message: "step 1 focus references unknown Mermaid node id 'ghost'"
+              },
+              sourceId: "broken.tour.yaml",
               sourcePath: "broken.tour.yaml",
-              error: "step 1 focus references unknown Mermaid node id 'ghost'"
+              error: "Tour \"broken.tour.yaml\": step 1 focus references unknown Mermaid node id 'ghost'"
             }
           ]
         },
@@ -298,6 +304,7 @@ describe("+layout.svelte", () => {
     expect(diagnosticsItem.textContent).toContain("broken.tour.yaml");
     expect(diagnosticsItem.textContent).toContain("broken");
     expect(within(diagnosticsItem).getByText("ghost")).toBeDefined();
+    expect(diagnosticsItem.textContent).toContain("2:4");
   });
 
   it("shows a zero state when no diagnostics exist", async () => {

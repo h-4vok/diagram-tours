@@ -1,8 +1,9 @@
-import type { SkippedResolvedDiagramTour } from "@diagram-tour/core";
+import type { DiagnosticLocation, SkippedResolvedDiagramTour } from "@diagram-tour/core";
 
 export interface DiagnosticDisplayItem {
   code: string | null;
   detail: string | null;
+  location: DiagnosticLocation | null;
   path: string;
   summary: string;
 }
@@ -16,28 +17,20 @@ export function createDiagnosticDisplayItems(
 function createDiagnosticDisplayItem(
   skipped: SkippedResolvedDiagramTour
 ): DiagnosticDisplayItem {
-  const message = stripTourPrefix(skipped.error);
-  const summary = createDiagnosticSummary(message);
-  const code = readDiagnosticCode(message);
+  const diagnostic = skipped.diagnostic;
+  const summary = createDiagnosticSummary(diagnostic.message);
 
   return {
-    code,
-    detail: readDiagnosticDetail(message, summary, code),
+    code: diagnostic.code,
+    detail: readDiagnosticDetail(diagnostic.message, summary, diagnostic.code),
+    location: diagnostic.location,
     path: skipped.sourcePath,
     summary
   };
 }
 
-function stripTourPrefix(error: string): string {
-  return error.replace(/^Tour\s+".+?":\s*/u, "").trim();
-}
-
 function createDiagnosticSummary(message: string): string {
   return summarizeDiagnosticText(readSummarySource(message));
-}
-
-function readDiagnosticCode(message: string): string | null {
-  return normalizeDiagnosticCode(readLastQuotedCode(message));
 }
 
 function stripQuotedCode(message: string): string {
@@ -70,22 +63,4 @@ function shouldOmitDiagnosticDetail(detail: string, summary: string, code: strin
 
 function createSummaryWithCode(summary: string, code: string | null): string {
   return `${summary} ${code ?? ""}`.trim();
-}
-
-function readLastQuotedCode(message: string): string | undefined {
-  return [...message.matchAll(/(["'`])([^"'`]+)\1/gu)].at(-1)?.[2];
-}
-
-function normalizeDiagnosticCode(code: string | undefined): string | null {
-  const trimmedCode = trimOptionalCode(code);
-
-  return isPopulatedCode(trimmedCode) ? trimmedCode : null;
-}
-
-function trimOptionalCode(code: string | undefined): string | undefined {
-  return code?.trim();
-}
-
-function isPopulatedCode(code: string | undefined): code is string {
-  return code !== undefined && code.length > 0;
 }
