@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
+  - Outcome: root validation now runs labeled `lint`, `typecheck`, and `test` checks in parallel before gating `smoke`, improving operator speed without changing build or smoke semantics
+  - Evidence: `package.json`, `README.md`, `docs/testing/smoke-tests.md`
+
 - BT-020 Strengthen CLI version-mode argument precedence coverage
   - Outcome: `--version` is now explicitly proven to win over an explicit startup target and browser-opening flags, preventing false-green precedence regressions
   - Evidence: `packages/cli/test/args.test.ts`
