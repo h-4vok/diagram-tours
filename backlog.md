@@ -6,7 +6,6 @@ Initial source: a contrast between [`docs/reqs.md`](docs/reqs.md), the current c
 
 ## Conventions
 
-- `Done`: implemented and present in the repository
 - `In Progress`: started and integrated in the repository, but not yet closed
 - `Partial`: partially implemented or not yet fully aligned with the intended requirement
 - `Todo`: not implemented yet
