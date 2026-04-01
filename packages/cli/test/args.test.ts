@@ -84,6 +84,24 @@ describe("parseCliArgs", () => {
     });
   });
 
+  it("lets version mode win over an explicit target in either order", () => {
+    expect(parseCliArgs(["--version", "./examples"])).toEqual({
+      command: "version"
+    });
+    expect(parseCliArgs(["./examples", "--version"])).toEqual({
+      command: "version"
+    });
+  });
+
+  it("lets version mode win over explicit browser-opening flags", () => {
+    expect(parseCliArgs(["--version", "--open"])).toEqual({
+      command: "version"
+    });
+    expect(parseCliArgs(["--version", "--no-open"])).toEqual({
+      command: "version"
+    });
+  });
+
   it("accepts an explicit open policy", () => {
     expect(parseCliArgs(["./examples", "--open"])).toEqual({
       command: "startup",
@@ -180,8 +198,20 @@ describe("parseCliArgs", () => {
     );
   });
 
-  it("rejects missing flag values", () => {
+  it("rejects a missing host value at end of input", () => {
     expect(() => parseCliArgs(["--host"])).toThrow("Expected a value after --host.");
+  });
+
+  it("rejects a missing host value when the next token is another flag", () => {
+    expect(() => parseCliArgs(["--host", "--open"])).toThrow("Expected a value after --host.");
+  });
+
+  it("rejects a missing port value at end of input", () => {
+    expect(() => parseCliArgs(["--port"])).toThrow("Expected a value after --port.");
+  });
+
+  it("rejects a missing port value when the next token is another flag", () => {
+    expect(() => parseCliArgs(["--port", "--open"])).toThrow("Expected a value after --port.");
   });
 
   it("rejects conflicting browser flags", () => {

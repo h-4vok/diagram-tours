@@ -8,6 +8,13 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-020 Strengthen CLI version-mode argument precedence coverage
+  - Outcome: `--version` is now explicitly proven to win over an explicit startup target and browser-opening flags, preventing false-green precedence regressions
+  - Evidence: `packages/cli/test/args.test.ts`
+
+- BT-021 Expand CLI missing-value sad-path coverage for option parsing
+  - Outcome: missing values for both `--host` and `--port` are now explicitly covered at end-of-input and when the next token is another flag, with actionable error text
+  - Evidence: `packages/cli/test/args.test.ts`
 
 - BT-005 Wizard path retry UX
   - Outcome: missing paths on both explicit wizard path-entry prompts retry in place instead of bouncing back to the top-level menu
