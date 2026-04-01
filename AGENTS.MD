@@ -6,7 +6,7 @@ Load first:
 
 ## Workflow
 - Task shape: bounded capability; user-visible, contract-visible, validation-visible, or delivery-unblocking infra.
-- Flow: contract -> test -> code -> refactor -> targeted validation -> operator validation.
+- Flow: contract -> test -> code -> refactor -> closeout-validate -> operator validation.
 - Prefer behavior tests, small pure functions, guard clauses, explicit data.
 - Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
 - Reuse examples/fixtures before new patterns.
@@ -33,19 +33,20 @@ Load first:
 - Repo-facing docs: English.
 
 ## Validation
-- Before done: targeted checks on touched files.
+- Before done: run `closeout-validate` on the touched files and report the exact checks run.
 - Lint: modified JS/TS/Svelte/CSS files only.
 - Tests: affected Vitest files only. No full suite.
 - Smoke: touched smoke spec only. No full smoke.
 - Typecheck: affected package only.
 - Fix failures immediately.
 - Final message: list targeted checks passed.
-- Exhaustive checks: operator-run.
+- Exhaustive checks: operator-run via `repo-validate`.
 - Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush.
-- Operator request: `Run bun run allchecks:ai; send failing summary only.`
+- Operator request: `Run bun run allchecks:ai; send failing summary only.`  
 - Narrow request: `Run [command]; send failing file/assertion/stack only.`
 - Analyze summary, stack, failing assertion, failing file.
 - Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
+- Do not use `repo-validate` as the normal closeout path for a single change.
 - Browser-visible/runtime/startup/docs-visible changes: operator runs smoke.
 - Cross-package/release-facing changes: operator runs full validation.
 

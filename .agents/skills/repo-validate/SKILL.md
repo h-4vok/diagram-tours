@@ -1,16 +1,16 @@
 ---
 name: repo-validate
-description: Run the correct validation set for diagram-tours changes and summarize the outcome clearly. Use when closing work, preparing a push or PR, or checking whether changes across CLI, parser, web-player, docs, or packaging are ready.
+description: Run broader repo validation and summarize the outcome clearly for operator-run checks, pushes, PRs, or release readiness.
 ---
 
 # Repo Validate
 
-Validate only what the change needs, then report exactly what ran.
+Use this skill when you need broad validation of the repository, not the normal closeout path for a single change.
 
 ## Use this workflow
 
-1. Inspect changed files first.
-2. Always run:
+1. Inspect the relevant files or change set first.
+2. Run the broad checks that match the scope:
    - `bun run lint`
    - `bun run typecheck`
    - `bun run test`
@@ -24,6 +24,7 @@ Validate only what the change needs, then report exactly what ran.
    - startup/runtime packaging
    - release-facing paths
 5. Prefer `bun run prepush` for cross-package or release-facing changes.
+6. Prefer `bun run allchecks:ai` when the operator wants the full validation pass with normal logs.
 
 ## Report format
 

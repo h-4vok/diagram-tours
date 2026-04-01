@@ -202,8 +202,8 @@ Operational docs:
 
 Agent default:
 
-- targeted local checks on touched files/packages
-- operator runs exhaustive/full validation
+- targeted local checks on touched files/packages via `closeout-validate`
+- operator runs exhaustive/full validation via `repo-validate`
 
 Operator quick path:
 
