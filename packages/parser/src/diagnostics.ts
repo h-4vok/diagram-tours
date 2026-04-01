@@ -8,11 +8,7 @@ type ErrorWithLocation = Error & {
 };
 
 export function createTourDiagnostic(error: unknown): TourDiagnostic {
-  return createTourDiagnostics(error)[0] ?? {
-    code: null,
-    location: null,
-    message: "failed unexpectedly"
-  };
+  return createTourDiagnostics(error)[0]!;
 }
 
 export function createTourDiagnostics(error: unknown): TourDiagnostic[] {
