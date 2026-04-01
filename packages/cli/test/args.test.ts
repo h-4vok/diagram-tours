@@ -52,16 +52,7 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["validate"])).toEqual({
       command: "validate",
       options: {
-        target: "."
-      }
-    });
-  });
-
-  it("reads multiple validate targets", () => {
-    expect(parseCliArgs(["validate", "./examples", "./docs"])).toEqual({
-      command: "validate",
-      options: {
-        target: "./examples"
+        target: null
       }
     });
   });
@@ -149,7 +140,7 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["validate"])).toEqual({
       command: "validate",
       options: {
-        target: "."
+        target: null
       }
     });
   });
@@ -161,6 +152,12 @@ describe("parseCliArgs", () => {
         target: "./examples"
       }
     });
+  });
+
+  it("rejects multiple validate targets", () => {
+    expect(() => parseCliArgs(["validate", "./examples", "./docs"])).toThrow(
+      "Expected validate to receive zero or one target path."
+    );
   });
 
   it("parses init with overwrite and a diagram target", () => {
@@ -195,7 +192,7 @@ describe("parseCliArgs", () => {
 
   it("rejects validate with browser or server flags", () => {
     expect(() => parseCliArgs(["validate", "--port", "9000"])).toThrow(
-      "validate does not accept browser or server flags."
+      "Expected validate to receive zero or one target path."
     );
   });
 

@@ -6,9 +6,6 @@ import { dirname, join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-<<<<<<< HEAD
-import { loadResolvedTour, loadResolvedTourCollection, validateDiscoveredTours } from "../src/index";
-=======
 import {
   createTourDiagnostic,
   formatTourDiagnostic,
@@ -17,9 +14,9 @@ import {
 import {
   loadResolvedTour,
   loadResolvedTourCollection,
+  validateDiscoveredTours,
   validateResolvedTourTargets
 } from "../src/index";
->>>>>>> origin/main
 
 const FIXTURE_TOUR_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -1216,15 +1213,18 @@ describe("@diagram-tour/parser", () => {
   it("validates discovered authored tours under a directory", async () => {
     const result = await validateDiscoveredTours(DISCOVERY_FIXTURE_ROOT);
 
-    expect(result).toEqual({
-      invalid: [
-        {
-          error:
-            `Tour "${normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml"))}": step 1 focus references unknown Mermaid node id "missing_node"`,
-          sourcePath: "invalid-tour/invalid.tour.yaml"
-        }
+    expect(result.valid).toEqual(["alpha-tour/alpha.tour.yaml", "nested/beta-tour/beta.tour.yaml"]);
+    expect(result.invalid).toHaveLength(1);
+    expect(result.invalid[0]).toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+        }),
+        expect.objectContaining({
+          message: 'step 1 text references unknown Mermaid node id "missing_node"'
+        })
       ],
-      valid: ["alpha-tour/alpha.tour.yaml", "nested/beta-tour/beta.tour.yaml"]
+      sourcePath: "invalid-tour/invalid.tour.yaml"
     });
   });
 
@@ -1232,13 +1232,18 @@ describe("@diagram-tour/parser", () => {
     const result = await validateDiscoveredTours(INVALID_ONLY_FIXTURE_ROOT);
 
     expect(result.valid).toEqual([]);
-    expect(result.invalid).toEqual([
-      {
-        error:
-          `Tour "${normalizePath(resolve(INVALID_ONLY_FIXTURE_ROOT, "./broken.tour.yaml"))}": step 1 focus references unknown Mermaid node id "ghost"`,
-        sourcePath: "broken.tour.yaml"
-      }
-    ]);
+    expect(result.invalid).toHaveLength(1);
+    expect(result.invalid[0]).toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          message: 'step 1 focus references unknown Mermaid node id "ghost"'
+        }),
+        expect.objectContaining({
+          message: 'step 1 text references unknown Mermaid node id "ghost"'
+        })
+      ],
+      sourcePath: "broken.tour.yaml"
+    });
   });
 
   it("returns no authored tours for a directory with only raw diagrams", async () => {
@@ -1263,7 +1268,7 @@ describe("@diagram-tour/parser", () => {
   });
 
   it("returns no authored tours for a non-tour single-file target", async () => {
-    const result = await validateDiscoveredTours(resolve(EXAMPLES_ROOT, "./checkout/payment-flow.mmd"));
+    const result = await validateDiscoveredTours(resolve(EXAMPLES_ROOT, "./checkout-payment-flow.mmd"));
 
     expect(result).toEqual({
       invalid: [],

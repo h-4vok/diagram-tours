@@ -1,6 +1,7 @@
 import { stdout as output } from "node:process";
 
 import { loadResolvedTour, validateDiscoveredTours } from "@diagram-tour/parser";
+import type { TourDiagnostic } from "@diagram-tour/core";
 import { validateValidationTarget } from "./target.js";
 import type { ParsedValidateArgs } from "./types.js";
 
@@ -61,11 +62,13 @@ function writeDirectorySummary(
 }
 
 function writeInvalidTours(
-  invalid: Array<{ error: string; sourcePath: string }>,
+  invalid: Array<{ diagnostics: TourDiagnostic[]; sourcePath: string }>,
   write: Write
 ): void {
   for (const item of invalid) {
-    write(`- ${item.sourcePath}: ${item.error}\n`);
+    for (const diagnostic of item.diagnostics) {
+      write(`- ${item.sourcePath}: ${diagnostic.message}\n`);
+    }
   }
 }
 

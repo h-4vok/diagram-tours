@@ -215,11 +215,11 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate"], opener);
 
     expect(exitCode).toBe(0);
-    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["."]);
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: null });
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
-    expect(writes.join("")).toBe("0/0 tours valid.\n");
+    expect(writes.join("")).toBe("");
   });
 
   it("prints validation failures and exits non-zero", async () => {
@@ -227,21 +227,7 @@ describe("runCli", () => {
     const stdoutWrites: string[] = [];
     const stderrWrites: string[] = [];
 
-    validateResolvedTourTargetsMock.mockResolvedValue({
-      issues: [
-        {
-          diagnostic: {
-            code: "yaml.parse",
-            location: { column: 4, line: 2 },
-            message: "title is required"
-          },
-          sourceId: "C:/repo/docs/checklist.tour.yaml",
-          sourcePath: "docs/checklist.tour.yaml"
-        }
-      ],
-      total: 1,
-      valid: 0
-    });
+    runValidateCommandMock.mockResolvedValue(1);
 
     process.stdout.write = vi.fn((text: string) => {
       stdoutWrites.push(text);
@@ -256,9 +242,9 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate", "./docs"], opener);
 
     expect(exitCode).toBe(1);
-    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["./docs"]);
-    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
-    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml:2:4 title is required");
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: "./docs" });
+    expect(stdoutWrites.join("")).toBe("");
+    expect(stderrWrites.join("")).toBe("");
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
@@ -269,21 +255,7 @@ describe("runCli", () => {
     const stdoutWrites: string[] = [];
     const stderrWrites: string[] = [];
 
-    validateResolvedTourTargetsMock.mockResolvedValue({
-      issues: [
-        {
-          diagnostic: {
-            code: null,
-            location: null,
-            message: "title is required"
-          },
-          sourceId: "C:/repo/docs/checklist.tour.yaml",
-          sourcePath: "docs/checklist.tour.yaml"
-        }
-      ],
-      total: 1,
-      valid: 0
-    });
+    runValidateCommandMock.mockResolvedValue(1);
 
     process.stdout.write = vi.fn((text: string) => {
       stdoutWrites.push(text);
@@ -298,8 +270,7 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate", "./docs"], opener);
 
     expect(exitCode).toBe(1);
-    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
-    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml title is required");
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: "./docs" });
     expect(stderrWrites.join("")).not.toContain("C:/repo/docs/checklist.tour.yaml:2:4");
   });
 

@@ -77,23 +77,23 @@ describe("validateTargetPath", () => {
   });
 
   it("accepts a validation tour file target", () => {
-    expect(validateValidationTarget("./examples/checkout/payment-flow.tour.yaml")).toContain(
+    expect(validateValidationTarget("./examples/checkout-payment-flow.tour.yaml")).toContain(
       "payment-flow.tour.yaml"
     );
   });
 
   it("rejects diagram files for validation", () => {
-    expect(() => validateValidationTarget("./examples/checkout/payment-flow.mmd")).toThrow(
+    expect(() => validateValidationTarget("./examples/checkout-payment-flow.mmd")).toThrow(
       "Expected a .tour.yaml file or a directory:"
     );
   });
 
   it("accepts mermaid files for init", () => {
-    expect(validateInitTarget("./examples/checkout/payment-flow.mmd")).toContain("payment-flow.mmd");
+    expect(validateInitTarget("./examples/checkout-payment-flow.mmd")).toContain("payment-flow.mmd");
   });
 
   it("rejects tour files for init", () => {
-    expect(() => validateInitTarget("./examples/checkout/payment-flow.tour.yaml")).toThrow(
+    expect(() => validateInitTarget("./examples/checkout-payment-flow.tour.yaml")).toThrow(
       "Expected a .mmd or .mermaid file for init:"
     );
   });

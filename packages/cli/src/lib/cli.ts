@@ -12,7 +12,7 @@ import { resolveServerBinding } from "./port-policy.js";
 import { startWebServer } from "./server.js";
 import { runSetupCommand } from "./setup.js";
 import { validateTargetPath } from "./target.js";
-import type { ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
+import type { ParsedCliArgs, ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
 import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
 import { runWizard } from "./wizard.js";
@@ -25,38 +25,66 @@ export async function runCli(args: string[], opener: BrowserOpener = defaultBrow
 }
 
 async function dispatchParsedArgs(
-  parsed:
-    | { command: "init"; options: { overwrite: boolean; target: string } }
-    | { command: "setup"; options: Parameters<typeof runSetupCommand>[0] }
-    | { command: "startup"; options: ParsedStartupArgs }
-    | { command: "validate"; options: Parameters<typeof runValidateCommand>[0] }
-    | { command: "version" },
+  parsed: ParsedCliArgs,
   opener: BrowserOpener
 ): Promise<number> {
-  return await CLI_COMMAND_HANDLERS[parsed.command](parsed, opener);
+  return await (DISPATCHERS[parsed.command] as (parsed: ParsedCliArgs, opener: BrowserOpener) => Promise<number>)(
+    parsed,
+    opener
+  );
 }
 
-const CLI_COMMAND_HANDLERS = {
-  init(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "init" }>) {
-    return runInitCommand(parsed.options);
-  },
-  setup(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "setup" }>) {
-    return withPromptIo((io) => runSetupCommand(parsed.options, io));
-  },
-  startup(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "startup" }>, opener: BrowserOpener) {
-    return runStartupCommand(parsed.options, opener);
-  },
-  validate(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "validate" }>) {
-    return runValidateCommand(parsed.options);
-  },
-  version() {
-    output.write(`diagram-tours ${readCliVersion()}\n`);
-    return Promise.resolve(0);
-  }
-} satisfies Record<
-  Parameters<typeof dispatchParsedArgs>[0]["command"],
-  (parsed: Parameters<typeof dispatchParsedArgs>[0], opener: BrowserOpener) => Promise<number>
->;
+type CommandHandlerMap = {
+  init(parsed: Extract<ParsedCliArgs, { command: "init" }>, opener: BrowserOpener): Promise<number>;
+  setup(parsed: Extract<ParsedCliArgs, { command: "setup" }>, opener: BrowserOpener): Promise<number>;
+  startup(parsed: Extract<ParsedCliArgs, { command: "startup" }>, opener: BrowserOpener): Promise<number>;
+  validate(parsed: Extract<ParsedCliArgs, { command: "validate" }>, opener: BrowserOpener): Promise<number>;
+  version(parsed: Extract<ParsedCliArgs, { command: "version" }>, opener: BrowserOpener): Promise<number>;
+};
+
+const DISPATCHERS = {
+  init: handleInitCommand,
+  setup: handleSetupCommand,
+  startup: handleStartupCommand,
+  validate: handleValidateCommand,
+  version: handleVersionCommand
+} satisfies CommandHandlerMap;
+
+async function handleInitCommand(
+  parsed: Extract<ParsedCliArgs, { command: "init" }>,
+  _opener: BrowserOpener
+): Promise<number> {
+  return await runInitCommand(parsed.options);
+}
+
+async function handleSetupCommand(
+  parsed: Extract<ParsedCliArgs, { command: "setup" }>,
+  _opener: BrowserOpener
+): Promise<number> {
+  return await withPromptIo((io) => runSetupCommand(parsed.options, io));
+}
+
+async function handleStartupCommand(
+  parsed: Extract<ParsedCliArgs, { command: "startup" }>,
+  opener: BrowserOpener
+): Promise<number> {
+  return await runStartupCommand(parsed.options, opener);
+}
+
+async function handleValidateCommand(
+  parsed: Extract<ParsedCliArgs, { command: "validate" }>,
+  _opener: BrowserOpener
+): Promise<number> {
+  return await runValidateCommand(parsed.options);
+}
+
+async function handleVersionCommand(
+  _parsed: Extract<ParsedCliArgs, { command: "version" }>,
+  _opener: BrowserOpener
+): Promise<number> {
+  output.write(`diagram-tours ${readCliVersion()}\n`);
+  return 0;
+}
 
 async function runStartupCommand(parsed: ParsedStartupArgs, opener: BrowserOpener): Promise<number> {
   const launchResult = parsed.mode === "wizard" ? await readWizardLaunch(parsed) : readDirectLaunch(parsed);

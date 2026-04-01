@@ -23,7 +23,11 @@ export function parseCliArgs(input: string[]): ParsedCliArgs {
   return parseStartupArgs(input);
 }
 
-function parseStartupArgs(input: string[]): ParsedCliArgs {
+type ParsedStartupOrVersionArgs =
+  | Extract<ParsedCliArgs, { command: "startup" }>
+  | Extract<ParsedCliArgs, { command: "version" }>;
+
+function parseStartupArgs(input: string[]): ParsedStartupOrVersionArgs {
   const state = createInitialState();
 
   for (let index = 0; index < input.length; index += 1) {
@@ -41,7 +45,7 @@ function parseStartupArgs(input: string[]): ParsedCliArgs {
   return readStartupCommand(state);
 }
 
-function readStartupCommand(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+function readStartupCommand(state: ReturnType<typeof createInitialState>): ParsedStartupOrVersionArgs {
   return state.mode === "version"
     ? { command: "version" }
     : {
@@ -54,7 +58,7 @@ function createInitialState() {
   return {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
-    mode: "wizard" as ParsedCliArgs["mode"],
+    mode: "wizard" as ParsedStartupArgs["mode"] | "version",
     hasLaunchFlags: false,
     port: null as number | null,
     target: null as string | null,
@@ -189,11 +193,7 @@ function assignTarget(state: ReturnType<typeof createInitialState>, target: stri
   state.target = target;
 }
 
-function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
-  if (state.mode === "version") {
-    return finalizeVersionState(state);
-  }
-
+function finalizeState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
   if (state.mode === "validate") {
     return finalizeValidateState(state);
   }
@@ -201,19 +201,7 @@ function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliA
   return finalizeDirectOrWizardState(state);
 }
 
-function finalizeVersionState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
-  return {
-    browser: "never",
-    hasExplicitTarget: false,
-    host: state.host,
-    mode: "version",
-    port: null,
-    target: null,
-    targets: []
-  };
-}
-
-function finalizeValidateState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+function finalizeValidateState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
   assertValidateLaunchFlags(state.hasLaunchFlags);
   const targets = readValidateTargets(state.targets);
   return {
@@ -237,7 +225,7 @@ function readValidateTargets(targets: string[]): string[] {
   return targets.length === 0 ? ["."] : targets;
 }
 
-function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
   const hasExplicitTarget = state.target !== null;
 
   return {

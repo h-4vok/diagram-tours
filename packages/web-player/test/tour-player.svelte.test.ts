@@ -153,7 +153,7 @@ describe("tour-player.svelte", () => {
     });
 
     expect(await screen.findByText("API Gateway", { selector: "code" })).toBeDefined();
-    expect(screen.queryByTestId("timeline-step-button")).toBeNull();
+    expect(screen.getAllByTestId("timeline-step-button")).toHaveLength(4);
   });
 
   it("renders the minimap on desktop, shows focused nodes, and groups controls in a camera cluster", async () => {
@@ -304,7 +304,7 @@ describe("tour-player.svelte", () => {
     ).toContain(
       "public edge of the checkout system",
     );
-    expect(screen.getByText("Step 1 of 4")).toBeDefined();
+    expect(screen.getAllByText("Step 1 of 4")[0]).toBeDefined();
 
     await fireEvent.click(screen.getByTestId("next-button"));
     await fireEvent.click(screen.getByTestId("next-button"));
