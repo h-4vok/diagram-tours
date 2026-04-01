@@ -17,14 +17,14 @@ import {
 } from "@diagram-tour/core";
 import {
   LineCounter,
-  Scalar,
-  YAMLMap,
-  YAMLSeq,
   isMap,
   isScalar,
   isSeq,
   parseDocument,
-  type ParsedNode
+  type ParsedNode,
+  type Scalar,
+  type YAMLMap,
+  type YAMLSeq
 } from "yaml";
 import { createTourDiagnostic, createTourDiagnostics } from "./diagnostics.js";
 
@@ -122,6 +122,7 @@ type TourValidationCollector = {
 };
 type ParsedYamlDocument = ReturnType<typeof parseDocument>;
 type YamlMapNode = YAMLMap.Parsed<ParsedNode, ParsedNode | null>;
+type YamlSeqNode = YAMLSeq.Parsed<ParsedNode>;
 export interface TourValidationIssue {
   diagnostic: TourDiagnostic;
   sourceId: string;
@@ -427,14 +428,26 @@ function appendValidationIssue(
   seenIssueIds: Set<string>,
   issue: TourValidationIssue
 ): void {
-  const issueId = `${issue.sourceId}:${issue.diagnostic.message}:${issue.diagnostic.location?.line ?? ""}:${issue.diagnostic.location?.column ?? ""}`;
+  const issueId = createValidationIssueId(issue);
 
-  if (seenIssueIds.has(issueId)) {
+  if (hasSeenValidationIssue(seenIssueIds, issueId)) {
     return;
   }
 
-  seenIssueIds.add(issueId);
+  markValidationIssueSeen(seenIssueIds, issueId);
   issues.push(issue);
+}
+
+function createValidationIssueId(issue: TourValidationIssue): string {
+  return `${issue.sourceId}:${issue.diagnostic.message}:${readDiagnosticLocationKey(issue.diagnostic)}`;
+}
+
+function hasSeenValidationIssue(seenIssueIds: Set<string>, issueId: string): boolean {
+  return seenIssueIds.has(issueId);
+}
+
+function markValidationIssueSeen(seenIssueIds: Set<string>, issueId: string): void {
+  seenIssueIds.add(issueId);
 }
 
 async function createSingleEntryCollection(
@@ -865,46 +878,105 @@ function readAuthoredTourDraft(
     return null;
   }
 
-  const versionNode = readMapField(documentMap, "version");
-  const titleNode = readMapField(documentMap, "title");
-  const diagramNode = readMapField(documentMap, "diagram");
-  const stepsNode = readMapField(documentMap, "steps");
-  const version = readVersionField(input, collector, versionNode);
-  const title = readRequiredStringField({
-    collector,
-    context: input.context,
-    lineCounter: input.lineCounter,
-    message: createTourMessage(input.context, "title is required"),
-    node: titleNode,
-    parsedDocument: input.parsedDocument
-  });
-  const diagram = readRequiredStringField({
-    collector,
-    context: input.context,
-    lineCounter: input.lineCounter,
-    message: createTourMessage(input.context, "diagram path is required"),
-    node: diagramNode,
-    parsedDocument: input.parsedDocument
-  });
-  const steps = readStepsField({
-    collector,
-    context: input.context,
-    lineCounter: input.lineCounter,
-    node: stepsNode,
-    parsedDocument: input.parsedDocument
-  });
+  const fields = readAuthoredTourFieldNodes(documentMap);
+  return createAuthoredTourDraftFromFields(input, collector, fields);
+}
 
-  if (version === null || title === null || diagram === null || steps === null) {
+function createAuthoredTourDraftFromFields(
+  input: SemanticValidationContext & { context: TourContext },
+  collector: TourValidationCollector,
+  fields: {
+    diagramNode: ParsedNode | null;
+    stepsNode: ParsedNode | null;
+    titleNode: ParsedNode | null;
+    versionNode: ParsedNode | null;
+  }
+): AuthoredTourDraft | null {
+  const version = readVersionField(input, collector, fields.versionNode);
+  const title = readTitleField(input, collector, fields.titleNode);
+  const diagram = readDiagramField(input, collector, fields.diagramNode);
+  const steps = readStepsFieldValue(input, collector, fields.stepsNode);
+
+  if (hasMissingDraftFields({ diagram, steps, title, version })) {
     return null;
   }
 
   return {
     diagram,
-    diagramNode: diagramNode as StepValueNode,
+    diagramNode: fields.diagramNode as StepValueNode,
     steps,
     title,
     version
   };
+}
+
+function hasMissingDraftFields(
+  fields: {
+    diagram: string | null;
+    steps: StepDraft[] | null;
+    title: string | null;
+    version: number | null;
+  }
+): boolean {
+  return Object.values(fields).some((value) => value === null);
+}
+
+function readAuthoredTourFieldNodes(documentMap: YamlMapNode): {
+  diagramNode: ParsedNode | null;
+  stepsNode: ParsedNode | null;
+  titleNode: ParsedNode | null;
+  versionNode: ParsedNode | null;
+} {
+  return {
+    diagramNode: readMapField(documentMap, "diagram"),
+    stepsNode: readMapField(documentMap, "steps"),
+    titleNode: readMapField(documentMap, "title"),
+    versionNode: readMapField(documentMap, "version")
+  };
+}
+
+function readTitleField(
+  input: SemanticValidationContext & { context: TourContext },
+  collector: TourValidationCollector,
+  node: ParsedNode | null
+): string | null {
+  return readRequiredStringField({
+    collector,
+    context: input.context,
+    lineCounter: input.lineCounter,
+    message: createTourMessage(input.context, "title is required"),
+    node,
+    parsedDocument: input.parsedDocument
+  });
+}
+
+function readDiagramField(
+  input: SemanticValidationContext & { context: TourContext },
+  collector: TourValidationCollector,
+  node: ParsedNode | null
+): string | null {
+  return readRequiredStringField({
+    collector,
+    context: input.context,
+    lineCounter: input.lineCounter,
+    message: createTourMessage(input.context, "diagram path is required"),
+    node,
+    parsedDocument: input.parsedDocument
+  });
+}
+
+function readStepsFieldValue(
+  input: SemanticValidationContext & { context: TourContext },
+  collector: TourValidationCollector,
+  node: ParsedNode | null
+): StepDraft[] | null {
+  return readStepsField({
+    collector,
+    context: input.context,
+    lineCounter: input.lineCounter,
+    node,
+    parsedDocument: input.parsedDocument
+  });
 }
 
 function readTourRootMap(
@@ -915,12 +987,12 @@ function readTourRootMap(
 ): YamlMapNode | null {
   const contents = input.parsedDocument.contents;
 
-  if (contents !== null && isMap(contents)) {
+  if (isYamlMapNode(contents)) {
     return contents;
   }
 
   appendDiagnostic(collector, {
-    location: readNodeLocation(contents, input.lineCounter) ?? readDocumentLocation(input.parsedDocument, input.lineCounter),
+    location: readDocumentRootLocation(input, contents),
     message: createTourMessage(input.context, "document must be an object")
   });
 
@@ -929,14 +1001,27 @@ function readTourRootMap(
 
 function readMapField(map: YamlMapNode, key: TourField): ParsedNode | null {
   for (const item of map.items) {
-    if (!isScalar(item.key) || item.key.value !== key) {
-      continue;
+    if (isMatchingMapKey(item.key, key)) {
+      return item.value;
     }
-
-    return item.value;
   }
 
   return null;
+}
+
+function isYamlMapNode(value: ParsedNode | null): value is YamlMapNode {
+  return value !== null && isMap(value);
+}
+
+function readDocumentRootLocation(
+  input: SemanticValidationContext & { context: TourContext },
+  contents: ParsedNode | null
+): DiagnosticLocation | null {
+  return readNodeLocation(contents, input.lineCounter) ?? readDocumentLocation(input.parsedDocument, input.lineCounter);
+}
+
+function isMatchingMapKey(keyNode: unknown, key: TourField): boolean {
+  return isScalar(keyNode) && keyNode.value === key;
 }
 
 function readVersionField(
@@ -987,25 +1072,13 @@ function readStepsField(input: {
   node: ParsedNode | null;
   parsedDocument: ParsedYamlDocument;
 }): StepDraft[] | null {
-  if (!isSeq(input.node)) {
-    appendDiagnostic(input.collector, {
-      location: readFieldLocation(input.node, input.parsedDocument, input.lineCounter),
-      message: createTourMessage(input.context, "steps must be a non-empty array")
-    });
+  const stepsNode = readNonEmptyStepsNode(input);
 
+  if (stepsNode === null) {
     return null;
   }
 
-  if (input.node.items.length === 0) {
-    appendDiagnostic(input.collector, {
-      location: readFieldLocation(input.node, input.parsedDocument, input.lineCounter),
-      message: createTourMessage(input.context, "steps must be a non-empty array")
-    });
-
-    return null;
-  }
-
-  return input.node.items.map((stepNode, index) =>
+  return stepsNode.items.map((stepNode, index) =>
     readStepDraft({
       collector: input.collector,
       context: input.context,
@@ -1017,6 +1090,39 @@ function readStepsField(input: {
   ).filter((step): step is StepDraft => step !== null);
 }
 
+function readNonEmptyStepsNode(input: {
+  collector: TourValidationCollector;
+  context: TourContext;
+  lineCounter: LineCounter;
+  node: ParsedNode | null;
+  parsedDocument: ParsedYamlDocument;
+}): YamlSeqNode | null {
+  if (isNonEmptyStepsSequence(input.node)) {
+    return input.node;
+  }
+
+  appendStepsArrayDiagnostic(input);
+
+  return null;
+}
+
+function isNonEmptyStepsSequence(node: ParsedNode | null): node is YamlSeqNode {
+  return isSeq(node) && node.items.length > 0;
+}
+
+function appendStepsArrayDiagnostic(input: {
+  collector: TourValidationCollector;
+  context: TourContext;
+  lineCounter: LineCounter;
+  node: ParsedNode | null;
+  parsedDocument: ParsedYamlDocument;
+}): void {
+  appendDiagnostic(input.collector, {
+    location: readFieldLocation(input.node, input.parsedDocument, input.lineCounter),
+    message: createTourMessage(input.context, "steps must be a non-empty array")
+  });
+}
+
 function readStepDraft(input: {
   collector: TourValidationCollector;
   context: TourContext;
@@ -1025,19 +1131,27 @@ function readStepDraft(input: {
   parsedDocument: ParsedYamlDocument;
   stepIndex: number;
 }): StepDraft | null {
-  if (!isMap(input.node)) {
-    appendDiagnostic(input.collector, {
-      location: readFieldLocation(input.node, input.parsedDocument, input.lineCounter),
-      message: createStepMessage(input, "must be an object")
-    });
+  const stepNode = readStepMapNode(input);
 
+  if (stepNode === null) {
     return null;
   }
 
-  const focusNode = readMapField(input.node, "focus");
-  const textNode = readMapField(input.node, "text");
-  const focus = readFocusField(input, focusNode);
-  const text = readTextField(input, textNode);
+  return readStepDraftContent(input, stepNode);
+}
+
+function readStepDraftContent(
+  input: {
+    collector: TourValidationCollector;
+    context: TourContext;
+    lineCounter: LineCounter;
+    parsedDocument: ParsedYamlDocument;
+    stepIndex: number;
+  },
+  stepNode: YamlMapNode
+): StepDraft | null {
+  const focus = readFocusField(input, readMapField(stepNode, "focus"));
+  const text = readTextField(input, readMapField(stepNode, "text"));
 
   if (focus === null || text === null) {
     return null;
@@ -1051,6 +1165,26 @@ function readStepDraft(input: {
   };
 }
 
+function readStepMapNode(input: {
+  collector: TourValidationCollector;
+  context: TourContext;
+  lineCounter: LineCounter;
+  node: unknown;
+  parsedDocument: ParsedYamlDocument;
+  stepIndex: number;
+}): YamlMapNode | null {
+  if (isMap(input.node)) {
+    return input.node;
+  }
+
+  appendDiagnostic(input.collector, {
+    location: readFieldLocation(input.node, input.parsedDocument, input.lineCounter),
+    message: createStepMessage(input, "must be an object")
+  });
+
+  return null;
+}
+
 function readFocusField(
   input: {
     collector: TourValidationCollector;
@@ -1061,35 +1195,98 @@ function readFocusField(
   },
   node: unknown
 ): { nodes: StepValueNode[]; values: string[] } | null {
-  if (!isSeq(node)) {
-    appendDiagnostic(input.collector, {
-      location: readFieldLocation(node, input.parsedDocument, input.lineCounter),
-      message: createStepFieldMessage(input, "focus", "must be an array")
-    });
+  const focusNode = readFocusSequenceNode(input, node);
 
+  if (focusNode === null) {
     return null;
   }
 
-  const values: string[] = [];
-  const nodes: StepValueNode[] = [];
+  return collectFocusValues(input, focusNode);
+}
 
-  for (const item of node.items) {
-    if (isNonEmptyScalarString(item)) {
-      values.push(item.value);
-      nodes.push(item);
-      continue;
-    }
+function collectFocusValues(
+  input: {
+    collector: TourValidationCollector;
+    context: TourContext;
+    lineCounter: LineCounter;
+    parsedDocument: ParsedYamlDocument;
+    stepIndex: number;
+  },
+  focusNode: YamlSeqNode
+): { nodes: StepValueNode[]; values: string[] } {
+  const values = createFocusAccumulator();
 
-    appendDiagnostic(input.collector, {
-      location: readFieldLocation(item, input.parsedDocument, input.lineCounter),
-      message: createStepFieldMessage(input, "focus", "must contain only non-empty diagram element ids")
-    });
+  for (const item of focusNode.items) {
+    appendFocusValue(input, values, item);
   }
 
+  return values;
+}
+
+function appendFocusValue(
+  input: {
+    collector: TourValidationCollector;
+    context: TourContext;
+    lineCounter: LineCounter;
+    parsedDocument: ParsedYamlDocument;
+    stepIndex: number;
+  },
+  accumulator: { nodes: StepValueNode[]; values: string[] },
+  item: unknown
+): void {
+  if (!isNonEmptyScalarString(item)) {
+    appendInvalidFocusValueDiagnostic(input, item);
+
+    return;
+  }
+
+  accumulator.values.push(item.value);
+  accumulator.nodes.push(item);
+}
+
+function createFocusAccumulator(): { nodes: StepValueNode[]; values: string[] } {
   return {
-    nodes,
-    values
+    nodes: [],
+    values: []
   };
+}
+
+function readFocusSequenceNode(
+  input: {
+    collector: TourValidationCollector;
+    context: TourContext;
+    lineCounter: LineCounter;
+    parsedDocument: ParsedYamlDocument;
+    stepIndex: number;
+  },
+  node: unknown
+): YamlSeqNode | null {
+  if (isSeq(node)) {
+    return node;
+  }
+
+  appendDiagnostic(input.collector, {
+    location: readFieldLocation(node, input.parsedDocument, input.lineCounter),
+    message: createStepFieldMessage(input, "focus", "must be an array")
+  });
+
+  return null;
+}
+
+function appendInvalidFocusValueDiagnostic(
+  input: {
+    collector: TourValidationCollector;
+    context: TourContext;
+    lineCounter: LineCounter;
+    parsedDocument: ParsedYamlDocument;
+    stepIndex: number;
+  },
+  item: unknown
+): void {
+  appendDiagnostic(input.collector, {
+    location: readFieldLocation(item, input.parsedDocument, input.lineCounter),
+    message: createStepFieldMessage(input, "focus", "must contain only non-empty diagram element ids")
+  });
 }
 
 function readTextField(
@@ -1127,30 +1324,50 @@ function validateResolvedTourDraft(input: {
   const elementIndex = createElementIndex(input.diagramModel.elements);
   const lineCounter = createSourceLineCounter(input.source);
 
-  input.draft.steps.forEach((step, index) => {
-    validateFocusReferences({
+  input.draft.steps.forEach((step, index) =>
+    validateResolvedDraftStep({
       collector,
       context: input.context,
       diagramType: input.diagramModel.type,
       elementIndex,
-      focus: step.focus,
-      focusNodes: step.focusNodes,
       lineCounter,
+      step,
       stepIndex: index + 1
-    });
-    validateTextReferences({
-      collector,
-      context: input.context,
-      diagramType: input.diagramModel.type,
-      elementIndex,
-      lineCounter,
-      stepIndex: index + 1,
-      text: step.text,
-      textNode: step.textNode
-    });
-  });
+    })
+  );
 
   return collector.diagnostics;
+}
+
+function validateResolvedDraftStep(input: {
+  collector: TourValidationCollector;
+  context: TourContext;
+  diagramType: DiagramType;
+  elementIndex: ElementIndex;
+  lineCounter: LineCounter;
+  step: StepDraft;
+  stepIndex: number;
+}): void {
+  validateFocusReferences({
+    collector: input.collector,
+    context: input.context,
+    diagramType: input.diagramType,
+    elementIndex: input.elementIndex,
+    focus: input.step.focus,
+    focusNodes: input.step.focusNodes,
+    lineCounter: input.lineCounter,
+    stepIndex: input.stepIndex
+  });
+  validateTextReferences({
+    collector: input.collector,
+    context: input.context,
+    diagramType: input.diagramType,
+    elementIndex: input.elementIndex,
+    lineCounter: input.lineCounter,
+    stepIndex: input.stepIndex,
+    text: input.step.text,
+    textNode: input.step.textNode
+  });
 }
 
 function validateFocusReferences(input: {
@@ -1955,17 +2172,10 @@ async function loadAuthoredTourDocument(input: {
   context: TourContext;
 }): Promise<LoadedAuthoredTour> {
   const rawTourDocument = await readRawTourDocument(input);
-  const loadedDiagram = await readDiagramSourceWithLocation({
-    absoluteTourPath: input.absoluteTourPath,
+  const loadedDiagram = await loadAuthoredDiagramSource(input, rawTourDocument);
+  const validationDiagnostics = readResolvedDraftDiagnostics({
     context: input.context,
-    diagramNode: rawTourDocument.draft.diagramNode,
-    diagramPath: rawTourDocument.draft.diagram,
-    source: rawTourDocument.source
-  });
-  const diagramModel = createDiagramModel(loadedDiagram.source, input.context);
-  const validationDiagnostics = validateResolvedTourDraft({
-    context: input.context,
-    diagramModel,
+    diagramSource: loadedDiagram.source,
     draft: rawTourDocument.draft,
     source: rawTourDocument.source
   });
@@ -1983,6 +2193,36 @@ async function loadAuthoredTourDocument(input: {
       rawTour: toDiagramTour(rawTourDocument.draft)
     })
   };
+}
+
+async function loadAuthoredDiagramSource(
+  input: { absoluteTourPath: string; context: TourContext },
+  rawTourDocument: { draft: AuthoredTourDraft; source: string }
+): Promise<{
+  ownedDiagramSourceId: string;
+  source: string;
+}> {
+  return await readDiagramSourceWithLocation({
+    absoluteTourPath: input.absoluteTourPath,
+    context: input.context,
+    diagramNode: rawTourDocument.draft.diagramNode,
+    diagramPath: rawTourDocument.draft.diagram,
+    source: rawTourDocument.source
+  });
+}
+
+function readResolvedDraftDiagnostics(input: {
+  context: TourContext;
+  diagramSource: string;
+  draft: AuthoredTourDraft;
+  source: string;
+}): TourDiagnostic[] {
+  return validateResolvedTourDraft({
+    context: input.context,
+    diagramModel: createDiagramModel(input.diagramSource, input.context),
+    draft: input.draft,
+    source: input.source
+  });
 }
 
 async function readDiagramSourceWithLocation(input: {
@@ -2092,19 +2332,49 @@ function appendDiagnostic(
   collector: TourValidationCollector,
   diagnostic: Omit<TourDiagnostic, "code"> & { code?: string | null }
 ): void {
-  const normalizedDiagnostic: TourDiagnostic = {
+  const normalizedDiagnostic = normalizeCollectedDiagnostic(diagnostic);
+  const diagnosticId = createCollectedDiagnosticId(normalizedDiagnostic);
+
+  if (hasCollectedDiagnostic(collector, diagnosticId)) {
+    return;
+  }
+
+  recordCollectedDiagnostic(collector, diagnosticId, normalizedDiagnostic);
+}
+
+function normalizeCollectedDiagnostic(
+  diagnostic: Omit<TourDiagnostic, "code"> & { code?: string | null }
+): TourDiagnostic {
+  return {
     code: diagnostic.code ?? null,
     location: diagnostic.location,
     message: stripTourContextPrefix(diagnostic.message)
   };
-  const diagnosticId = `${normalizedDiagnostic.message}:${normalizedDiagnostic.location?.line ?? ""}:${normalizedDiagnostic.location?.column ?? ""}`;
+}
 
-  if (collector.seen.has(diagnosticId)) {
-    return;
+function createCollectedDiagnosticId(diagnostic: TourDiagnostic): string {
+  return `${diagnostic.message}:${readDiagnosticLocationKey(diagnostic)}`;
+}
+
+function readDiagnosticLocationKey(diagnostic: TourDiagnostic): string {
+  if (diagnostic.location === null) {
+    return ":";
   }
 
+  return `${diagnostic.location.line}:${diagnostic.location.column}`;
+}
+
+function hasCollectedDiagnostic(collector: TourValidationCollector, diagnosticId: string): boolean {
+  return collector.seen.has(diagnosticId);
+}
+
+function recordCollectedDiagnostic(
+  collector: TourValidationCollector,
+  diagnosticId: string,
+  diagnostic: TourDiagnostic
+): void {
   collector.seen.add(diagnosticId);
-  collector.diagnostics.push(normalizedDiagnostic);
+  collector.diagnostics.push(diagnostic);
 }
 
 function stripTourContextPrefix(message: string): string {
@@ -2142,11 +2412,51 @@ function readNodeLocation(
   node: { range?: [number, number, number] | null } | null | undefined,
   lineCounter: LineCounter
 ): DiagnosticLocation | null {
-  if (node?.range === undefined || node.range === null) {
+  const offset = readNodeStartOffset(node);
+
+  if (offset === null) {
     return null;
   }
 
-  return toDiagnosticLocation(node.range[0], lineCounter);
+  return toDiagnosticLocation(offset, lineCounter);
+}
+
+function readNodeStartOffset(node: { range?: [number, number, number] | null } | null | undefined): number | null {
+  const range = readNodeRange(node);
+
+  if (range === null) {
+    return null;
+  }
+
+  return range[0];
+}
+
+function readNodeRange(
+  node: { range?: [number, number, number] | null } | null | undefined
+): [number, number, number] | null {
+  if (isMissingNode(node)) {
+    return null;
+  }
+
+  const range = node.range;
+
+  if (isMissingNodeRange(range)) {
+    return null;
+  }
+
+  return range;
+}
+
+function isMissingNode(
+  node: { range?: [number, number, number] | null } | null | undefined
+): node is null | undefined {
+  return node === null || node === undefined;
+}
+
+function isMissingNodeRange(
+  range: [number, number, number] | null | undefined
+): range is null | undefined {
+  return range === null || range === undefined;
 }
 
 function toDiagnosticLocation(

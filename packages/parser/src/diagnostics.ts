@@ -52,17 +52,19 @@ function readErrorMessage(error: unknown): string {
 }
 
 function readDirectDiagnostics(error: unknown): TourDiagnostic[] | null {
+  return isErrorWithDiagnostics(error) ? error.diagnostics : null;
+}
+
+function isErrorWithDiagnostics(error: unknown): error is Error & { diagnostics: TourDiagnostic[] } {
   if (!(error instanceof Error)) {
-    return null;
+    return false;
   }
 
-  const diagnostics = (error as ErrorWithLocation).diagnostics;
+  return hasDiagnostics((error as ErrorWithLocation).diagnostics);
+}
 
-  if (!Array.isArray(diagnostics) || diagnostics.length === 0) {
-    return null;
-  }
-
-  return diagnostics;
+function hasDiagnostics(diagnostics: TourDiagnostic[] | null | undefined): diagnostics is TourDiagnostic[] {
+  return Array.isArray(diagnostics) && diagnostics.length > 0;
 }
 
 function stripTourPrefix(message: string): string {
