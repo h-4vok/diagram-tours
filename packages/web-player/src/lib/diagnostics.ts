@@ -1,40 +1,94 @@
-import type { SkippedResolvedDiagramTour } from "@diagram-tour/core";
+import type { DiagnosticLocation, SkippedResolvedDiagramTour } from "@diagram-tour/core";
 
-export interface DiagnosticDisplayItem {
+export interface DiagnosticDisplayIssue {
+  code: string | null;
   detail: string | null;
-  path: string;
+  location: DiagnosticLocation | null;
+  reference: string;
   summary: string;
-  title: string;
 }
 
-export function createDiagnosticDisplayItems(
+export interface DiagnosticDisplayGroup {
+  issueCount: number;
+  issues: DiagnosticDisplayIssue[];
+  path: string;
+}
+
+export function createDiagnosticDisplayGroups(
   skippedTours: SkippedResolvedDiagramTour[]
-): DiagnosticDisplayItem[] {
-  return skippedTours.map((skipped) => createDiagnosticDisplayItem(skipped));
+): DiagnosticDisplayGroup[] {
+  return skippedTours.map((skipped) => createDiagnosticDisplayGroup(skipped));
 }
 
-function createDiagnosticDisplayItem(
-  skipped: SkippedResolvedDiagramTour
-): DiagnosticDisplayItem {
-  const message = stripTourPrefix(skipped.error);
-  const summary = createDiagnosticSummary(message);
+export function countDiagnosticIssues(groups: DiagnosticDisplayGroup[]): number {
+  return groups.reduce((total, group) => total + group.issueCount, 0);
+}
 
+function createDiagnosticDisplayGroup(
+  skipped: SkippedResolvedDiagramTour
+): DiagnosticDisplayGroup {
   return {
-    detail: summary === message ? null : message,
-    path: skipped.sourcePath,
-    summary,
-    title: readDiagnosticTitle(skipped.sourcePath)
+    issueCount: skipped.diagnostics.length,
+    issues: skipped.diagnostics.map((diagnostic) => createDiagnosticDisplayIssue(skipped.sourcePath, diagnostic)),
+    path: skipped.sourcePath
   };
 }
 
-function stripTourPrefix(error: string): string {
-  return error.replace(/^Tour\s+".+?":\s*/u, "").trim();
+function createDiagnosticDisplayIssue(
+  path: string,
+  diagnostic: SkippedResolvedDiagramTour["diagnostics"][number]
+): DiagnosticDisplayIssue {
+  const summary = createDiagnosticSummary(diagnostic.message);
+
+  return {
+    code: diagnostic.code,
+    detail: readDiagnosticDetail(diagnostic.message, summary, diagnostic.code),
+    location: diagnostic.location,
+    reference: createDiagnosticReference(path, diagnostic.location),
+    summary
+  };
+}
+
+function createDiagnosticReference(path: string, location: DiagnosticLocation | null): string {
+  if (location === null) {
+    return path;
+  }
+
+  return `${path}:${location.line}:${location.column}`;
 }
 
 function createDiagnosticSummary(message: string): string {
+  return summarizeDiagnosticText(readSummarySource(message));
+}
+
+function stripQuotedCode(message: string): string {
+  return message.replace(/\s*(["'`])([^"'`]+)\1/gu, "").trim();
+}
+
+function readSummarySource(message: string): string {
+  const withoutCode = stripQuotedCode(message);
+
+  return withoutCode.length > 0 ? withoutCode : message;
+}
+
+function readDiagnosticDetail(
+  message: string,
+  summary: string,
+  code: string | null
+): string | null {
+  const detail = message.trim();
+
+  return shouldOmitDiagnosticDetail(detail, summary, code) ? null : detail;
+}
+
+function summarizeDiagnosticText(message: string): string {
   return message.length <= 120 ? message : `${message.slice(0, 117).trimEnd()}...`;
 }
 
-function readDiagnosticTitle(sourcePath: string): string {
-  return sourcePath.split("/").slice(-1)[0];
+function shouldOmitDiagnosticDetail(detail: string, summary: string, code: string | null): boolean {
+  return detail === summary || detail === createSummaryWithCode(summary, code);
+}
+
+function createSummaryWithCode(summary: string, code: string | null): string {
+  return `${summary} ${code ?? ""}`.trim();
 }

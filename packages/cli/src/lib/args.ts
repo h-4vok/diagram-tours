@@ -27,26 +27,18 @@ function parseStartupArgs(input: string[]): ParsedCliArgs {
   const state = createInitialState();
 
   for (let index = 0; index < input.length; index += 1) {
-    index = readStartupToken(input, index, state);
+    const value = input[index];
+
+    if (value.startsWith("-")) {
+      index = readFlag(input, index, state);
+
+      continue;
+    }
+
+    assignPositional(state, value);
   }
 
   return readStartupCommand(state);
-}
-
-function readStartupToken(
-  input: string[],
-  index: number,
-  state: ReturnType<typeof createInitialState>
-): number {
-  const value = input[index];
-
-  if (value.startsWith("-")) {
-    return readFlag(input, index, state);
-  }
-
-  assignTarget(state, value);
-
-  return index;
 }
 
 function readStartupCommand(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
@@ -62,9 +54,11 @@ function createInitialState() {
   return {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
-    mode: "wizard" as ParsedStartupArgs["mode"],
+    mode: "wizard" as ParsedCliArgs["mode"],
+    hasLaunchFlags: false,
     port: null as number | null,
-    target: null as string | null
+    target: null as string | null,
+    targets: [] as string[]
   };
 }
 
@@ -115,6 +109,36 @@ function readFlag(
   return handler(input, index, state);
 }
 
+function assignPositional(state: ReturnType<typeof createInitialState>, value: string): void {
+  if (isValidateMode(state)) {
+    appendValidateTarget(state, value);
+    return;
+  }
+
+  if (isValidateCommand(state, value)) {
+    enableValidateMode(state);
+    return;
+  }
+
+  assignTarget(state, value);
+}
+
+function isValidateMode(state: ReturnType<typeof createInitialState>): boolean {
+  return state.mode === "validate";
+}
+
+function appendValidateTarget(state: ReturnType<typeof createInitialState>, value: string): void {
+  state.targets.push(value);
+}
+
+function isValidateCommand(state: ReturnType<typeof createInitialState>, value: string): boolean {
+  return state.target === null && value === "validate";
+}
+
+function enableValidateMode(state: ReturnType<typeof createInitialState>): void {
+  state.mode = "validate";
+}
+
 function readFlagValue(flag: string, value: string | undefined): string {
   if (value === undefined || value.startsWith("--")) {
     throw new Error(`Expected a value after ${flag}.`);
@@ -148,6 +172,8 @@ function assignBrowserPreference(
   state: ReturnType<typeof createInitialState>,
   browser: Exclude<BrowserPreference, "prompt">
 ): void {
+  state.hasLaunchFlags = true;
+
   if (state.browser !== "prompt" && state.browser !== browser) {
     throw new Error("Choose either --open or --no-open.");
   }
@@ -163,7 +189,55 @@ function assignTarget(state: ReturnType<typeof createInitialState>, target: stri
   state.target = target;
 }
 
-function finalizeState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
+function finalizeState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  if (state.mode === "version") {
+    return finalizeVersionState(state);
+  }
+
+  if (state.mode === "validate") {
+    return finalizeValidateState(state);
+  }
+
+  return finalizeDirectOrWizardState(state);
+}
+
+function finalizeVersionState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  return {
+    browser: "never",
+    hasExplicitTarget: false,
+    host: state.host,
+    mode: "version",
+    port: null,
+    target: null,
+    targets: []
+  };
+}
+
+function finalizeValidateState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
+  assertValidateLaunchFlags(state.hasLaunchFlags);
+  const targets = readValidateTargets(state.targets);
+  return {
+    browser: "never",
+    hasExplicitTarget: true,
+    host: state.host,
+    mode: "validate",
+    port: null,
+    target: targets[0]!,
+    targets
+  };
+}
+
+function assertValidateLaunchFlags(hasLaunchFlags: boolean): void {
+  if (hasLaunchFlags) {
+    throw new Error("validate does not accept browser or server flags.");
+  }
+}
+
+function readValidateTargets(targets: string[]): string[] {
+  return targets.length === 0 ? ["."] : targets;
+}
+
+function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState>): ParsedCliArgs {
   const hasExplicitTarget = state.target !== null;
 
   return {
@@ -172,7 +246,8 @@ function finalizeState(state: ReturnType<typeof createInitialState>): ParsedStar
     host: state.host,
     mode: readMode(hasExplicitTarget),
     port: state.port,
-    target: state.target
+    target: state.target,
+    targets: state.target === null ? [] : [state.target]
   };
 }
 
@@ -350,18 +425,22 @@ const FLAG_HANDLERS: Partial<Record<
   ) => number
 >> = {
   "--host"(input, index, state) {
+    state.hasLaunchFlags = true;
     state.host = readFlagValue("--host", input[index + 1]);
     return index + 1;
   },
   "--port"(input, index, state) {
+    state.hasLaunchFlags = true;
     state.port = readPort(readFlagValue("--port", input[index + 1]));
     return index + 1;
   },
   "--open"(_input, index, state) {
+    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "always");
     return index;
   },
   "--no-open"(_input, index, state) {
+    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "never");
     return index;
   },

@@ -3,7 +3,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
 
@@ -26,6 +25,7 @@
     createDiagramMinimapGeometry,
     createMinimapCenterScrollPosition,
     createMinimapViewportScrollPosition,
+    readDiagramMinimapConnectors,
     readDiagramMinimapMetrics,
     readDiagramMinimapNodeRects,
     type DiagramMinimapGeometry,
@@ -33,7 +33,7 @@
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
   import { createOverviewScrollPosition, focusDiagramViewport } from "$lib/diagram-viewport";
-  import { createFocusGroup } from "$lib/focus-group";
+  import { createFocusGroup, type FocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import {
     createNodeStepChoices,
@@ -89,9 +89,6 @@
   export let initialStepIndex: number;
   export let selectedSlug: string;
   export let tour: ResolvedDiagramTour;
-  const dispatch = createEventDispatcher<{
-    togglebrowse: void;
-  }>();
   const player = createTourPlayer(tour, initialStepIndex);
 
   let state = player.getState();
@@ -121,16 +118,27 @@
     await goToStepIndex(state.stepIndex + 1);
   }
 
+  function handleWindowKeyDown(event: KeyboardEvent): void {
+    if (shouldIgnoreKeyboardNavigation(event)) {
+      return;
+    }
+
+    const navigationDirection = readNavigationDirection(event.key);
+
+    if (navigationDirection === null) {
+      return;
+    }
+
+    event.preventDefault();
+    void runKeyboardNavigation(navigationDirection);
+  }
+
   async function zoomIn(): Promise<void> {
     await updateZoomScale(createNextZoomScale(zoomScale, "in"));
   }
 
   async function zoomOut(): Promise<void> {
     await updateZoomScale(createNextZoomScale(zoomScale, "out"));
-  }
-
-  async function resetZoom(): Promise<void> {
-    await updateZoomScale(createNextZoomScale(zoomScale, "reset"));
   }
 
   async function fitZoomToView(): Promise<void> {
@@ -174,31 +182,58 @@
     return true;
   }
 
-  async function syncFocusState(): Promise<void> {
-    if (!hasRenderedDiagram) {
+  async function syncFocusState(behavior: ScrollBehavior = "smooth"): Promise<void> {
+    const focusContext = await readReadyFocusContext();
+
+    if (focusContext === null) {
       return;
+    }
+
+    applyFocusState({
+      container: focusContext.container,
+      focusGroup: focusContext.focusGroup
+    });
+    focusDiagramViewport({
+      behavior,
+      container: focusContext.container,
+      content: focusContext.content,
+      focusGroup: focusContext.focusGroup
+    });
+    updateMinimapGeometry();
+  }
+
+  async function readReadyFocusContext(): Promise<
+    | {
+        container: HTMLDivElement;
+        content: HTMLDivElement;
+        focusGroup: FocusGroup;
+      }
+    | null
+  > {
+    if (!hasRenderedDiagram) {
+      return null;
     }
 
     await waitForDiagramLayout();
 
+    return readFocusContext();
+  }
+
+  function readFocusContext():
+    | {
+        container: HTMLDivElement;
+        content: HTMLDivElement;
+        focusGroup: FocusGroup;
+      }
+    | null {
     const currentContext = readDiagramContext();
 
-    if (currentContext === null) {
-      return;
-    }
-
-    const focusGroup = createFocusGroup(state.focusedElementIds);
-
-    applyFocusState({
-      container: currentContext.container,
-      focusGroup
-    });
-    focusDiagramViewport({
-      container: currentContext.container,
-      content: currentContext.content,
-      focusGroup
-    });
-    updateMinimapGeometry();
+    return currentContext === null
+      ? null
+      : {
+          ...currentContext,
+          focusGroup: createFocusGroup(state.focusedElementIds)
+        };
   }
 
   onMount(() => {
@@ -268,10 +303,6 @@
     return value ?? null;
   }
 
-  function handleTourIdentityClick(): void {
-    dispatch("togglebrowse");
-  }
-
   function handleWindowPointerDown(event: PointerEvent): void {
     if (!shouldCloseNodeStepChooser(event)) {
       return;
@@ -294,7 +325,9 @@
       hasRenderedDiagram = true;
       syncRenderedSvgZoom();
       refreshNavigableNodeState();
-      await syncFocusState();
+      await syncFocusState("auto");
+      await waitForDiagramLayout();
+      await syncFocusState("auto");
     } catch (_error) {
       diagramError = getMermaidErrorMessage();
       toast.error(diagramError);
@@ -601,6 +634,20 @@
     return `width:${bounds.width}px;height:${bounds.height}px;`;
   }
 
+  function formatMinimapConnectorSegmentStyle(segment: {
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+  }): string {
+    const deltaX = segment.x2 - segment.x1;
+    const deltaY = segment.y2 - segment.y1;
+    const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+
+    return `left:${segment.x1}px;top:${segment.y1}px;width:${length}px;transform:rotate(${angle}deg);`;
+  }
+
   function shouldHideMinimapGeometry(): boolean {
     return isCompactViewport || !hasRenderedDiagram || readDiagramContext() === null;
   }
@@ -611,6 +658,9 @@
     return currentContext === null
       ? null
       : createDiagramMinimapGeometry({
+          connectors: readDiagramMinimapConnectors({
+            content: currentContext.content
+          }),
           nodeRects: readDiagramMinimapNodeRects({
             content: currentContext.content,
             focusedElementIds: tour.diagram.elements.map((element) => element.id)
@@ -961,10 +1011,53 @@
     return content?.querySelector("svg") ?? null;
   }
 
+  function shouldIgnoreKeyboardNavigation(event: KeyboardEvent): boolean {
+    return event.defaultPrevented || hasNavigationModifierKeys(event) || isTypingTarget(event.target);
+  }
+
+  function hasNavigationModifierKeys(event: KeyboardEvent): boolean {
+    return [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean);
+  }
+
+  function readNavigationDirection(key: string): "next" | "previous" | null {
+    if (key === "ArrowLeft") {
+      return "previous";
+    }
+
+    return key === "ArrowRight" ? "next" : null;
+  }
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    return target instanceof HTMLElement && (
+      target.isContentEditable ||
+      target.closest("input, textarea, select, [contenteditable='true']") !== null
+    );
+  }
+
+  async function runKeyboardNavigation(direction: "next" | "previous"): Promise<void> {
+    if (direction === "previous") {
+      await goPrevious();
+      return;
+    }
+
+    await goNext();
+  }
+
   function readRenderedZoomSvg(
     context: { container: HTMLDivElement; content: HTMLDivElement } | null
   ): SVGSVGElement | null {
     return context === null ? null : readRenderedSvg(context.content);
+  }
+
+  function createStepTextSegments(text: string): Array<{ content: string; isCode: boolean }> {
+    return text.split(/(`[^`]+`)/g).filter(Boolean).map((segment) => {
+      const isCode = segment.startsWith("`") && segment.endsWith("`");
+
+      return {
+        content: isCode ? segment.slice(1, -1) : segment,
+        isCode
+      };
+    });
   }
 
   function createZoomContext(context: {
@@ -988,7 +1081,7 @@
   }
 </script>
 
-<svelte:window on:pointerdown={handleWindowPointerDown} />
+<svelte:window on:keydown={handleWindowKeyDown} on:pointerdown={handleWindowPointerDown} />
 
 <section class="player-canvas" data-testid="player-canvas">
   <div
@@ -996,16 +1089,6 @@
     class="diagram-shell diagram-shell--canvas"
     data-testid="diagram-shell"
   >
-    <button
-      type="button"
-      class="tour-identity"
-      data-testid="tour-identity"
-      on:click={handleTourIdentityClick}
-    >
-      <p class="tour-identity__label">Current tour</p>
-      <p class="tour-identity__title">{tour.title}</p>
-    </button>
-
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div
       bind:this={diagramContainer}
@@ -1043,12 +1126,17 @@
       </div>
     {/if}
 
-    <div class="canvas-overlay-stack" data-testid="canvas-overlay-stack">
-      <aside class="viewport-toolbar" data-testid="viewport-toolbar">
-        <p class="viewport-toolbar__label">Zoom</p>
-        <div class="viewport-toolbar__actions">
+    <aside
+      class="teleprompter"
+      data-testid="teleprompter"
+    >
+      <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
+      
+      <div class="teleprompter__content" data-testid="step-overlay">
+        <div class="teleprompter__nav-left">
           <button
             type="button"
+<<<<<<< HEAD
             class="viewport-toolbar__button"
             data-testid="zoom-out-button"
             aria-label="Zoom out"
@@ -1117,32 +1205,54 @@
           <button
             type="button"
             class="button button--secondary"
+=======
+            class="teleprompter__btn"
+>>>>>>> origin/main
             on:click={goPrevious}
             disabled={!state.canGoPrevious}
             data-testid="previous-button"
+            aria-label="Previous step"
           >
-            Previous
+            <span class="teleprompter__btn-icon">←</span>
           </button>
+        </div>
+
+        <div class="teleprompter__text-area" data-testid="step-text-container">
+          <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+          <p data-testid="step-text" class="teleprompter__text">
+            {#each createStepTextSegments(state.step.text) as segment, index (`${state.stepIndex}-${index}`)}
+              {#if segment.isCode}
+                <code class="teleprompter__code">{segment.content}</code>
+              {:else}
+                {segment.content}
+              {/if}
+            {/each}
+          </p>
+        </div>
+
+        <div class="teleprompter__nav-right">
           <button
             type="button"
-            class="button"
+            class="teleprompter__btn"
             on:click={goNext}
             disabled={!state.canGoNext}
             data-testid="next-button"
+            aria-label="Next step"
           >
-            Next
+            <span class="teleprompter__btn-icon">→</span>
           </button>
         </div>
-      </aside>
+      </div>
+    </aside>
 
-      {#if !isCompactViewport}
-        <aside
-          class:minimap-shell--collapsed={isMinimapCollapsed}
-          class="minimap-shell"
-          data-testid="minimap-shell"
-        >
-          <div class="minimap-shell__header">
-            <p class="minimap-shell__label">Navigation minimap</p>
+    {#if !isCompactViewport}
+      <div class="camera-control-cluster" data-testid="camera-control-cluster">
+        <div class="camera-control-panel" data-testid="camera-control-panel">
+          <aside
+            class:minimap-shell--collapsed={isMinimapCollapsed}
+            class="minimap-shell"
+            data-testid="minimap-shell"
+          >
             <div class="minimap-shell__actions">
               <button
                 type="button"
@@ -1154,49 +1264,95 @@
                 {isMinimapCollapsed ? "Show" : "Hide"}
               </button>
             </div>
-          </div>
 
-          {#if !isMinimapCollapsed && minimapGeometry !== null}
-            <div
-              bind:this={minimapSurface}
-              class="minimap-surface"
-              role="group"
-              aria-label="Navigation minimap"
+            {#if !isMinimapCollapsed && minimapGeometry !== null}
+              <div
+                bind:this={minimapSurface}
+                class="minimap-surface"
+                role="group"
+                aria-label="Navigation minimap"
               data-testid="minimap-surface"
               style={formatMinimapBoundsStyle(minimapGeometry.bounds)}
               on:pointerdown={handleMinimapSurfacePointerDown}
             >
+              {#each minimapGeometry.connectors as connector, connectorIndex (`connector-${connectorIndex}`)}
+                {#each connector.segments as segment, segmentIndex (`segment-${connectorIndex}-${segmentIndex}`)}
+                  <div
+                    class="minimap-edge-marker"
+                    data-testid="minimap-edge-marker"
+                    style={formatMinimapConnectorSegmentStyle(segment)}
+                  ></div>
+                {/each}
+
+              {/each}
+
               {#each minimapGeometry.nodeRects as rect, index (`node-${index}`)}
                 <div
                   class="minimap-node-marker"
-                  data-testid="minimap-node-marker"
-                  style={formatMinimapRectStyle(rect)}
-                ></div>
-              {/each}
+                    data-testid="minimap-node-marker"
+                    style={formatMinimapRectStyle(rect)}
+                  ></div>
+                {/each}
 
-              {#each minimapGeometry.focusRects as rect, index (index)}
-                <div
-                  class="minimap-focus-marker"
-                  data-testid="minimap-focus-marker"
-                  style={formatMinimapRectStyle(rect)}
-                ></div>
-              {/each}
+                {#each minimapGeometry.focusRects as rect, index (index)}
+                  <div
+                    class="minimap-focus-marker"
+                    data-testid="minimap-focus-marker"
+                    style={formatMinimapRectStyle(rect)}
+                  ></div>
+                {/each}
 
-              {#if renderedViewportRect !== null}
-                <button
-                  type="button"
-                  class="minimap-viewport-rect"
-                  data-testid="minimap-viewport-rect"
-                  aria-label="Drag viewport"
-                  style={formatMinimapRectStyle(renderedViewportRect)}
-                  on:pointerdown={handleViewportPointerDown}
-                ></button>
-              {/if}
+                {#if renderedViewportRect !== null}
+                  <button
+                    type="button"
+                    class="minimap-viewport-rect"
+                    data-testid="minimap-viewport-rect"
+                    aria-label="Drag viewport"
+                    style={formatMinimapRectStyle(renderedViewportRect)}
+                    on:pointerdown={handleViewportPointerDown}
+                  ></button>
+                {/if}
+              </div>
+            {/if}
+          </aside>
+
+          <aside class="viewport-toolbar" data-testid="viewport-toolbar">
+            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
+            <div class="viewport-toolbar__actions">
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-out-button"
+                aria-label="Zoom out"
+                disabled={!canZoomOut(zoomScale)}
+                on:click={() => void zoomOut()}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-fit-button"
+                aria-label="Fit diagram to view"
+                on:click={() => void fitZoomToView()}
+              >
+                Fit
+              </button>
+              <button
+                type="button"
+                class="viewport-toolbar__button"
+                data-testid="zoom-in-button"
+                aria-label="Zoom in"
+                disabled={!canZoomIn(zoomScale)}
+                on:click={() => void zoomIn()}
+              >
+                +
+              </button>
             </div>
-          {/if}
-        </aside>
-      {/if}
-    </div>
+          </aside>
+        </div>
+      </div>
+    {/if}
 
     {#if diagramError.length > 0}
       <p data-testid="diagram-error" class="diagram-error diagram-error--overlay">{diagramError}</p>

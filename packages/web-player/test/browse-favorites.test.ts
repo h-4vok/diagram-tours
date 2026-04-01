@@ -25,6 +25,25 @@ describe("browse-favorites", () => {
     ]);
   });
 
+  it("returns all matching favorites when the query is empty", () => {
+    expect(
+      buildFavoriteBrowseEntries({
+        entries: nestedTourCollection.entries,
+        favoriteSlugs: ["refund-flow", "payment-flow"],
+        query: ""
+      })
+    ).toEqual([
+      {
+        slug: "payment-flow",
+        title: "Payment Flow"
+      },
+      {
+        slug: "refund-flow",
+        title: "Refund Flow"
+      }
+    ]);
+  });
+
   it("reads, writes, and toggles favorite slugs safely", () => {
     const storage = createStorage();
 

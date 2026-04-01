@@ -1,0 +1,19 @@
+version: 1
+title: Viewport Stability
+diagram: ./navigation-viewport-stability.mmd
+
+steps:
+  - focus:
+      - review
+    text: >
+      Start by centering on {{review}} to confirm single-node focus behaves normally.
+
+  - focus: []
+    text: >
+      Step back and keep the full diagram in view so neutral empty-focus behavior stays stable.
+
+  - focus:
+      - review
+      - delivery
+    text: >
+      Finish by following the handoff from {{review}} to {{delivery}} with a grouped focus.

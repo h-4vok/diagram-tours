@@ -1,7 +1,26 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
-import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { gotoMock, pageState } = vi.hoisted(() => ({
+  gotoMock: vi.fn(() => Promise.resolve()),
+  pageState: {
+    url: new URL("https://example.test/payment-flow")
+  }
+}));
+
+vi.mock("$app/navigation", () => ({
+  goto: gotoMock
+}));
+
+vi.mock("$app/state", () => ({
+  page: pageState
+}));
 
 import Layout from "../src/routes/+layout.svelte";
+import {
+  FAVORITES_STORAGE_KEY
+} from "../src/lib/browse-favorites";
+import { RECENT_STORAGE_KEY } from "../src/lib/browse-recents";
 import {
   nestedTourCollection,
   resolvedTourCollection,
@@ -14,31 +33,20 @@ const directorySourceTarget = {
   path: "/repo/examples"
 };
 
-function findFolderRow(label: string): HTMLElement {
-  const folder = screen
-    .getAllByTestId("browse-folder-row")
-    .find((element) => element.textContent?.includes(label));
-
-  expect(folder).toBeDefined();
-
-  return folder!;
-}
-
-async function expandFolder(label: string): Promise<HTMLElement> {
-  const folder = findFolderRow(label);
-
-  await fireEvent.click(folder);
-
-  return folder;
-}
-
 describe("+layout.svelte", () => {
   beforeEach(() => {
+    gotoMock.mockClear();
     window.localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
+    pageState.url = new URL("https://example.test/payment-flow");
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(() => Promise.resolve())
+      }
+    });
   });
 
-  it("renders the top bar and a browse entry point for navigation", async () => {
+  it("renders the top bar and a single command-palette trigger", async () => {
     render(Layout, {
       data: {
         collection: singleTourCollection,
@@ -46,13 +54,16 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect(await screen.findByText("Diagram Tours")).toBeDefined();
-    expect(screen.getByTestId("browse-trigger")).toBeDefined();
+    expect(await screen.findByText("diagram-tours")).toBeDefined();
+    expect(screen.getByTestId("topbar-left")).toBeDefined();
+    expect(screen.getByTestId("topbar-center")).toBeDefined();
+    expect(screen.getByTestId("topbar-right")).toBeDefined();
+    expect(screen.getByTestId("search-hint-trigger")).toBeDefined();
+    expect(screen.queryByTestId("browse-trigger")).toBeNull();
     expect(screen.queryByTestId("browse-panel")).toBeNull();
-    expect(screen.queryByTestId("browse-tree")).toBeNull();
   });
 
-  it("opens browse as an explorer tree, renders compact folders, and keeps theme toggle available", async () => {
+  it("opens a centered command palette from the search hint and keeps theme toggle available", async () => {
     render(Layout, {
       data: {
         collection: nestedTourCollection,
@@ -60,25 +71,18 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect(screen.getByRole("link", { name: "christianguzman.uk" }).getAttribute("href")).toBe(
-      "https://christianguzman.uk"
+    expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe(
+      "https://github.com/h-4vok/diagram-tours"
     );
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
-    expect(await screen.findByTestId("browse-tree")).toBeDefined();
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
     expect(screen.getByTestId("browse-search-input")).toBeDefined();
-    expect(screen.getAllByTestId("browse-folder-row")[0].textContent).toContain("payments");
-    expect(screen.getAllByTestId("browse-folder-row")).toHaveLength(1);
-
-    await fireEvent.click(screen.getAllByTestId("browse-folder-row")[0]);
-
-    expect(screen.getAllByTestId("browse-folder-row")).toHaveLength(3);
-    expect(screen.getAllByTestId("browse-folder-row")[1].textContent).toContain("core/payment-flow");
-    expect(screen.getAllByTestId("browse-folder-row")[2].textContent).toContain(
-      "support/refund-flow"
-    );
-    expect(screen.getAllByTestId("browse-folder-icon")).toHaveLength(3);
+    expect(screen.getAllByTestId("browse-tour-row")).toHaveLength(1);
+    expect(screen.getByTestId("browse-recent-row")).toBeDefined();
+    expect(screen.getByText("All Diagrams")).toBeDefined();
+    expect(screen.queryByTestId("browse-folder-row")).toBeNull();
     expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
 
     await fireEvent.click(screen.getByTestId("theme-toggle"));
@@ -87,19 +91,10 @@ describe("+layout.svelte", () => {
     expect(window.localStorage.getItem("diagram-tour-theme")).toBe("light");
   });
 
-  it("defaults to dark mode when no preference has been stored", async () => {
-    render(Layout, {
-      data: {
-        collection: resolvedTourCollection,
-        sourceTarget: directorySourceTarget
-      }
-    });
+  it("shows favorites and recents as separate sections above all diagrams", async () => {
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, '["refund-flow"]');
+    window.localStorage.setItem(RECENT_STORAGE_KEY, '["payment-flow"]');
 
-    expect((await screen.findByTestId("theme-root")).getAttribute("data-theme")).toBe("dark");
-    expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
-  });
-
-  it("toggles folder branches open and closed", async () => {
     render(Layout, {
       data: {
         collection: nestedTourCollection,
@@ -107,25 +102,12 @@ describe("+layout.svelte", () => {
       }
     });
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
-    const paymentsFolder = findFolderRow("payments");
-    expect(paymentsFolder.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText("Payment Flow")).toBeNull();
-
-    await expandFolder("payments");
-
-    expect(paymentsFolder.getAttribute("aria-expanded")).toBe("true");
-
-    await expandFolder("core/payment-flow");
-
-    expect(screen.getByText("Payment Flow")).toBeDefined();
-    expect(screen.getAllByTestId("browse-tour-icon")).toHaveLength(1);
-
-    await fireEvent.click(paymentsFolder);
-
-    expect(paymentsFolder.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText("Payment Flow")).toBeNull();
+    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Favorites");
+    expect(screen.getByText("Recent")).toBeDefined();
+    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Refund Flow");
+    expect(screen.getByTestId("browse-recent-row").textContent).toContain("Payment Flow");
   });
 
   it("filters tours by text and shows an empty state when there are no matches", async () => {
@@ -136,7 +118,7 @@ describe("+layout.svelte", () => {
       }
     });
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
     await fireEvent.input(screen.getByTestId("browse-search-input"), {
       currentTarget: { value: "rfnd" },
       target: { value: "rfnd" }
@@ -155,8 +137,57 @@ describe("+layout.svelte", () => {
     );
   });
 
-  it("hydrates the theme from persistent storage", async () => {
-    window.localStorage.setItem("diagram-tour-theme", "dark");
+  it("pins favorites in local storage from the command palette", async () => {
+    render(Layout, {
+      data: {
+        collection: nestedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+    const refundRow = screen
+      .getAllByTestId("browse-tour-row")
+      .find((element) => element.textContent?.includes("Refund Flow"));
+
+    expect(refundRow).toBeDefined();
+
+    await fireEvent.click(within(refundRow!).getByTestId("favorite-toggle"));
+
+    expect(window.localStorage.getItem(FAVORITES_STORAGE_KEY)).toBe('["refund-flow"]');
+    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Refund Flow");
+  });
+
+  it("opens the command palette from Ctrl/Cmd+K and slash, but ignores slash while typing", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    const outsideInput = document.createElement("input");
+    document.body.appendChild(outsideInput);
+    outsideInput.focus();
+
+    await fireEvent.keyDown(window, { key: "/" });
+    expect(screen.queryByTestId("browse-panel")).toBeNull();
+
+    document.body.removeChild(outsideInput);
+    await fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    await fireEvent.keyDown(window, { key: "k", metaKey: true });
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    await fireEvent.keyDown(window, { key: "/" });
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+  });
+
+  it("tracks the active row from the current route, arrow keys, and enter", async () => {
+    pageState.url = new URL("https://example.test/refund-flow");
 
     render(Layout, {
       data: {
@@ -165,64 +196,58 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect((await screen.findByTestId("theme-root")).getAttribute("data-theme")).toBe("dark");
-    expect(screen.getByTestId("theme-toggle").textContent).toContain("Light mode");
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+
+    const refundOption = within(
+      screen.getAllByTestId("browse-recent-row").find((element) => element.dataset.tourSlug === "refund-flow")!
+    ).getByRole("option");
+
+    expect(refundOption.getAttribute("aria-selected")).toBe("true");
+
+    await fireEvent.keyDown(window, { key: "ArrowDown" });
+    await fireEvent.keyDown(window, { key: "Enter" });
+
+    expect(gotoMock).toHaveBeenCalledWith("/payment-flow");
   });
 
-  it("surfaces skipped-tour diagnostics in a topbar popover", async () => {
+  it("closes the command palette with escape and the backdrop", async () => {
     render(Layout, {
       data: {
-        collection: {
-          ...resolvedTourCollection,
-          skipped: [
-            {
-              sourcePath: "broken.tour.yaml",
-              error: "broken"
-            }
-          ]
-        },
+        collection: resolvedTourCollection,
         sourceTarget: directorySourceTarget
       }
     });
 
-    expect(screen.getByTestId("diagnostics-count").textContent).toBe("1");
-    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
 
-    expect(
-      (await screen.findByTestId("diagnostics-summary")).textContent?.replace(/\s+/g, " ").trim()
-    ).toBe(
-      "1 invalid tour was omitted from the collection."
-    );
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("browse-panel")).toBeNull();
 
-    const diagnosticsItem = await screen.findByTestId("diagnostics-item");
-
-    expect(diagnosticsItem.textContent).toContain("broken.tour.yaml");
-    expect(diagnosticsItem.textContent).toContain("broken");
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    await fireEvent.click(screen.getByTestId("browse-backdrop"));
+    expect(screen.queryByTestId("browse-panel")).toBeNull();
   });
 
-  it("pins favorites above the tree and persists them in local storage", async () => {
+  it("keeps the command palette open when reopened after a route change settles", async () => {
+    pageState.url = new URL("https://example.test/payment-flow");
+
     render(Layout, {
       data: {
-        collection: nestedTourCollection,
+        collection: resolvedTourCollection,
         sourceTarget: directorySourceTarget
       }
     });
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
-    await expandFolder("payments");
-    await expandFolder("support/refund-flow");
+    pageState.url = new URL("https://example.test/refund-flow");
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
-    const refundRow = screen
-      .getAllByTestId("browse-tour-row")
-      .find((element) => element.textContent?.includes("Refund Flow"));
+    expect(await screen.findByTestId("browse-panel")).toBeDefined();
 
-    expect(refundRow).toBeDefined();
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await fireEvent.click(refundRow!.querySelector("[data-testid='favorite-toggle']")!);
-
-    expect(window.localStorage.getItem("diagram-tour:favorites")).toBe('["refund-flow"]');
-    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Favorites");
-    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Refund Flow");
+    expect(screen.getByTestId("browse-panel")).toBeDefined();
   });
 
   it("shows the preview notice for single-file author previews", async () => {
@@ -231,36 +256,66 @@ describe("+layout.svelte", () => {
         collection: singleTourCollection,
         sourceTarget: {
           kind: "file" as const,
-          label: "payment-flow.tour.yaml",
-          path: "/repo/examples/checkout/payment-flow.tour.yaml"
+          label: "checkout-payment-flow.tour.yaml",
+          path: "/repo/examples/checkout-payment-flow.tour.yaml"
         }
       }
     });
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     expect((await screen.findByTestId("preview-target-notice")).textContent).toContain(
-      "Previewing payment-flow.tour.yaml"
+      "Previewing checkout-payment-flow.tour.yaml"
     );
   });
 
-  it("closes browse with escape after opening it", async () => {
+  it("surfaces skipped-tour diagnostics in a structured topbar popover", async () => {
     render(Layout, {
       data: {
-        collection: resolvedTourCollection,
+        collection: {
+          ...resolvedTourCollection,
+          skipped: [
+            {
+              diagnostics: [
+                {
+                  code: "ghost",
+                  location: { column: 4, line: 2 },
+                  message: "step 1 focus references unknown Mermaid node id 'ghost'"
+                },
+                {
+                  code: "ghost",
+                  location: { column: 11, line: 3 },
+                  message: "step 1 text references unknown Mermaid node id 'ghost'"
+                }
+              ],
+              sourceId: "broken.tour.yaml",
+              sourcePath: "broken.tour.yaml"
+            }
+          ]
+        },
         sourceTarget: directorySourceTarget
       }
     });
 
-    await fireEvent.click(screen.getByTestId("browse-trigger"));
-    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+    expect(screen.getByTestId("diagnostics-count").textContent).toBe("2");
+    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
 
-    await fireEvent.keyDown(window, { key: "Escape" });
+    expect((await screen.findByTestId("diagnostics-summary")).textContent).toContain(
+      "2 issues across 1 source file in current workspace."
+    );
+    expect(screen.getByTestId("diagnostics-panel-count").textContent).toBe("2");
 
-    expect(screen.queryByTestId("browse-panel")).toBeNull();
+    const diagnosticsGroup = await screen.findByTestId("diagnostics-group");
+    const diagnosticsItems = await screen.findAllByTestId("diagnostics-item");
+
+    expect(diagnosticsGroup.textContent).toContain("broken.tour.yaml");
+    expect(diagnosticsGroup.textContent).toContain("2 issues");
+    expect(diagnosticsItems[0]?.textContent).toContain("broken.tour.yaml:2:4");
+    expect(diagnosticsItems[1]?.textContent).toContain("broken.tour.yaml:3:11");
+    expect(within(diagnosticsItems[0]!).getByText("ghost")).toBeDefined();
   });
 
-  it("opens browse from the current tour toggle event", async () => {
+  it("shows a zero state when no diagnostics exist", async () => {
     render(Layout, {
       data: {
         collection: resolvedTourCollection,
@@ -268,8 +323,10 @@ describe("+layout.svelte", () => {
       }
     });
 
-    window.dispatchEvent(new CustomEvent("diagram-tour-toggle-browse"));
+    expect(screen.getByTestId("diagnostics-count").textContent).toBe("0");
+    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
 
-    expect(await screen.findByTestId("browse-panel")).toBeDefined();
+    expect(await screen.findByTestId("diagnostics-empty-state")).toBeDefined();
+    expect(screen.getByText("All clear")).toBeDefined();
   });
 });

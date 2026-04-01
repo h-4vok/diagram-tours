@@ -111,23 +111,23 @@ If a step tries to explain too much, split it.
 
 ## Organize Tour Files
 
-The current convention is one directory per example:
+The current convention is a flat `examples/` library with domain-prefixed stems:
 
 ```text
-examples/checkout/
-  payment-flow.mmd
-  payment-flow.tour.yaml
-  refund-flow.mmd
-  refund-flow.tour.yaml
+examples/
+  checkout-payment-flow.mmd
+  checkout-payment-flow.tour.yaml
+  checkout-refund-flow.mmd
+  checkout-refund-flow.tour.yaml
 ```
 
-That layout produces a clean slug and keeps related files together.
+That layout keeps contributor discovery simple while preserving readable slugs.
 
 If you only have a diagram at first, this is still valid:
 
 ```text
-examples/checkout/
-  payment-flow.mmd
+examples/
+  checkout-payment-flow.mmd
 ```
 
 The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
@@ -213,28 +213,38 @@ With no target, validation walks the current directory recursively and checks au
 
 A practical local loop is:
 
+<<<<<<< HEAD
 1. run `diagram-tours init <diagram.mmd>` if you need a starter authored tour
 2. start the player against the target you want to edit
 3. iterate on Mermaid and YAML together
 4. run `diagram-tours validate [target]`
 5. run `bun run test`
 6. run `bun run smoke` if viewport or interaction behavior changed
+=======
+1. start the player against the target you want to edit
+2. iterate on Mermaid and YAML together
+3. run `diagram-tours validate` on the file or folder you changed
+4. run `bun run test`
+5. run `bun run smoke` if viewport or interaction behavior changed
+>>>>>>> origin/main
 
 For the published product flow, use the global CLI:
 
 ```bash
-diagram-tours ./examples/checkout/payment-flow.tour.yaml
-diagram-tours ./examples/checkout/payment-flow.mmd
+diagram-tours ./examples/checkout-payment-flow.tour.yaml
+diagram-tours ./examples/checkout-payment-flow.mmd
 diagram-tours ./fixtures/markdown/checklist.md
 diagram-tours ./examples
 diagram-tours
+diagram-tours validate ./examples/checkout-payment-flow.tour.yaml
+diagram-tours validate ./examples
 ```
 
 For repository contributor work, the Bun helpers still exist:
 
 ```bash
-bun run dev ./examples/checkout/payment-flow.tour.yaml
-bun run dev ./examples/checkout/payment-flow.mmd
+bun run dev ./examples/checkout-payment-flow.tour.yaml
+bun run dev ./examples/checkout-payment-flow.mmd
 bun run dev ./examples
 bun run dev:open
 bun run dev:interactive
@@ -245,7 +255,7 @@ The environment-variable flow still works when you want to drive the runtime dir
 PowerShell example:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/checkout/payment-flow.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/checkout-payment-flow.tour.yaml"
 bun run dev
 ```
 

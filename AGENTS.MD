@@ -1,92 +1,69 @@
 # AGENTS
 
-This repository is designed for AI-assisted delivery with Codex.
-
-Before performing substantive work, always load:
-
-- ENGINEERING_PLAYBOOK.md
-- REPO_WORK_RULES.md
-- DELIVERY_CHECKLIST.md
-- README.md
-
-These files define the repository engineering standards.
-
-## Operating Model
-
-- Work in bounded, user-visible capabilities.
-- Respect package boundaries:
-  - `packages/core`: domain model only
-  - `packages/parser`: loading, parsing, validation, slugging, and discovery
-  - `packages/web-player`: resolved-runtime UI only
-  - `packages/cli`: startup orchestration only
-- Do not move parsing responsibilities into the web player.
-- Do not add filesystem, YAML, or UI concerns to `core`.
-- Prefer tests that describe behavior rather than implementation details.
-- Reuse existing examples and fixtures before inventing new patterns.
-
-## Required Validation
-
-Run the relevant checks before declaring work complete:
-
-- `bun run lint`
-- `bun run typecheck`
-- `bun run test`
-
-Also run:
-
-- `bun run smoke` when startup flow, routing, UX, browse, viewport, theme, docs-visible behavior, or other user-visible runtime behavior changed and the fast core browser tier is enough
-- `bun run smoke:full` when the browser change needs the full core + extended smoke suite
-- `bun run build` when touching published packages, runtime packaging, or startup/runtime integration
-- `bun run prepush` for cross-package or release-facing changes
-
-Coverage must remain at `100%` for all enforced metrics.
-
-## Documentation Rules
-
-Update documentation in the same change when behavior, contracts, or contributor workflow changes.
-
-Check these files when relevant:
-
+Load first:
+- `AGENTS.md`
 - `README.md`
-- `docs/runtime-loading.md`
-- `docs/authoring-guide.md`
-- `docs/adoption-onboarding.md`
-- `docs/testing/smoke-tests.md`
-- `docs/tour-spec-v1.md`
 
-Repository-facing documentation must be written in English.
+## Workflow
+- Task shape: bounded capability; user-visible, contract-visible, validation-visible, or delivery-unblocking infra.
+- Flow: contract -> test -> code -> refactor -> targeted validation -> operator validation.
+- Prefer behavior tests, small pure functions, guard clauses, explicit data.
+- Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
+- Reuse examples/fixtures before new patterns.
 
-## Backlog Rule
+## Boundaries
+- `packages/core`: domain only. No filesystem, YAML, CLI, browser, Svelte.
+- `packages/parser`: loading, parsing, validation, discovery, slugging. No UI.
+- `packages/web-player`: resolved-runtime UI only. No raw parsing responsibilities.
+- `packages/cli`: startup orchestration only. No parser/web-player leakage of startup policy.
+- Do not move parsing into `web-player`.
+- Do not add filesystem, YAML, or UI concerns to `core`.
 
-If a delivered change materially updates an item tracked in `backlog.md`, update that backlog entry in the same change.
+## Guardrails
+- Coverage: 100% statements, branches, functions, lines.
+- Complexity <= 3.
+- Nesting <= 3.
+- Function length <= 30 lines unless justified.
+- Arity <= 3; else object param.
+- No floating promises.
+- No unnecessary conditional guards.
+- Exhaustive unions/switches.
+- Lint, typecheck, tests: pass.
+- Contract/docs changes: same change.
+- Repo-facing docs: English.
 
-## UX Review Rule
+## Validation
+- Before done: targeted checks on touched files.
+- Lint: modified JS/TS/Svelte/CSS files only.
+- Tests: affected Vitest files only. No full suite.
+- Smoke: touched smoke spec only. No full smoke.
+- Typecheck: affected package only.
+- Fix failures immediately.
+- Final message: list targeted checks passed.
+- Exhaustive checks: operator-run.
+- Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush.
+- Operator request: `Run bun run allchecks:ai; send failing summary only.`
+- Narrow request: `Run [command]; send failing file/assertion/stack only.`
+- Analyze summary, stack, failing assertion, failing file.
+- Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
+- Browser-visible/runtime/startup/docs-visible changes: operator runs smoke.
+- Cross-package/release-facing changes: operator runs full validation.
 
-If a change affects any of these areas, request a UX pass before final handoff:
+## Docs / Tracking
+- Update docs when behavior, contracts, startup flow, validation flow, or contributor workflow changes.
+- Check when relevant: `README.md`, `docs/runtime-loading.md`, `docs/authoring-guide.md`, `docs/adoption-onboarding.md`, `docs/testing/smoke-tests.md`, `docs/tour-spec-v1.md`.
+- If `backlog.md` item changed materially, update it in same change.
+- `docs/reqs.md`: reference only after checking code/newer docs.
 
-- CLI startup or wizard behavior
-- web-player navigation, browse, overlay, theme, diagnostics, viewport, or minimap
-- README or onboarding/authoring documentation
+## UX / PR
+- Request UX pass for CLI startup/wizard, web-player navigation/browse/overlay/theme/diagnostics/viewport/minimap, or README/onboarding/authoring docs changes.
+- Do not hide checks behind opaque automation; report exact commands the operator should run.
+- Do not create one-off custom agents/skills when repo rules or reusable skills fit.
+- PR work not done until required CI is green.
+- If CI fails: inspect, fix, push, recheck.
 
-UX here includes CLI messages, browser flows, and GitHub-read documentation, not only visual styling.
-
-## Limits
-
-- Do not create a new custom agent when the task fits a reusable skill or a repo-level rule.
-- Do not create skills for one-off tasks with no repeated workflow.
-- Do not hide which checks were run behind opaque automation.
-- Do not treat `docs/reqs.md` as a sole source of truth without checking code and newer docs.
-
-## Pull Request Rule
-
-Creating or updating a pull request is not the end of the task.
-
-When an agent opens or updates a PR, the task remains in progress until the relevant CI checks for that PR are green.
-Do not mark the task complete, and do not hand off the PR as ready, until those checks have finished and passed.
-
-Agents must:
-
-- wait for the PR checks to complete
-- inspect failing checks if CI is red
-- fix the failures, commit, and push follow-up changes as needed
-- only report the PR as ready after the required PR checks are green
+## Package Scopes
+- `core`: models, types, resolved tour/domain contracts, UI-agnostic logic.
+- `parser`: Mermaid/YAML/Markdown ingestion, validation, discovery, slugging, resolved outputs.
+- `web-player`: SvelteKit player, overlays, focus state, viewport, browse, diagnostics, theme.
+- `cli`: args, wizard, startup target selection, server/browser launch, runtime packaging.

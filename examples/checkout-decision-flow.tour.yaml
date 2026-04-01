@@ -1,0 +1,26 @@
+version: 1
+title: Decision Flow
+diagram: ./checkout-decision-flow.mmd
+
+steps:
+  - focus:
+      - request
+    text: >
+      The {{request}} represents a case entering the queue, such as a claims adjustment or a high-value refund. At this point the system knows work has arrived, but not yet whether it deserves manual attention.
+
+  - focus:
+      - eligibility
+    text: >
+      {{eligibility}} is the policy checkpoint. This is where product rules, fraud heuristics, and account status decide whether the case can continue or should be rejected immediately.
+
+  - focus:
+      - review
+      - approve
+    text: >
+      Eligible cases still go through {{review}} when the business wants a human or audited service to confirm the decision. A successful review leads to {{approve}}, which is the point where downstream fulfilment can trust the outcome.
+
+  - focus:
+      - reject
+      - notify
+    text: >
+      Unqualified requests are closed in {{reject}}, while approved ones finish with {{notify}} so the customer or internal operator sees a clear outcome instead of a silent state change.

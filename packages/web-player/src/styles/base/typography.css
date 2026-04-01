@@ -1,19 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap");
+
 :root {
-  --font-family-sans:
-    "IBM Plex Sans",
+  --font-sans:
+    "Geist",
+    "Inter",
     "Segoe UI",
     system-ui,
     sans-serif;
-  --font-family-mono:
-    "IBM Plex Mono",
+  --font-mono:
+    "Geist Mono",
+    "JetBrains Mono",
     "SFMono-Regular",
     "Cascadia Code",
     "Fira Code",
     monospace;
+  --font-family-sans: var(--font-sans);
+  --font-family-mono: var(--font-mono);
 }
 
 body {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-sans);
   font-size: 0.9375rem;
   font-weight: 400;
   line-height: 1.6;
@@ -32,7 +38,7 @@ code,
 kbd,
 pre,
 samp {
-  font-family: var(--font-family-mono);
+  font-family: var(--font-mono);
 }
 
 .hero h1 {

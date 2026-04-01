@@ -26,7 +26,7 @@ Example:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -67,14 +67,14 @@ Must be a non-empty string.
 Required.
 
 ```yaml
-diagram: ./payment-flow.mmd
+diagram: ./checkout-payment-flow.mmd
 ```
 
 Must be a non-empty string path to a Mermaid diagram source.
 
 Supported authored targets include:
 
-- standalone Mermaid files such as `./payment-flow.mmd`
+- standalone Mermaid files such as `./checkout-payment-flow.mmd`
 - Markdown files with fenced Mermaid blocks such as `./country-checklist.md`
 
 If a Markdown file contains multiple Mermaid blocks, the path must include a fragment that selects one block:
@@ -230,14 +230,15 @@ A tour is invalid if any of the following are true:
 
 Errors should be descriptive and actionable.
 
-The current parser includes contextual information such as the tour source path and, when relevant, the step number and field.
+The current parser includes contextual information such as the tour source path and, when relevant, the step number, field, and source line/column when that location can be mapped from the authored YAML.
 
 Example:
 
 ```text
-Tour "examples/checkout/payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
+Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
+<<<<<<< HEAD
 The published CLI exposes that validation through:
 
 ```bash
@@ -251,6 +252,9 @@ Validation is authored-tour focused:
 - a single `*.tour.yaml` target validates exactly that file
 - a directory target validates authored `*.tour.yaml` files recursively beneath it
 - raw diagrams are not considered validation targets for this command
+=======
+When a workspace contains invalid authored tours, the player may still load valid tours and expose the skipped authored files through the `Issues` panel with grouped per-file diagnostics.
+>>>>>>> origin/main
 
 ## Mermaid Requirements
 

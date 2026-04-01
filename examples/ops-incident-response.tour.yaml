@@ -1,0 +1,28 @@
+version: 1
+title: Incident Response
+diagram: ./ops-incident-response.mmd
+
+steps:
+  - focus:
+      - alert
+      - triage
+    text: >
+      {{alert}} is the first operational signal that something abnormal is happening. {{triage}} turns that raw signal into a decision about scope, urgency, and whether the on-call team is dealing with noise or a real incident.
+
+  - focus:
+      - severity
+    text: >
+      {{severity}} is where the response becomes economically meaningful. A high-severity customer outage justifies more coordination overhead than a low-severity defect that can safely wait for normal planning.
+
+  - focus:
+      - commander
+      - patch
+      - backlog
+    text: >
+      High-impact incidents assign {{commander}} so one person owns coordination. Medium cases move straight to {{patch}}, while low-impact findings go to {{backlog}} so the team does not burn emergency process on routine maintenance.
+
+  - focus:
+      - comms
+      - close
+    text: >
+      No matter which branch was taken, the team should pass through {{comms}} before {{close}}. The technical fix is not enough; stakeholders need status, and the incident should only close once that communication loop is done.

@@ -1,0 +1,24 @@
+version: 1
+title: Viewport Centering
+diagram: ./navigation-viewport-centering.mmd
+
+steps:
+  - focus:
+      - build
+    text: >
+      Start in the upper flow by centering {{build}} and confirming the first step lands with generous room around it.
+
+  - focus:
+      - rollout
+    text: >
+      Jump deep into the diagram and keep {{rollout}} centered instead of merely visible at the edge of the viewport.
+
+  - focus:
+      - verify
+      - observe
+    text: >
+      Grouped focus should center the broader handoff between {{verify}} and {{observe}} as one combined area.
+
+  - focus: []
+    text: >
+      Empty focus should reset to a stable neutral view so the whole walkthrough does not feel stuck on the last highlight.

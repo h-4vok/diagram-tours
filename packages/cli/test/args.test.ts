@@ -5,6 +5,7 @@ import { parseCliArgs } from "../src/lib/args.js";
 describe("parseCliArgs", () => {
   it("uses the wizard when no target is provided", () => {
     expect(parseCliArgs([])).toEqual({
+<<<<<<< HEAD
       command: "startup",
       options: {
         browser: "prompt",
@@ -14,11 +15,21 @@ describe("parseCliArgs", () => {
         port: null,
         target: null
       }
+=======
+      browser: "prompt",
+      hasExplicitTarget: false,
+      host: "127.0.0.1",
+      mode: "wizard",
+      port: null,
+      target: null,
+      targets: []
+>>>>>>> origin/main
     });
   });
 
   it("reads a directory target and skips the wizard", () => {
     expect(parseCliArgs(["./examples", "--host", "0.0.0.0"])).toEqual({
+<<<<<<< HEAD
       command: "startup",
       options: {
         browser: "never",
@@ -28,10 +39,20 @@ describe("parseCliArgs", () => {
         port: null,
         target: "./examples"
       }
+=======
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "0.0.0.0",
+      mode: "direct",
+      port: null,
+      target: "./examples",
+      targets: ["./examples"]
+>>>>>>> origin/main
     });
   });
 
   it("reads a single tour file target", () => {
+<<<<<<< HEAD
     expect(parseCliArgs(["./examples/checkout/payment-flow.tour.yaml"])).toEqual({
       command: "startup",
       options: {
@@ -42,11 +63,46 @@ describe("parseCliArgs", () => {
         port: null,
         target: "./examples/checkout/payment-flow.tour.yaml"
       }
+=======
+    expect(parseCliArgs(["./examples/checkout-payment-flow.tour.yaml"])).toEqual({
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "direct",
+      port: null,
+      target: "./examples/checkout-payment-flow.tour.yaml",
+      targets: ["./examples/checkout-payment-flow.tour.yaml"]
+    });
+  });
+
+  it("reads validate targets and defaults to the current directory", () => {
+    expect(parseCliArgs(["validate"])).toEqual({
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "validate",
+      port: null,
+      target: ".",
+      targets: ["."]
+    });
+  });
+
+  it("reads multiple validate targets", () => {
+    expect(parseCliArgs(["validate", "./examples", "./docs"])).toEqual({
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "validate",
+      port: null,
+      target: "./examples",
+      targets: ["./examples", "./docs"]
+>>>>>>> origin/main
     });
   });
 
   it("accepts an explicit port override", () => {
     expect(parseCliArgs(["--port", "9000"])).toEqual({
+<<<<<<< HEAD
       command: "startup",
       options: {
         browser: "prompt",
@@ -56,23 +112,53 @@ describe("parseCliArgs", () => {
         port: 9000,
         target: null
       }
+=======
+      browser: "prompt",
+      hasExplicitTarget: false,
+      host: "127.0.0.1",
+      mode: "wizard",
+      port: 9000,
+      target: null,
+      targets: []
+>>>>>>> origin/main
     });
   });
 
   it("reads the short version flag", () => {
     expect(parseCliArgs(["-v"])).toEqual({
+<<<<<<< HEAD
       command: "version"
+=======
+      browser: "never",
+      hasExplicitTarget: false,
+      host: "127.0.0.1",
+      mode: "version",
+      port: null,
+      target: null,
+      targets: []
+>>>>>>> origin/main
     });
   });
 
   it("reads the long version flag", () => {
     expect(parseCliArgs(["--version"])).toEqual({
+<<<<<<< HEAD
       command: "version"
+=======
+      browser: "never",
+      hasExplicitTarget: false,
+      host: "127.0.0.1",
+      mode: "version",
+      port: null,
+      target: null,
+      targets: []
+>>>>>>> origin/main
     });
   });
 
   it("accepts an explicit open policy", () => {
     expect(parseCliArgs(["./examples", "--open"])).toEqual({
+<<<<<<< HEAD
       command: "startup",
       options: {
         browser: "always",
@@ -82,11 +168,21 @@ describe("parseCliArgs", () => {
         port: null,
         target: "./examples"
       }
+=======
+      browser: "always",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "direct",
+      port: null,
+      target: "./examples",
+      targets: ["./examples"]
+>>>>>>> origin/main
     });
   });
 
   it("lets no-open override direct startup explicitly", () => {
     expect(parseCliArgs(["./examples", "--no-open"])).toEqual({
+<<<<<<< HEAD
       command: "startup",
       options: {
         browser: "never",
@@ -146,6 +242,15 @@ describe("parseCliArgs", () => {
         overwrite: true,
         target: "./examples/checkout/payment-flow.mmd"
       }
+=======
+      browser: "never",
+      hasExplicitTarget: true,
+      host: "127.0.0.1",
+      mode: "direct",
+      port: null,
+      target: "./examples",
+      targets: ["./examples"]
+>>>>>>> origin/main
     });
   });
 
@@ -166,6 +271,12 @@ describe("parseCliArgs", () => {
   it("rejects conflicting browser flags", () => {
     expect(() => parseCliArgs(["--open", "--no-open"])).toThrow(
       "Choose either --open or --no-open."
+    );
+  });
+
+  it("rejects validate with browser or server flags", () => {
+    expect(() => parseCliArgs(["validate", "--port", "9000"])).toThrow(
+      "validate does not accept browser or server flags."
     );
   });
 

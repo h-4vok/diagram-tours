@@ -15,6 +15,7 @@ Initial source: a contrast between [`docs/reqs.md`](docs/reqs.md), the current c
 
 Cutoff date: 2026-03-17
 
+<<<<<<< HEAD
 ### Done
 
 - `BD-01` Default dark mode for first-time users
@@ -125,6 +126,11 @@ Cutoff date: 2026-03-17
   - Gap: connectors, labels, and fine-grained visual hierarchy can still improve
   - Evidence: `packages/web-player/src/styles/components/diagram-player.css`, `docs/reqs.md`
 - `BP-03` Wizard path retry UX
+=======
+### Partial
+
+- BT-005 Wizard path retry UX
+>>>>>>> origin/main
   - Current state: invalid explicit paths fail clearly during wizard input validation
   - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
   - Evidence: `packages/cli/src/lib/wizard.ts`
@@ -138,7 +144,15 @@ Cutoff date: 2026-03-17
   - Note: dark mode remains noticeably weaker on sequence diagrams than on the rest of the player and still needs a dedicated visual pass
 - `BT-04` Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
+<<<<<<< HEAD
 - `BT-08` Adoption and onboarding strategy for people and AI assistants
+=======
+- BT-010 `diagram-tours init` scaffolding for new authored tours
+  - Note: add a CLI command that can create a new `*.tour.yaml` from scratch, or inspect an existing Mermaid source and scaffold a starter tour with the right `diagram` target and step structure
+- BT-011 Installable authoring reference for AI agents and repository tooling
+  - Note: add a command that installs a reusable Markdown reference describing the `tour.yaml` standard so files like `AGENTS.md` or other agent instructions can point to one stable doc for Codex, Claude Code, and similar tools
+- BT-013 Adoption and onboarding strategy for people and AI assistants
+>>>>>>> origin/main
   - Note: preserve both product onboarding and AI discoverability as a dedicated initiative rather than letting it live only in chat history
   - Pending: turn the ideas in `docs/adoption-onboarding.md` into concrete README, repository-convention, and CLI work
 - `BT-09` Keyboard shortcuts and navigation that stay consistent across the browse panel and the diagram
@@ -152,6 +166,18 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
+- BT-019 Enforce LOC limits in Linters (Hard Boundaries)
+  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 150) in the web-player package to ensure modularity and context efficiency
+- BT-020 Strengthen CLI version-mode argument precedence coverage
+  - Note: extend `packages/cli/test/args.test.ts` so `--version` is proven to win even when combined with other inputs such as an explicit target or browser-opening flags, preventing false-green regressions in CLI argument precedence
+- BT-021 Expand CLI missing-value sad-path coverage for option parsing
+  - Note: extend `packages/cli/test/args.test.ts` to cover missing values for both `--host` and `--port`, including the realistic case where the next token is another flag, and assert actionable error text for each failure path
+- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
+  - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
+- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
+  - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
+- BT-025 Add max-lines-per-file guardrails across code and tests
+  - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 
 ## Notes
 

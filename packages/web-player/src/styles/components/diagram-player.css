@@ -1,6 +1,7 @@
 .diagram {
-  block-size: calc(100vh - 5.55rem);
+  block-size: 100%;
   display: block;
+  height: 100%;
   inline-size: 100%;
   min-width: 0;
   overflow: auto scroll;
@@ -50,14 +51,15 @@
 .diagram .edgeLabel rect,
 .diagram .labelBkg {
   backdrop-filter: blur(2px);
-  fill: var(--color-edge-label-bg);
-  stroke: var(--color-edge-label-border);
+  fill: var(--color-edge-label-bg) !important;
+  stroke: var(--color-edge-label-border) !important;
   stroke-width: 1px;
 }
 
 .diagram .edgeLabel :is(text, span, p, div, tspan) {
   color: var(--color-edge-label-text);
   fill: var(--color-edge-label-text);
+  font-family: var(--font-mono);
 }
 
 .diagram .edgeLabel .label {
@@ -65,8 +67,8 @@
 }
 
 .diagram .edgeLabel div {
-  background: var(--color-edge-label-bg);
-  border: 1px solid var(--color-edge-label-border);
+  background: var(--color-edge-label-bg) !important;
+  border: 1px solid var(--color-edge-label-border) !important;
   border-radius: var(--edge-label-radius);
   box-shadow: 0 1px 4px var(--color-edge-label-shadow);
   color: var(--color-edge-label-text);
@@ -91,6 +93,24 @@
   color: inherit;
   margin: 0;
   padding: 0;
+}
+
+.diagram .warning:is(rect, path, polygon, circle, ellipse),
+.diagram .warning :is(rect, path, polygon, circle, ellipse) {
+  fill: var(--node-warning-fill);
+  stroke: var(--color-node-base-stroke);
+}
+
+.diagram .warning:is(text, tspan, foreignObject),
+.diagram .warning :is(text, tspan, foreignObject, div, span, p) {
+  color: var(--node-warning-text);
+  fill: var(--node-warning-text);
+}
+/* stylelint-enable selector-class-pattern */
+/* stylelint-disable selector-class-pattern */
+.theme-root[data-theme="dark"] .diagram .edgePath path,
+.theme-root[data-theme="dark"] .diagram .flowchart-link {
+  stroke: #fff !important;
 }
 /* stylelint-enable selector-class-pattern */
 
@@ -178,40 +198,47 @@
 }
 
 [data-focus-state="dimmed"] {
-  filter: none;
-  opacity: 1;
+  opacity: 0.35 !important;
+}
+
+[data-focus-state="dimmed"]:is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan),
+[data-focus-state="dimmed"] :is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan) {
+  opacity: 0.35 !important;
 }
 
 [data-focus-state="focused"] {
   opacity: 1;
 }
 
-[data-focus-state="focused"]:is(rect, path, polygon, circle, ellipse, line),
-[data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse, line) {
+[data-focus-state="focused"][data-diagram-element-kind="node"],
+[data-focus-state="focused"][data-diagram-element-kind="participant"] {
   filter:
-    drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.65) color-mix(in srgb, var(--color-focus-shadow) 84%, transparent))
-    drop-shadow(0 0 var(--focus-glow-blur, 8px) color-mix(in srgb, var(--color-node-focus-stroke) 32%, transparent));
-  fill: url("#diagram-tour-node-focus-gradient");
-  stroke: var(--color-node-focus-stroke);
-  stroke-width: 4px;
+    drop-shadow(0 0 10px color-mix(in srgb, var(--accent-primary) 24%, transparent))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--accent-primary) 14%, transparent));
+}
+
+[data-focus-state="focused"]:is(rect, path, polygon, circle, ellipse),
+[data-focus-state="focused"] :is(rect, path, polygon, circle, ellipse) {
+  stroke: var(--accent-primary) !important;
+  stroke-width: 3px !important;
 }
 
 [data-focus-state="focused"] rect.label-container {
-  fill: url("#diagram-tour-node-focus-gradient");
+  fill: var(--node-active-fill) !important;
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="message"]:is(line, polyline),
 [data-focus-state="focused"][data-diagram-element-kind="message"] :is(line, polyline) {
   fill: none;
-  stroke: var(--color-node-focus-stroke);
-  stroke-width: 4px;
+  stroke: var(--accent-primary);
+  stroke-width: 2.5px;
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="message"]:is(path, polygon),
 [data-focus-state="focused"][data-diagram-element-kind="message"] :is(path, polygon) {
-  fill: var(--color-node-focus-stroke);
-  stroke: var(--color-node-focus-stroke);
-  stroke-width: 2.8px;
+  fill: var(--accent-primary);
+  stroke: var(--accent-primary);
+  stroke-width: 2.5px;
 }
 
 [data-step-target="true"]:hover rect.label-container {
@@ -223,8 +250,6 @@
 [data-focus-state="focused"] foreignObject,
 [data-focus-state="focused"] tspan {
   fill: var(--color-node-focus-text);
-  filter:
-    drop-shadow(0 0 calc(var(--focus-glow-blur, 8px) * 0.45) color-mix(in srgb, var(--color-focus-shadow) 42%, transparent));
   opacity: 1;
 }
 
@@ -243,6 +268,158 @@
 .diagram [data-connector-role="label"] {
   transition: opacity 400ms ease;
 }
+
+.diagram [data-connector-role="flow"],
+.diagram [data-connector-role="flow-marker"] {
+  transition:
+    opacity 0.4s ease,
+    filter 0.4s ease,
+    stroke 0.2s ease,
+    stroke-width 0.2s ease,
+    fill 0.2s ease;
+}
+
+.diagram [data-connector-state="context"][data-connector-role="flow"],
+.diagram [data-connector-state="context"][data-connector-role="flow-marker"] {
+  opacity: 0.35;
+}
+
+.diagram [data-connector-state="active"][data-connector-role="flow"],
+.diagram [data-connector-state="active"][data-connector-role="flow"] :is(path, line, polyline) {
+  fill: none !important;
+  opacity: 1;
+  stroke: var(--accent-primary) !important;
+  stroke-width: 2.5px !important;
+}
+
+.diagram [data-connector-state="active"][data-connector-role="flow-marker"],
+.diagram [data-connector-state="active"][data-connector-role="flow-marker"] :is(path, polygon) {
+  fill: var(--accent-primary) !important;
+  opacity: 1;
+  stroke: var(--accent-primary) !important;
+  stroke-width: 2.5px !important;
+}
+
+.teleprompter {
+  background: rgb(255 255 255 / 78%);
+  backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  bottom: 32px;
+  box-shadow: 0 20px 40px -8px rgb(15 23 42 / 18%);
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  max-width: 768px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  z-index: 20;
+}
+
+/* stylelint-disable selector-class-pattern */
+.teleprompter__progress {
+  background: var(--accent-primary);
+  height: 2px;
+  transition: width 0.3s ease-in-out;
+  width: 0;
+}
+
+.teleprompter__content {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  padding: 24px 32px;
+}
+
+.teleprompter__nav-left,
+.teleprompter__nav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.teleprompter__text-area {
+  flex: 1;
+  text-align: center;
+}
+
+.teleprompter__step-info {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin: 0 0 8px;
+  text-transform: none;
+}
+
+.teleprompter__text {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.teleprompter__code {
+  background: rgb(59 130 246 / 10%);
+  border-radius: 4px;
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 2px 4px;
+}
+
+.teleprompter__btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  height: 40px;
+  justify-content: center;
+  opacity: 0.88;
+  padding: 0;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  width: 40px;
+}
+
+.teleprompter__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.teleprompter__btn:hover:not(:disabled) {
+  background: rgb(15 23 42 / 6%);
+  border-color: rgb(15 23 42 / 8%);
+  color: var(--text-primary);
+  opacity: 1;
+  transform: none;
+}
+
+.teleprompter__btn-icon {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .teleprompter {
+  background: rgb(22 27 34 / 75%);
+  box-shadow: 0 20px 40px -8px rgb(0 0 0 / 50%);
+}
+
+:is(:root[data-theme="dark"] .theme-root, .theme-root[data-theme="dark"]) .teleprompter__btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 6%);
+  border-color: rgb(255 255 255 / 8%);
+}
+/* stylelint-enable selector-class-pattern */
 
 .error-panel {
   gap: var(--space-lg);
@@ -265,12 +442,12 @@
 }
 
 .error-actions__button--primary {
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
 }
 
 .error-actions__button--primary:hover,
 .error-actions__button--primary:focus-visible {
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent);
 }
 
 .error-actions__button--secondary {
@@ -290,13 +467,13 @@
 
 @media (width >= 900px) {
   .diagram {
-    block-size: calc(100vh - 5.1rem);
+    block-size: 100%;
   }
 }
 
 @media (width < 720px) {
   .diagram {
-    block-size: calc(100vh - 6.4rem);
+    block-size: 100%;
   }
 
   .diagram-stage-inner {

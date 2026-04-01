@@ -1,8 +1,9 @@
-import { createInterface } from "node:readline/promises";
 import type { ChildProcess } from "node:child_process";
+import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 import { loadResolvedTourCollection } from "@diagram-tour/parser";
+
 import { parseCliArgs } from "./args.js";
 import { defaultBrowserOpener, type BrowserOpener } from "./browser.js";
 import { resolveBrowserOpenPolicy } from "./browser-policy.js";
@@ -11,14 +12,16 @@ import { resolveServerBinding } from "./port-policy.js";
 import { startWebServer } from "./server.js";
 import { runSetupCommand } from "./setup.js";
 import { validateTargetPath } from "./target.js";
-import type { ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
+import type { ParsedCliArgs, ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
 import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
 import { runWizard } from "./wizard.js";
 
-type LaunchResult =
+type LaunchResult = { code: number; kind: "exit" } | { kind: "launch"; launch: ResolvedLaunchOptions };
+type ExecutionPlan =
   | { code: number; kind: "exit" }
-  | { kind: "launch"; launch: ResolvedLaunchOptions };
+  | { kind: "launch"; launch: ResolvedLaunchOptions; mode: ParsedStartupArgs["mode"] }
+  | { kind: "validate"; targets: string[] };
 
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
   const parsed = parseCliArgs(args);
@@ -27,31 +30,47 @@ export async function runCli(args: string[], opener: BrowserOpener = defaultBrow
     return await runStartupCommand(parsed.options, opener);
   }
 
-  return await runUtilityCommand(parsed);
+  if (parsed.command === "init") {
+    return await runInitCommand(parsed.options);
+  }
+
+  if (parsed.command === "setup") {
+    return await withPromptIo((io) => runSetupCommand(parsed.options, io));
+  }
+
+  if (parsed.command === "validate") {
+    return await runValidateCommand(parsed.options);
+  }
+
+  if (parsed.command === "version") {
+    output.write(`diagram-tours ${readCliVersion()}\n`);
+    return 0;
+  }
+
+  throw new Error("Unsupported CLI command.");
 }
 
-async function runUtilityCommand(
-  parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
-): Promise<number> {
-  return await readUtilityHandler(parsed.command)(parsed);
-}
-
-async function runStartupCommand(
-  parsed: ParsedStartupArgs,
-  opener: BrowserOpener
-): Promise<number> {
+async function runStartupCommand(parsed: ParsedStartupArgs, opener: BrowserOpener): Promise<number> {
   const launchResult = parsed.mode === "wizard" ? await readWizardLaunch(parsed) : readDirectLaunch(parsed);
 
   if (launchResult.kind === "exit") {
     return launchResult.code;
   }
 
-  await loadResolvedTourCollection(launchResult.launch.target);
-  const server = await startLaunchServer(launchResult.launch);
+  return await runLaunch(parsed.mode, launchResult.launch, opener);
+}
+
+async function runLaunch(
+  mode: ParsedStartupArgs["mode"],
+  launch: ResolvedLaunchOptions,
+  opener: BrowserOpener
+): Promise<number> {
+  await loadResolvedTourCollection(launch.target);
+  const server = await startLaunchServer(launch);
 
   await openBrowserIfNeeded(opener, {
-    browser: launchResult.launch.browser,
-    mode: parsed.mode,
+    browser: launch.browser,
+    mode,
     url: server.url
   });
 
@@ -146,37 +165,8 @@ function isWizardCancellationError(error: unknown): boolean {
 
 function handleWizardLaunchError(error: unknown): LaunchResult {
   if (isWizardCancellationError(error)) {
-    return {
-      code: 130,
-      kind: "exit"
-    };
+    return { code: 130, kind: "exit" };
   }
 
   throw error;
-}
-
-const UTILITY_COMMAND_HANDLERS = {
-  init(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" }>) {
-    return runInitCommand(parsed.options);
-  },
-  setup(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "setup" }>) {
-    return withPromptIo((io) => runSetupCommand(parsed.options, io));
-  },
-  validate(parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "validate" }>) {
-    return runValidateCommand(parsed.options);
-  },
-  version(_parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "version" }>) {
-    output.write(`diagram-tours ${readCliVersion()}\n`);
-    return Promise.resolve(0);
-  }
-};
-
-function readUtilityHandler(
-  command: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>["command"]
-): (
-  parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
-) => Promise<number> {
-  return UTILITY_COMMAND_HANDLERS[command] as (
-    parsed: Extract<ReturnType<typeof parseCliArgs>, { command: "init" | "setup" | "validate" | "version" }>
-  ) => Promise<number>;
 }

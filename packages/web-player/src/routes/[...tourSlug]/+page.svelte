@@ -24,8 +24,5 @@
     initialStepIndex={data.initialStepIndex}
     selectedSlug={data.selectedSlug}
     tour={data.tour}
-    on:togglebrowse={() => {
-      window.dispatchEvent(new CustomEvent("diagram-tour-toggle-browse"));
-    }}
   />
 {/key}

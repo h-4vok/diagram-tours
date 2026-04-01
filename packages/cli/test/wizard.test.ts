@@ -32,7 +32,7 @@ describe("runWizard", () => {
   });
 
   it("recovers from invalid menu input and path input", async () => {
-    const io = createIo(["9", "3", "./missing.tour.yaml", "./examples/checkout/payment-flow.mmd", "y", "0.0.0.0", "9000"]);
+    const io = createIo(["9", "3", "./missing.tour.yaml", "./examples/checkout-payment-flow.mmd", "y", "0.0.0.0", "9000"]);
 
     const result = await runWizard(io, {
       browser: "prompt",
@@ -52,7 +52,7 @@ describe("runWizard", () => {
   });
 
   it("accepts a direct diagram file path from the wizard", async () => {
-    const io = createIo(["3", "./examples/checkout/payment-flow.mmd", "n", "", ""]);
+    const io = createIo(["3", "./examples/checkout-payment-flow.mmd", "n", "", ""]);
 
     const result = await runWizard(io, {
       browser: "prompt",

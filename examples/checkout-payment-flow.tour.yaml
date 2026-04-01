@@ -1,0 +1,25 @@
+version: 1
+title: Payment Flow
+diagram: ./checkout-payment-flow.mmd
+
+steps:
+  - focus:
+      - api_gateway
+    text: >
+      The {{api_gateway}} is the public edge of the checkout system. It receives untrusted traffic from {{client}} and normalizes the request before any payment work begins.
+
+  - focus:
+      - validation_service
+    text: >
+      The {{validation_service}} protects the payment path by rejecting malformed amounts, expired intents, and requests that do not match business rules before they reach {{payment_service}}.
+
+  - focus:
+      - payment_service
+      - payment_provider
+    text: >
+      The {{payment_service}} owns the merchant-side transaction state while {{payment_provider}} talks to the banking network. This split lets the product keep internal business logic separate from external settlement concerns.
+
+  - focus:
+      - response
+    text: >
+      Once the provider result is known, the platform turns it into a stable {{response}} that the client can render without needing to understand provider-specific outcomes.

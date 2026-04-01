@@ -48,6 +48,7 @@ describe("tour-player.svelte", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     setWindowWidth(1280);
+    mockElementAnimate();
   });
 
   it("renders the selected tour, starts on step one, and respects boundaries", async () => {
@@ -58,9 +59,6 @@ describe("tour-player.svelte", () => {
     });
 
     expect(await screen.findByTestId("player-canvas")).toBeDefined();
-    expect(screen.getByTestId("tour-identity").textContent).toContain(
-      "Payment Flow",
-    );
     expect(screen.getByTestId("step-text").textContent).toContain(
       "public edge of the checkout system",
     );
@@ -68,7 +66,7 @@ describe("tour-player.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("next-button"));
 
-    expect(screen.getByTestId("step-text").textContent).toContain(
+    expect(readLastStepTextElement(screen.getAllByTestId("step-text"))?.textContent).toContain(
       "protects the payment path",
     );
     expect(readButtonState("previous-button")).toBe(false);
@@ -136,12 +134,29 @@ describe("tour-player.svelte", () => {
     expect(stepPanel).not.toBeNull();
     expect(diagramShell).not.toBeNull();
     expect(diagramShell?.contains(stepPanel as Node)).toBe(true);
-    expect(
-      container.querySelector('[data-testid="tour-identity"]'),
-    ).not.toBeNull();
   });
 
-  it("renders the minimap on desktop, shows focused nodes, and stacks it below the step overlay", async () => {
+  it("renders inline code references inside the teleprompter text", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: {
+        ...resolvedPaymentFlowTour,
+        steps: [
+          {
+            ...resolvedPaymentFlowTour.steps[0],
+            text: "Focus `API Gateway` before continuing."
+          },
+          ...resolvedPaymentFlowTour.steps.slice(1)
+        ]
+      }
+    });
+
+    expect(await screen.findByText("API Gateway", { selector: "code" })).toBeDefined();
+    expect(screen.queryByTestId("timeline-step-button")).toBeNull();
+  });
+
+  it("renders the minimap on desktop, shows focused nodes, and groups controls in a camera cluster", async () => {
     const { container } = render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -151,24 +166,28 @@ describe("tour-player.svelte", () => {
     expect(await screen.findByTestId("minimap-shell")).toBeDefined();
     await waitFor(() => {
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
+      expect(screen.getAllByTestId("minimap-edge-marker").length).toBeGreaterThan(0);
       expect(screen.getAllByTestId("minimap-node-marker")).toHaveLength(6);
       expect(screen.getAllByTestId("minimap-focus-marker")).toHaveLength(1);
     });
 
-    const overlayStack = container.querySelector(
-      '[data-testid="canvas-overlay-stack"]',
+    const cameraCluster = container.querySelector(
+      '[data-testid="camera-control-cluster"]',
     );
 
-    expect(overlayStack).not.toBeNull();
-    expect((overlayStack as HTMLElement).firstElementChild).toBe(
-      screen.getByTestId("viewport-toolbar"),
+    expect(cameraCluster).not.toBeNull();
+    expect((cameraCluster as HTMLElement).firstElementChild).toBe(
+      screen.getByTestId("camera-control-panel"),
     );
-    expect((overlayStack as HTMLElement).children[1]).toBe(
-      screen.getByTestId("step-overlay"),
-    );
-    expect((overlayStack as HTMLElement).lastElementChild).toBe(
+    expect(screen.getByTestId("camera-control-panel").firstElementChild).toBe(
       screen.getByTestId("minimap-shell"),
     );
+    expect(screen.getByTestId("camera-control-panel").lastElementChild).toBe(
+      screen.getByTestId("viewport-toolbar"),
+    );
+    expect(
+      container.querySelector('[data-testid="step-overlay"]'),
+    ).not.toBeNull();
   });
 
   it("hides the minimap automatically on small screens", async () => {
@@ -213,7 +232,7 @@ describe("tour-player.svelte", () => {
     );
   });
 
-  it("zooms the rendered svg and resets back to 100 percent", async () => {
+  it("zooms the rendered svg and updates the segmented zoom value", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -225,7 +244,7 @@ describe("tour-player.svelte", () => {
     );
 
     expect(svg?.getAttribute("width")).toBe("960");
-    expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+    expect(screen.getByTestId("zoom-value").textContent).toContain(
       "100%",
     );
 
@@ -234,17 +253,17 @@ describe("tour-player.svelte", () => {
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("1200");
       expect(svg?.getAttribute("height")).toBe("800");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "125%",
       );
     });
 
-    await fireEvent.click(screen.getByTestId("zoom-reset-button"));
+    await fireEvent.click(screen.getByTestId("zoom-out-button"));
 
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("960");
       expect(svg?.getAttribute("height")).toBe("640");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "100%",
       );
     });
@@ -267,30 +286,28 @@ describe("tour-player.svelte", () => {
     await waitFor(() => {
       expect(svg?.getAttribute("width")).toBe("480");
       expect(svg?.getAttribute("height")).toBe("320");
-      expect(screen.getByTestId("zoom-reset-button").textContent).toContain(
+      expect(screen.getByTestId("zoom-value").textContent).toContain(
         "50%",
       );
     });
   });
 
-  it("renders a clickable numbered timeline and jumps directly to a chosen step", async () => {
+  it("navigates between teleprompter steps and updates the URL", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
       tour: resolvedPaymentFlowTour,
     });
 
-    const timelineButtons = await screen.findAllByTestId(
-      "timeline-step-button",
+    expect(
+      readLastStepTextElement(await screen.findAllByTestId("step-text"))?.textContent,
+    ).toContain(
+      "public edge of the checkout system",
     );
+    expect(screen.getByText("Step 1 of 4")).toBeDefined();
 
-    expect(timelineButtons).toHaveLength(4);
-    expect(timelineButtons[0].getAttribute("aria-current")).toBe("step");
-    expect(timelineButtons[0].className).toContain(
-      "step-timeline__pill--current",
-    );
-
-    await fireEvent.click(timelineButtons[2]);
+    await fireEvent.click(screen.getByTestId("next-button"));
+    await fireEvent.click(screen.getByTestId("next-button"));
 
     await waitFor(() => {
       expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=3", {
@@ -450,7 +467,7 @@ describe("tour-player.svelte", () => {
       tour: resolvedPaymentFlowTour,
     });
 
-    expect(screen.getByTestId("step-text").textContent).toContain(
+    expect(readLastStepTextElement(screen.getAllByTestId("step-text"))?.textContent).toContain(
       "merchant-side transaction state",
     );
     expect(renderMermaidDiagramMock).toHaveBeenCalledTimes(1);
@@ -548,7 +565,7 @@ function renderDiagramForTest(input: {
         </g>
       `,
     )
-    .join("")}</svg>`;
+    .join("")}<path class="flowchart-link"></path></svg>`;
 
   Object.defineProperties(parent, {
     clientHeight: { value: 480, writable: true },
@@ -584,6 +601,22 @@ function renderDiagramForTest(input: {
 
       element.getBoundingClientRect = () => createDomRect(rect);
     });
+
+  const connector = input.container.querySelector(".flowchart-link") as SVGElement;
+  const connectorPoints = [
+    { x: 108, y: 188 },
+    { x: 200, y: 188 },
+    { x: 400, y: 192 }
+  ];
+
+  Object.assign(connector, {
+    getPointAtLength(distance: number) {
+      return interpolateConnectorPoint(connectorPoints, distance);
+    },
+    getTotalLength() {
+      return readConnectorLength(connectorPoints);
+    }
+  });
 
   return Promise.resolve();
 }
@@ -634,6 +667,64 @@ function readButtonState(testId: string): boolean {
   return (screen.getByTestId(testId) as HTMLButtonElement).disabled;
 }
 
+function interpolateConnectorPoint(
+  points: Array<{ x: number; y: number }>,
+  distance: number
+): { x: number; y: number } {
+  const lengths = readConnectorLengths(points);
+
+  if (isConnectorBoundaryDistance(lengths, distance)) {
+    return readConnectorBoundaryPoint(points, distance);
+  }
+
+  return interpolateConnectorSegment(points, lengths, distance);
+}
+
+function readConnectorLength(points: Array<{ x: number; y: number }>): number {
+  return readConnectorLengths(points).at(-1) ?? 0;
+}
+
+function readConnectorLengths(points: Array<{ x: number; y: number }>): number[] {
+  return points.slice(1).reduce<number[]>(
+    (accumulator, point, index) => [
+      ...accumulator,
+      (accumulator.at(-1) ?? 0) + Math.hypot(point.x - points[index].x, point.y - points[index].y)
+    ],
+    [0]
+  );
+}
+
+function readConnectorBoundaryPoint(
+  points: Array<{ x: number; y: number }>,
+  distance: number
+): { x: number; y: number } {
+  return distance <= 0 ? points[0] : (points.at(-1) as { x: number; y: number });
+}
+
+function isConnectorBoundaryDistance(lengths: number[], distance: number): boolean {
+  const totalLength = lengths.at(-1) ?? 0;
+
+  return distance <= 0 || distance >= totalLength;
+}
+
+function interpolateConnectorSegment(
+  points: Array<{ x: number; y: number }>,
+  lengths: number[],
+  distance: number
+): { x: number; y: number } {
+  const segmentIndex = Math.max(0, lengths.findIndex((value) => value >= distance) - 1);
+  const start = points[segmentIndex];
+  const end = points[segmentIndex + 1];
+  const offset = distance - lengths[segmentIndex];
+  const segmentLength = lengths[segmentIndex + 1] - lengths[segmentIndex];
+  const ratio = segmentLength === 0 ? 0 : offset / segmentLength;
+
+  return {
+    x: start.x + (end.x - start.x) * ratio,
+    y: start.y + (end.y - start.y) * ratio
+  };
+}
+
 function readFocusState(container: HTMLElement, nodeId: string): string | null {
   return (
     container
@@ -648,6 +739,19 @@ function setWindowWidth(width: number): void {
     value: width,
     writable: true,
   });
+}
+
+function readLastStepTextElement(elements: HTMLElement[]): HTMLElement | undefined {
+  return elements.at(-1);
+}
+
+function mockElementAnimate(): void {
+  Element.prototype.animate ??= vi.fn(() => ({
+    cancel: vi.fn(),
+    finished: Promise.resolve(),
+    pause: vi.fn(),
+    play: vi.fn()
+  })) as unknown as typeof Element.prototype.animate;
 }
 
 interface RectInput {

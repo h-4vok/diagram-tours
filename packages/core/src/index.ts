@@ -21,6 +21,17 @@ export interface DiagramElement {
   label: string;
 }
 
+export interface DiagnosticLocation {
+  column: number;
+  line: number;
+}
+
+export interface TourDiagnostic {
+  code: string | null;
+  location: DiagnosticLocation | null;
+  message: string;
+}
+
 export interface ResolvedDiagram {
   elements: DiagramElement[];
   path: string;
@@ -50,8 +61,9 @@ export interface ResolvedDiagramTourCollectionEntry {
 }
 
 export interface SkippedResolvedDiagramTour {
+  diagnostics: TourDiagnostic[];
+  sourceId: string;
   sourcePath: string;
-  error: string;
 }
 
 export interface ResolvedDiagramTourCollection {
