@@ -10,16 +10,11 @@ Initial source: a contrast between [`docs/reqs.md`](docs/reqs.md), the current c
 - `Partial`: partially implemented or not yet fully aligned with the intended requirement
 - `Todo`: not implemented yet
 
+Los items q pasan a `Done` deben ser enviados a backlog.done.md
+
 ## Snapshot
 
 Cutoff date: 2026-03-17
-
-### Partial
-
-- BT-005 Wizard path retry UX
-  - Current state: invalid explicit paths fail clearly during wizard input validation
-  - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
-  - Evidence: `packages/cli/src/lib/wizard.ts`
 
 ### Todo
 - `BT-01` Improve sequence-diagram highlighting quality

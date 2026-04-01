@@ -49,6 +49,41 @@ describe("runWizard", () => {
       port: 9000,
       target: expect.stringContaining("payment-flow.mmd")
     });
+    expect(io.prompts).toEqual([
+      "Select an option: ",
+      "Select an option: ",
+      "Diagram or tour file path: ",
+      "Diagram or tour file path: ",
+      "Open the browser now? (y/n): ",
+      "Host override (press enter for 127.0.0.1): ",
+      "Port override (press enter for automatic): "
+    ]);
+  });
+
+  it("retries the directory path prompt after a missing path without returning to the menu", async () => {
+    const io = createIo(["2", "./missing-directory", "./examples", "n", "", ""]);
+
+    const result = await runWizard(io, {
+      browser: "prompt",
+      host: "127.0.0.1",
+      port: null
+    });
+
+    expect(io.output).toContain("Path does not exist:");
+    expect(io.prompts).toEqual([
+      "Select an option: ",
+      "Directory path: ",
+      "Directory path: ",
+      "Open the browser now? (y/n): ",
+      "Host override (press enter for 127.0.0.1): ",
+      "Port override (press enter for automatic): "
+    ]);
+    expect(result).toEqual({
+      browser: "never",
+      host: "127.0.0.1",
+      port: null,
+      target: expect.stringContaining("examples")
+    });
   });
 
   it("accepts a direct diagram file path from the wizard", async () => {

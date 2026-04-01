@@ -8,6 +8,11 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+
+- BT-005 Wizard path retry UX
+  - Outcome: missing paths on both explicit wizard path-entry prompts retry in place instead of bouncing back to the top-level menu
+  - Evidence: `packages/cli/src/lib/wizard.ts`, `packages/cli/test/wizard.test.ts`
+
 - BT-003 Author diagnostics
   - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
   - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
