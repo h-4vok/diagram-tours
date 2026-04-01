@@ -12,43 +12,51 @@ import { resolveServerBinding } from "./port-policy.js";
 import { startWebServer } from "./server.js";
 import { runSetupCommand } from "./setup.js";
 import { validateTargetPath } from "./target.js";
-import type { ParsedCliArgs, ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
+import type { ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
 import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
 import { runWizard } from "./wizard.js";
 
 type LaunchResult = { code: number; kind: "exit" } | { kind: "launch"; launch: ResolvedLaunchOptions };
-type ExecutionPlan =
-  | { code: number; kind: "exit" }
-  | { kind: "launch"; launch: ResolvedLaunchOptions; mode: ParsedStartupArgs["mode"] }
-  | { kind: "validate"; targets: string[] };
-
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
   const parsed = parseCliArgs(args);
 
-  if (parsed.command === "startup") {
-    return await runStartupCommand(parsed.options, opener);
-  }
-
-  if (parsed.command === "init") {
-    return await runInitCommand(parsed.options);
-  }
-
-  if (parsed.command === "setup") {
-    return await withPromptIo((io) => runSetupCommand(parsed.options, io));
-  }
-
-  if (parsed.command === "validate") {
-    return await runValidateCommand(parsed.options);
-  }
-
-  if (parsed.command === "version") {
-    output.write(`diagram-tours ${readCliVersion()}\n`);
-    return 0;
-  }
-
-  throw new Error("Unsupported CLI command.");
+  return await dispatchParsedArgs(parsed, opener);
 }
+
+async function dispatchParsedArgs(
+  parsed:
+    | { command: "init"; options: { overwrite: boolean; target: string } }
+    | { command: "setup"; options: Parameters<typeof runSetupCommand>[0] }
+    | { command: "startup"; options: ParsedStartupArgs }
+    | { command: "validate"; options: Parameters<typeof runValidateCommand>[0] }
+    | { command: "version" },
+  opener: BrowserOpener
+): Promise<number> {
+  return await CLI_COMMAND_HANDLERS[parsed.command](parsed, opener);
+}
+
+const CLI_COMMAND_HANDLERS = {
+  init(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "init" }>) {
+    return runInitCommand(parsed.options);
+  },
+  setup(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "setup" }>) {
+    return withPromptIo((io) => runSetupCommand(parsed.options, io));
+  },
+  startup(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "startup" }>, opener: BrowserOpener) {
+    return runStartupCommand(parsed.options, opener);
+  },
+  validate(parsed: Extract<Parameters<typeof dispatchParsedArgs>[0], { command: "validate" }>) {
+    return runValidateCommand(parsed.options);
+  },
+  version() {
+    output.write(`diagram-tours ${readCliVersion()}\n`);
+    return Promise.resolve(0);
+  }
+} satisfies Record<
+  Parameters<typeof dispatchParsedArgs>[0]["command"],
+  (parsed: Parameters<typeof dispatchParsedArgs>[0], opener: BrowserOpener) => Promise<number>
+>;
 
 async function runStartupCommand(parsed: ParsedStartupArgs, opener: BrowserOpener): Promise<number> {
   const launchResult = parsed.mode === "wizard" ? await readWizardLaunch(parsed) : readDirectLaunch(parsed);

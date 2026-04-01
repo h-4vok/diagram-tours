@@ -159,7 +159,6 @@ describe("runCli", () => {
     expect(opener.open).not.toHaveBeenCalled();
   });
 
-<<<<<<< HEAD
   it("dispatches setup through the setup command module", async () => {
     const { runCli } = await import("../src/lib/cli.js");
     const exitCode = await runCli(["setup", "--agent"]);
@@ -201,7 +200,8 @@ describe("runCli", () => {
       target: "./examples/checkout/payment-flow.mmd"
     });
     expect(startWebServerMock).not.toHaveBeenCalled();
-=======
+  });
+
   it("runs validate against the current directory when no paths are provided", async () => {
     const opener = { open: vi.fn() };
     const writes: string[] = [];
@@ -301,7 +301,6 @@ describe("runCli", () => {
     expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
     expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml title is required");
     expect(stderrWrites.join("")).not.toContain("C:/repo/docs/checklist.tour.yaml:2:4");
->>>>>>> origin/main
   });
 
   it("preflights a markdown target before startup", async () => {

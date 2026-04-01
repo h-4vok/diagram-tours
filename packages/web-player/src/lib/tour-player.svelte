@@ -141,6 +141,10 @@
     await updateZoomScale(createNextZoomScale(zoomScale, "out"));
   }
 
+  async function resetZoom(): Promise<void> {
+    await updateZoomScale(DEFAULT_ZOOM_SCALE);
+  }
+
   async function fitZoomToView(): Promise<void> {
     const zoomContext = readZoomContext();
 
@@ -1136,7 +1140,6 @@
         <div class="teleprompter__nav-left">
           <button
             type="button"
-<<<<<<< HEAD
             class="viewport-toolbar__button"
             data-testid="zoom-out-button"
             aria-label="Zoom out"
@@ -1175,8 +1178,6 @@
             +
           </button>
         </div>
-      </aside>
-
       <aside class="step-panel step-panel--overlay" data-testid="step-overlay">
         <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
         <div class="step-timeline" data-testid="step-timeline">
@@ -1205,9 +1206,6 @@
           <button
             type="button"
             class="button button--secondary"
-=======
-            class="teleprompter__btn"
->>>>>>> origin/main
             on:click={goPrevious}
             disabled={!state.canGoPrevious}
             data-testid="previous-button"
