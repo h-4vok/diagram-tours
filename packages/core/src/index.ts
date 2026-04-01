@@ -61,8 +61,7 @@ export interface ResolvedDiagramTourCollectionEntry {
 }
 
 export interface SkippedResolvedDiagramTour {
-  diagnostic: TourDiagnostic;
-  error: string;
+  diagnostics: TourDiagnostic[];
   sourceId: string;
   sourcePath: string;
 }

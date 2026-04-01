@@ -1,32 +1,60 @@
 import type { DiagnosticLocation, SkippedResolvedDiagramTour } from "@diagram-tour/core";
 
-export interface DiagnosticDisplayItem {
+export interface DiagnosticDisplayIssue {
   code: string | null;
   detail: string | null;
   location: DiagnosticLocation | null;
-  path: string;
+  reference: string;
   summary: string;
 }
 
-export function createDiagnosticDisplayItems(
-  skippedTours: SkippedResolvedDiagramTour[]
-): DiagnosticDisplayItem[] {
-  return skippedTours.map((skipped) => createDiagnosticDisplayItem(skipped));
+export interface DiagnosticDisplayGroup {
+  issueCount: number;
+  issues: DiagnosticDisplayIssue[];
+  path: string;
 }
 
-function createDiagnosticDisplayItem(
+export function createDiagnosticDisplayGroups(
+  skippedTours: SkippedResolvedDiagramTour[]
+): DiagnosticDisplayGroup[] {
+  return skippedTours.map((skipped) => createDiagnosticDisplayGroup(skipped));
+}
+
+export function countDiagnosticIssues(groups: DiagnosticDisplayGroup[]): number {
+  return groups.reduce((total, group) => total + group.issueCount, 0);
+}
+
+function createDiagnosticDisplayGroup(
   skipped: SkippedResolvedDiagramTour
-): DiagnosticDisplayItem {
-  const diagnostic = skipped.diagnostic;
+): DiagnosticDisplayGroup {
+  return {
+    issueCount: skipped.diagnostics.length,
+    issues: skipped.diagnostics.map((diagnostic) => createDiagnosticDisplayIssue(skipped.sourcePath, diagnostic)),
+    path: skipped.sourcePath
+  };
+}
+
+function createDiagnosticDisplayIssue(
+  path: string,
+  diagnostic: SkippedResolvedDiagramTour["diagnostics"][number]
+): DiagnosticDisplayIssue {
   const summary = createDiagnosticSummary(diagnostic.message);
 
   return {
     code: diagnostic.code,
     detail: readDiagnosticDetail(diagnostic.message, summary, diagnostic.code),
     location: diagnostic.location,
-    path: skipped.sourcePath,
+    reference: createDiagnosticReference(path, diagnostic.location),
     summary
   };
+}
+
+function createDiagnosticReference(path: string, location: DiagnosticLocation | null): string {
+  if (location === null) {
+    return path;
+  }
+
+  return `${path}:${location.line}:${location.column}`;
 }
 
 function createDiagnosticSummary(message: string): string {

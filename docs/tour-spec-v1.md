@@ -230,13 +230,15 @@ A tour is invalid if any of the following are true:
 
 Errors should be descriptive and actionable.
 
-The current parser includes contextual information such as the tour source path and, when relevant, the step number and field.
+The current parser includes contextual information such as the tour source path and, when relevant, the step number, field, and source line/column when that location can be mapped from the authored YAML.
 
 Example:
 
 ```text
 Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
+
+When a workspace contains invalid authored tours, the player may still load valid tours and expose the skipped authored files through the `Issues` panel with grouped per-file diagnostics.
 
 ## Mermaid Requirements
 
