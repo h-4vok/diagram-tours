@@ -2,18 +2,29 @@ import type { DiagnosticLocation, TourDiagnostic } from "@diagram-tour/core";
 
 type ErrorWithLocation = Error & {
   code?: unknown;
+  diagnostics?: TourDiagnostic[] | null;
   linePos?: Array<{ col: number; line: number } | null | undefined>;
   location?: DiagnosticLocation | null;
 };
 
 export function createTourDiagnostic(error: unknown): TourDiagnostic {
+  return createTourDiagnostics(error)[0]!;
+}
+
+export function createTourDiagnostics(error: unknown): TourDiagnostic[] {
+  const directDiagnostics = readDirectDiagnostics(error);
+
+  if (directDiagnostics !== null) {
+    return directDiagnostics;
+  }
+
   const message = stripTourPrefix(readErrorMessage(error));
 
-  return {
+  return [{
     code: readDiagnosticCode(error, message),
     location: readDiagnosticLocation(error),
     message
-  };
+  }];
 }
 
 export function formatTourDiagnostic(
@@ -25,8 +36,31 @@ export function formatTourDiagnostic(
   return `${sourcePath}${location} ${diagnostic.message}`;
 }
 
+export function formatTourDiagnostics(
+  sourcePath: string,
+  diagnostics: TourDiagnostic[]
+): string[] {
+  return diagnostics.map((diagnostic) => formatTourDiagnostic(sourcePath, diagnostic));
+}
+
 function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "failed unexpectedly";
+}
+
+function readDirectDiagnostics(error: unknown): TourDiagnostic[] | null {
+  return isErrorWithDiagnostics(error) ? error.diagnostics : null;
+}
+
+function isErrorWithDiagnostics(error: unknown): error is Error & { diagnostics: TourDiagnostic[] } {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return hasDiagnostics((error as ErrorWithLocation).diagnostics);
+}
+
+function hasDiagnostics(diagnostics: TourDiagnostic[] | null | undefined): diagnostics is TourDiagnostic[] {
+  return Array.isArray(diagnostics) && diagnostics.length > 0;
 }
 
 function stripTourPrefix(message: string): string {

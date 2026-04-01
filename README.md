@@ -24,6 +24,8 @@ bun add -g diagram-tours
 
 Fastest path to first value: point `diagram-tours` at any Mermaid file, Markdown file with fenced Mermaid blocks, or a directory that contains them. Authored `*.tour.yaml` files are optional enrichment, not a prerequisite.
 
+If discovery finds invalid authored tours, the valid tours still load and the player surfaces the skipped authored files through the `Issues` panel with actionable diagnostics, including line and column when available.
+
 Start in the current directory with the interactive wizard:
 
 ```bash

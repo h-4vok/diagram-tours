@@ -17,10 +17,6 @@ Cutoff date: 2026-03-17
 
 ### Partial
 
-- BT-003 Author diagnostics
-  - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
-  - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
-  - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/diagnostics.ts`
 - BT-005 Wizard path retry UX
   - Current state: invalid explicit paths fail clearly during wizard input validation
   - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path

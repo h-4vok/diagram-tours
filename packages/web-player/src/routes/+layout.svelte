@@ -21,7 +21,10 @@
     rememberRecentSlug,
     writeStoredRecentSlugs
   } from "$lib/browse-recents";
-  import { createDiagnosticDisplayItems } from "$lib/diagnostics";
+  import {
+    countDiagnosticIssues,
+    createDiagnosticDisplayGroups
+  } from "$lib/diagnostics";
   import type { SourceTargetInfo } from "$lib/source-target";
   import {
     DEFAULT_THEME,
@@ -62,14 +65,16 @@
   let browseSections: BrowsePaletteSection[] = [];
   let browseItems: BrowsePaletteItem[] = [];
   let activeBrowseSlug: string | null = null;
-  let diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
+  let diagnosticGroups = createDiagnosticDisplayGroups(data.collection.skipped);
+  let diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
   let isHydrated = false;
   let breadcrumbs = ["diagram-tours", "collection"];
 
   $: {
     activeSlug = readActiveSlug(page.url.pathname);
     activeEntry = readActiveEntry(data.collection.entries, activeSlug);
-    diagnosticItems = createDiagnosticDisplayItems(data.collection.skipped);
+    diagnosticGroups = createDiagnosticDisplayGroups(data.collection.skipped);
+    diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
     browseSections = buildBrowsePaletteSections({
       entries: data.collection.entries,
       favoriteSlugs,
@@ -136,9 +141,9 @@
     diagnosticsPanelStyle = "";
   }
 
-  async function copyDiagnosticPath(path: string): Promise<void> {
-    await navigator.clipboard.writeText(path);
-    toast.success("Path copied to clipboard.");
+  async function copyDiagnosticReference(reference: string): Promise<void> {
+    await navigator.clipboard.writeText(reference);
+    toast.success("Reference copied to clipboard.");
   }
 
   function handleBrowseBackdropClick(): void {
@@ -460,7 +465,7 @@
             <span class="diagnostics-trigger__icon" aria-hidden="true">!</span>
             <span class="diagnostics-trigger__label">Issues</span>
             <span class="diagnostics-trigger__count" data-testid="diagnostics-count">
-              {data.collection.skipped.length}
+              {diagnosticIssueCount}
             </span>
           </button>
 
@@ -523,17 +528,17 @@
           <div class="diagnostics-panel__summary">
             <p class="diagnostics-panel__title">Issues Detected</p>
             <p class="diagnostics-panel__copy" data-testid="diagnostics-summary">
-              {data.collection.skipped.length > 0
-                ? `${data.collection.skipped.length} skipped tour${data.collection.skipped.length === 1 ? "" : "s"} in current workspace.`
+              {diagnosticIssueCount > 0
+                ? `${diagnosticIssueCount} issue${diagnosticIssueCount === 1 ? "" : "s"} across ${diagnosticGroups.length} source file${diagnosticGroups.length === 1 ? "" : "s"} in current workspace.`
                 : "All clear. No issues found in current workspace."}
             </p>
           </div>
           <span class="diagnostics-panel__badge" data-testid="diagnostics-panel-count">
-            {data.collection.skipped.length}
+            {diagnosticIssueCount}
           </span>
         </div>
 
-        {#if diagnosticItems.length === 0}
+        {#if diagnosticGroups.length === 0}
           <div class="diagnostics-empty" data-testid="diagnostics-empty-state">
             <span class="diagnostics-empty__icon" aria-hidden="true">?</span>
             <p class="diagnostics-empty__title">All clear</p>
@@ -541,36 +546,61 @@
           </div>
         {:else}
           <div class="diagnostics-list" data-testid="diagnostics-list">
-            {#each diagnosticItems as diagnostic (diagnostic.path)}
-              <article class="diagnostics-item" data-testid="diagnostics-item">
-                <div class="diagnostics-item__context">
-                  <code class="diagnostics-item__path" title={diagnostic.path}>{diagnostic.path}</code>
-                  <button
-                    type="button"
-                    class="diagnostics-item__copy"
-                    data-testid="diagnostics-copy-path"
-                    aria-label={`Copy ${diagnostic.path}`}
-                    on:click={() => void copyDiagnosticPath(diagnostic.path)}
-                  >
-                    Copy
-                  </button>
+            {#each diagnosticGroups as group (group.path)}
+              <section class="diagnostics-group" data-testid="diagnostics-group">
+                <div class="diagnostics-group__context">
+                  <div class="diagnostics-group__summary">
+                    <code class="diagnostics-group__path" title={group.path}>{group.path}</code>
+                    <p class="diagnostics-group__count" data-testid="diagnostics-group-count">
+                      {group.issueCount} issue{group.issueCount === 1 ? "" : "s"}
+                    </p>
+                    <button
+                      type="button"
+                      class="diagnostics-item__copy diagnostics-group__copy"
+                      data-testid="diagnostics-copy-path"
+                      aria-label={`Copy ${group.path}`}
+                      on:click={() => void copyDiagnosticReference(group.path)}
+                    >
+                      Copy Path
+                    </button>
+                  </div>
                 </div>
-                <p class="diagnostics-item__error">{diagnostic.summary}</p>
-                {#if diagnostic.code !== null}
-                  <p class="diagnostics-item__detail">
-                    <code class="diagnostics-item__code">{diagnostic.code}</code>
-                  </p>
-                {:else if diagnostic.detail !== null}
-                  <p class="diagnostics-item__detail">{diagnostic.detail}</p>
-                {/if}
-                {#if diagnostic.location !== null}
-                  <p class="diagnostics-item__detail">
-                    <code class="diagnostics-item__code">
-                      {diagnostic.location.line}:{diagnostic.location.column}
-                    </code>
-                  </p>
-                {/if}
-              </article>
+
+                <div class="diagnostics-group__items">
+                  {#each group.issues as issue, index (`${group.path}:${index}`)}
+                    <article class="diagnostics-item" data-testid="diagnostics-item">
+                      <div class="diagnostics-item__context">
+                        <p class="diagnostics-item__error">{issue.summary}</p>
+                      </div>
+                      <code class="diagnostics-item__path" title={issue.reference}>{issue.reference}</code>
+                      {#if issue.code !== null}
+                        <p class="diagnostics-item__detail">
+                          <code class="diagnostics-item__code">{issue.code}</code>
+                        </p>
+                      {/if}
+                      {#if issue.detail !== null}
+                        <p class="diagnostics-item__detail">{issue.detail}</p>
+                      {/if}
+                      {#if issue.location !== null}
+                        <p class="diagnostics-item__detail">
+                          <code class="diagnostics-item__code">
+                            {issue.location.line}:{issue.location.column}
+                          </code>
+                        </p>
+                      {/if}
+                      <button
+                        type="button"
+                        class="diagnostics-item__copy diagnostics-item__copy--inline"
+                        data-testid="diagnostics-copy-reference"
+                        aria-label={`Copy ${issue.reference}`}
+                        on:click={() => void copyDiagnosticReference(issue.reference)}
+                      >
+                        Copy Ref
+                      </button>
+                    </article>
+                  {/each}
+                </div>
+              </section>
             {/each}
           </div>
         {/if}

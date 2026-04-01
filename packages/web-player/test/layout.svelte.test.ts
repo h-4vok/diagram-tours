@@ -276,14 +276,20 @@ describe("+layout.svelte", () => {
           ...resolvedTourCollection,
           skipped: [
             {
-              diagnostic: {
-                code: "ghost",
-                location: { column: 4, line: 2 },
-                message: "step 1 focus references unknown Mermaid node id 'ghost'"
-              },
+              diagnostics: [
+                {
+                  code: "ghost",
+                  location: { column: 4, line: 2 },
+                  message: "step 1 focus references unknown Mermaid node id 'ghost'"
+                },
+                {
+                  code: "ghost",
+                  location: { column: 11, line: 3 },
+                  message: "step 1 text references unknown Mermaid node id 'ghost'"
+                }
+              ],
               sourceId: "broken.tour.yaml",
-              sourcePath: "broken.tour.yaml",
-              error: "Tour \"broken.tour.yaml\": step 1 focus references unknown Mermaid node id 'ghost'"
+              sourcePath: "broken.tour.yaml"
             }
           ]
         },
@@ -291,20 +297,22 @@ describe("+layout.svelte", () => {
       }
     });
 
-    expect(screen.getByTestId("diagnostics-count").textContent).toBe("1");
+    expect(screen.getByTestId("diagnostics-count").textContent).toBe("2");
     await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
 
     expect((await screen.findByTestId("diagnostics-summary")).textContent).toContain(
-      "1 skipped tour in current workspace."
+      "2 issues across 1 source file in current workspace."
     );
-    expect(screen.getByTestId("diagnostics-panel-count").textContent).toBe("1");
+    expect(screen.getByTestId("diagnostics-panel-count").textContent).toBe("2");
 
-    const diagnosticsItem = await screen.findByTestId("diagnostics-item");
+    const diagnosticsGroup = await screen.findByTestId("diagnostics-group");
+    const diagnosticsItems = await screen.findAllByTestId("diagnostics-item");
 
-    expect(diagnosticsItem.textContent).toContain("broken.tour.yaml");
-    expect(diagnosticsItem.textContent).toContain("broken");
-    expect(within(diagnosticsItem).getByText("ghost")).toBeDefined();
-    expect(diagnosticsItem.textContent).toContain("2:4");
+    expect(diagnosticsGroup.textContent).toContain("broken.tour.yaml");
+    expect(diagnosticsGroup.textContent).toContain("2 issues");
+    expect(diagnosticsItems[0]?.textContent).toContain("broken.tour.yaml:2:4");
+    expect(diagnosticsItems[1]?.textContent).toContain("broken.tour.yaml:3:11");
+    expect(within(diagnosticsItems[0]!).getByText("ghost")).toBeDefined();
   });
 
   it("shows a zero state when no diagnostics exist", async () => {

@@ -8,7 +8,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createTourDiagnostic,
-  formatTourDiagnostic
+  formatTourDiagnostic,
+  formatTourDiagnostics
 } from "../src/diagnostics.js";
 import {
   loadResolvedTour,
@@ -126,6 +127,38 @@ describe("@diagram-tour/parser", () => {
       code: null,
       location: null,
       message: "failed unexpectedly"
+    });
+  });
+
+  it("formats direct diagnostic arrays and ignores empty diagnostic arrays", () => {
+    const diagnostics = [
+      {
+        code: "E_ONE",
+        location: { column: 4, line: 2 },
+        message: "step 1 focus broke"
+      },
+      {
+        code: null,
+        location: null,
+        message: "step 1 text broke"
+      }
+    ];
+    const directError = Object.assign(new Error('Tour "broken.tour.yaml": broken'), {
+      diagnostics
+    });
+    const emptyDiagnosticsError = Object.assign(new Error('Tour "broken.tour.yaml": step 1 focus broke'), {
+      diagnostics: []
+    });
+
+    expect(createTourDiagnostic(directError)).toEqual(diagnostics[0]);
+    expect(formatTourDiagnostics("broken.tour.yaml", diagnostics)).toEqual([
+      "broken.tour.yaml:2:4 step 1 focus broke",
+      "broken.tour.yaml step 1 text broke"
+    ]);
+    expect(createTourDiagnostic(emptyDiagnosticsError)).toEqual({
+      code: null,
+      location: null,
+      message: "step 1 focus broke"
     });
   });
 
@@ -528,6 +561,25 @@ describe("@diagram-tour/parser", () => {
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
       `Tour "${normalizePath(tourPath)}": ENOENT: no such file or directory`
+    );
+  });
+
+  it("fails when the tour version is missing", async () => {
+    const tourPath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "title: Missing Version",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: []",
+        "    text: >",
+        "      The {{api_gateway}} exists."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": unsupported tour version "undefined"`
     );
   });
 
@@ -1013,11 +1065,18 @@ describe("@diagram-tour/parser", () => {
     ]);
     expect(collection.skipped).toHaveLength(1);
     expect(collection.skipped[0]).toMatchObject({
-      diagnostic: {
-        code: "missing_node",
-        location: null,
-        message: 'step 1 focus references unknown Mermaid node id "missing_node"'
-      },
+      diagnostics: [
+        {
+          code: null,
+          location: { column: 10, line: 6 },
+          message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+        },
+        {
+          code: null,
+          location: { column: 12, line: 7 },
+          message: 'step 1 text references unknown Mermaid node id "missing_node"'
+        }
+      ],
       sourceId: normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml")),
       sourcePath: "invalid-tour/invalid.tour.yaml"
     });
@@ -1147,6 +1206,7 @@ describe("@diagram-tour/parser", () => {
     ]);
     expect(collection.skipped).toHaveLength(1);
     expect(collection.skipped[0]?.sourcePath).toBe("broken.tour.yaml");
+    expect(collection.skipped[0]?.diagnostics).toHaveLength(2);
   });
 
   it("treats dot as the current working directory discovery root", async () => {
@@ -1170,12 +1230,20 @@ describe("@diagram-tour/parser", () => {
       total: 4,
       valid: 3
     });
-    expect(report.issues).toHaveLength(1);
+    expect(report.issues).toHaveLength(2);
     expect(report.issues[0]).toMatchObject({
       diagnostic: {
-        code: "missing_node",
-        location: null,
+        code: null,
+        location: { column: 10, line: 6 },
         message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+      },
+      sourcePath: "invalid-tour/invalid.tour.yaml"
+    });
+    expect(report.issues[1]).toMatchObject({
+      diagnostic: {
+        code: null,
+        location: { column: 12, line: 7 },
+        message: 'step 1 text references unknown Mermaid node id "missing_node"'
       },
       sourcePath: "invalid-tour/invalid.tour.yaml"
     });
@@ -1191,7 +1259,7 @@ describe("@diagram-tour/parser", () => {
       total: 4,
       valid: 3
     });
-    expect(report.issues).toHaveLength(1);
+    expect(report.issues).toHaveLength(2);
     expect(report.issues[0]?.sourcePath).toBe("invalid-tour/invalid.tour.yaml");
   });
 
@@ -1248,12 +1316,21 @@ describe("@diagram-tour/parser", () => {
       total: 1,
       valid: 0
     });
-    expect(report.issues).toHaveLength(1);
+    expect(report.issues).toHaveLength(2);
     expect(report.issues[0]).toMatchObject({
       diagnostic: {
-        code: "missing_node",
-        location: null,
+        code: null,
+        location: { column: 10, line: 6 },
         message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+      },
+      sourceId: normalizePath(invalidFilePath),
+      sourcePath: "invalid.tour.yaml"
+    });
+    expect(report.issues[1]).toMatchObject({
+      diagnostic: {
+        code: null,
+        location: { column: 12, line: 7 },
+        message: 'step 1 text references unknown Mermaid node id "missing_node"'
       },
       sourceId: normalizePath(invalidFilePath),
       sourcePath: "invalid.tour.yaml"
@@ -1383,13 +1460,299 @@ describe("@diagram-tour/parser", () => {
     ]);
   });
 
+  it("accumulates multiple semantic issues from one authored file with locations", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Broken Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - ghost",
+        "    text: >",
+        "      The {{ghost}} node is missing."
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 10, line: 6 },
+          message: 'step 1 focus references unknown Mermaid node id "ghost"'
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 12, line: 7 },
+          message: 'step 1 text references unknown Mermaid node id "ghost"'
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("reports a non-object authored document with a root location", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: ["- version: 1", "- title: Broken Tour"].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 0, line: 0 },
+          message: "document must be an object"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("reports authored root field issues with precise locations", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version:",
+        "  major: 1",
+        "title:",
+        "diagram:",
+        "steps: wrong"
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 4, line: 1 },
+          message: 'unsupported tour version "undefined"'
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 1, line: 3 },
+          message: "title is required"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 1, line: 4 },
+          message: "diagram path is required"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 9, line: 4 },
+          message: "steps must be a non-empty array"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("reports authored step structure issues with precise locations", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Broken Steps",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - nope",
+        "  - focus: ghost",
+        "    text:"
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 6, line: 5 },
+          message: "step 1 must be an object"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 13, line: 6 },
+          message: "step 2 focus must be an array"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      },
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 11, line: 7 },
+          message: "step 2 text is required"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("reports invalid focus values with precise locations", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Broken Focus",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - api_gateway",
+        "      - ''",
+        "    text: >",
+        "      {{ghost}} still repeats {{ghost}}."
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 10, line: 7 },
+          message: "step 1 focus must contain only non-empty diagram element ids"
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("dedupes repeated unknown text references from one authored step", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Broken Text",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - api_gateway",
+        "    text: >",
+        "      {{ghost}} still repeats {{ghost}}."
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report).toMatchObject({
+      total: 1,
+      valid: 0
+    });
+    expect(report.issues).toEqual([
+      {
+        diagnostic: {
+          code: null,
+          location: { column: 12, line: 7 },
+          message: 'step 1 text references unknown Mermaid node id "ghost"'
+        },
+        sourceId: normalizePath(invalidFilePath),
+        sourcePath: "tour.tour.yaml"
+      }
+    ]);
+  });
+
+  it("reports yaml syntax errors with line and column and stops semantic accumulation", async () => {
+    const invalidFilePath = await createTempTour({
+      mermaid: "flowchart LR\n  api_gateway[API Gateway]",
+      yaml: [
+        "version: 1",
+        "title: Broken Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus: [ghost",
+        "    text: >",
+        "      The {{ghost}} node is missing."
+      ].join("\n")
+    });
+
+    const report = await validateResolvedTourTargets([invalidFilePath]);
+
+    expect(report.issues).toHaveLength(1);
+    expect(report.issues[0]).toMatchObject({
+      diagnostic: {
+        code: expect.any(String),
+        location: {
+          column: expect.any(Number),
+          line: expect.any(Number)
+        }
+      },
+      sourceId: normalizePath(invalidFilePath),
+      sourcePath: "tour.tour.yaml"
+    });
+  });
+
   it("wraps unexpected non-error throws with tour context", async () => {
     vi.resetModules();
-    vi.doMock("yaml", () => ({
-      parse() {
-        throw "bad yaml";
-      }
-    }));
+    vi.doMock("yaml", async () => {
+      const actual = await vi.importActual<typeof import("yaml")>("yaml");
+
+      return {
+        ...actual,
+        parseDocument() {
+          throw "bad yaml";
+        }
+      };
+    });
 
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
@@ -1407,17 +1770,22 @@ describe("@diagram-tour/parser", () => {
 
   it("preserves location metadata when wrapping parser errors", async () => {
     vi.resetModules();
-    vi.doMock("yaml", () => ({
-      parse() {
-        const error = new Error("broken yaml");
+    vi.doMock("yaml", async () => {
+      const actual = await vi.importActual<typeof import("yaml")>("yaml");
 
-        (error as Error & { code?: string; location?: { column: number; line: number } }).code =
-          "YAML_ERR";
-        (error as Error & { code?: string; location?: { column: number; line: number } }).location =
-          { column: 3, line: 2 };
-        throw error;
-      }
-    }));
+      return {
+        ...actual,
+        parseDocument() {
+          const error = new Error("broken yaml");
+
+          (error as Error & { code?: string; location?: { column: number; line: number } }).code =
+            "YAML_ERR";
+          (error as Error & { code?: string; location?: { column: number; line: number } }).location =
+            { column: 3, line: 2 };
+          throw error;
+        }
+      };
+    });
 
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
@@ -1481,7 +1849,7 @@ async function createTempTour(input: {
 }): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "diagram-tour-parser-"));
   const diagramPath = join(dir, input.diagramPath ?? "diagram.mmd");
-  const tourPath = join(dir, "tour.yaml");
+  const tourPath = join(dir, "tour.tour.yaml");
 
   await import("node:fs/promises").then(async ({ mkdir }) => {
     await mkdir(dirname(diagramPath), { recursive: true });
