@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-003 Author diagnostics
+  - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
+  - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
+  - Evidence: `packages/parser/src/index.ts`, `packages/web-player/src/routes/+layout.svelte`, `packages/web-player/src/lib/diagnostics.ts`
 - Moved to [`backlog.done.md`](backlog.done.md) to keep the active backlog smaller.
 - BT-024 Smoke suite split by file and unified smoke command
   - Current state: each smoke file now contains one test, the browser suite runs through a single `bun run smoke`, and the docs tell agents to run only the relevant file for the current task
