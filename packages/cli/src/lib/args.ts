@@ -114,33 +114,7 @@ function readFlag(
 }
 
 function assignPositional(state: ReturnType<typeof createInitialState>, value: string): void {
-  if (isValidateMode(state)) {
-    appendValidateTarget(state, value);
-    return;
-  }
-
-  if (isValidateCommand(state, value)) {
-    enableValidateMode(state);
-    return;
-  }
-
   assignTarget(state, value);
-}
-
-function isValidateMode(state: ReturnType<typeof createInitialState>): boolean {
-  return state.mode === "validate";
-}
-
-function appendValidateTarget(state: ReturnType<typeof createInitialState>, value: string): void {
-  state.targets.push(value);
-}
-
-function isValidateCommand(state: ReturnType<typeof createInitialState>, value: string): boolean {
-  return state.target === null && value === "validate";
-}
-
-function enableValidateMode(state: ReturnType<typeof createInitialState>): void {
-  state.mode = "validate";
 }
 
 function readFlagValue(flag: string, value: string | undefined): string {
@@ -194,35 +168,7 @@ function assignTarget(state: ReturnType<typeof createInitialState>, target: stri
 }
 
 function finalizeState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
-  if (state.mode === "validate") {
-    return finalizeValidateState(state);
-  }
-
   return finalizeDirectOrWizardState(state);
-}
-
-function finalizeValidateState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
-  assertValidateLaunchFlags(state.hasLaunchFlags);
-  const targets = readValidateTargets(state.targets);
-  return {
-    browser: "never",
-    hasExplicitTarget: true,
-    host: state.host,
-    mode: "validate",
-    port: null,
-    target: targets[0]!,
-    targets
-  };
-}
-
-function assertValidateLaunchFlags(hasLaunchFlags: boolean): void {
-  if (hasLaunchFlags) {
-    throw new Error("validate does not accept browser or server flags.");
-  }
-}
-
-function readValidateTargets(targets: string[]): string[] {
-  return targets.length === 0 ? ["."] : targets;
 }
 
 function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState>): ParsedStartupArgs {
