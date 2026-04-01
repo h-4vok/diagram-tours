@@ -165,6 +165,26 @@ sequenceDiagram
 ```
 ````
 
+## Setup And Scaffolding Helpers
+
+If you want repository-local guidance for contributors or AI tools, run:
+
+```bash
+diagram-tours setup
+```
+
+That creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition that points to the generated instructions file.
+
+Run `setup` with no flags for the interactive flow, or use `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite` directly.
+
+When you want a starter authored tour from a Mermaid file instead of starting from scratch, run:
+
+```bash
+diagram-tours init ./examples/checkout/payment-flow.mmd
+```
+
+`init` currently targets standalone `.mmd` or `.mermaid` files and writes a sibling `*.tour.yaml`. Pass `--overwrite` if the sibling tour file already exists and you intentionally want to replace it.
+
 ## Validate Common Failure Cases
 
 The parser rejects:
@@ -179,15 +199,34 @@ The parser rejects:
 
 Error messages include the source path and step number when possible, so keep steps small enough for that context to stay useful.
 
+Use the CLI validation command while authoring:
+
+```bash
+diagram-tours validate
+diagram-tours validate ./examples/checkout
+diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+```
+
+With no target, validation walks the current directory recursively and checks authored `*.tour.yaml` files only.
+
 ## Authoring Workflow
 
 A practical local loop is:
 
+<<<<<<< HEAD
+1. run `diagram-tours init <diagram.mmd>` if you need a starter authored tour
+2. start the player against the target you want to edit
+3. iterate on Mermaid and YAML together
+4. run `diagram-tours validate [target]`
+5. run `bun run test`
+6. run `bun run smoke` if viewport or interaction behavior changed
+=======
 1. start the player against the target you want to edit
 2. iterate on Mermaid and YAML together
 3. run `diagram-tours validate` on the file or folder you changed
 4. run `bun run test`
 5. run `bun run smoke` if viewport or interaction behavior changed
+>>>>>>> origin/main
 
 For the published product flow, use the global CLI:
 

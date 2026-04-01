@@ -238,7 +238,23 @@ Example:
 Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
+<<<<<<< HEAD
+The published CLI exposes that validation through:
+
+```bash
+diagram-tours validate
+diagram-tours validate ./examples/checkout
+diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+```
+
+Validation is authored-tour focused:
+
+- a single `*.tour.yaml` target validates exactly that file
+- a directory target validates authored `*.tour.yaml` files recursively beneath it
+- raw diagrams are not considered validation targets for this command
+=======
 When a workspace contains invalid authored tours, the player may still load valid tours and expose the skipped authored files through the `Issues` panel with grouped per-file diagnostics.
+>>>>>>> origin/main
 
 ## Mermaid Requirements
 

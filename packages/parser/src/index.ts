@@ -450,6 +450,18 @@ function markValidationIssueSeen(seenIssueIds: Set<string>, issueId: string): vo
   seenIssueIds.add(issueId);
 }
 
+export async function validateDiscoveredTours(sourceTarget: string): Promise<{
+  invalid: SkippedResolvedDiagramTour[];
+  valid: string[];
+}> {
+  const absoluteTarget = resolve(sourceTarget);
+  const targetStats = await stat(absoluteTarget);
+
+  return targetStats.isFile()
+    ? await validateSingleDiscoveredTour(absoluteTarget)
+    : await validateDiscoveredTourDirectory(absoluteTarget);
+}
+
 async function createSingleEntryCollection(
   absolutePath: string
 ): Promise<ResolvedDiagramTourCollection> {
@@ -493,6 +505,59 @@ async function createCollectionEntries(input: {
   return input.absolutePath.endsWith(TOUR_FILE_SUFFIX)
     ? [await createAuthoredCollectionEntry(input)]
     : await loadGeneratedCollectionEntries(input);
+}
+
+async function validateSingleDiscoveredTour(absolutePath: string): Promise<{
+  invalid: SkippedResolvedDiagramTour[];
+  valid: string[];
+}> {
+  const sourceRoot = dirname(absolutePath);
+
+  return absolutePath.endsWith(TOUR_FILE_SUFFIX)
+    ? await validateAuthoredTourPaths({
+        sourceRoot,
+        tourPaths: [absolutePath]
+      })
+    : {
+        invalid: [],
+        valid: []
+      };
+}
+
+async function validateDiscoveredTourDirectory(sourceRoot: string): Promise<{
+  invalid: SkippedResolvedDiagramTour[];
+  valid: string[];
+}> {
+  const discoveredPaths = await collectSourcePaths(sourceRoot);
+
+  return await validateAuthoredTourPaths({
+    sourceRoot,
+    tourPaths: discoveredPaths.tourPaths
+  });
+}
+
+async function validateAuthoredTourPaths(input: {
+  sourceRoot: string;
+  tourPaths: string[];
+}): Promise<{
+  invalid: SkippedResolvedDiagramTour[];
+  valid: string[];
+}> {
+  const result = {
+    invalid: [],
+    valid: []
+  } satisfies {
+    invalid: SkippedResolvedDiagramTour[];
+    valid: string[];
+  };
+
+  for (const absoluteTourPath of input.tourPaths) {
+    await appendValidatedTourPath(absoluteTourPath, input.sourceRoot, result);
+  }
+
+  result.valid.sort();
+
+  return result;
 }
 
 async function collectSourcePaths(sourceRoot: string): Promise<SourcePaths> {
@@ -555,6 +620,25 @@ async function appendDiscoveredTourResult(input: {
     input.result.skipped.push(createSkippedTourEntry(input.absolutePath, input.sourceRoot, error));
 
     return null;
+  }
+}
+
+async function appendValidatedTourPath(
+  absoluteTourPath: string,
+  sourceRoot: string,
+  result: {
+    invalid: SkippedResolvedDiagramTour[];
+    valid: string[];
+  }
+): Promise<void> {
+  try {
+    await loadAuthoredTourDocument({
+      absoluteTourPath,
+      context: createTourContext(absoluteTourPath)
+    });
+    result.valid.push(normalizePath(relative(sourceRoot, absoluteTourPath)));
+  } catch (error) {
+    result.invalid.push(createSkippedTourEntry(absoluteTourPath, sourceRoot, error));
   }
 }
 

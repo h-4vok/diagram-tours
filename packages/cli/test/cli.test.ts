@@ -8,6 +8,9 @@ const validateTargetPathMock = vi.fn();
 const validateResolvedTourTargetsMock = vi.fn();
 const runWizardMock = vi.fn();
 const loadResolvedTourCollectionMock = vi.fn();
+const runSetupCommandMock = vi.fn();
+const runValidateCommandMock = vi.fn();
+const runInitCommandMock = vi.fn();
 const questionMock = vi.fn();
 const closeMock = vi.fn();
 
@@ -46,6 +49,24 @@ vi.mock("../src/lib/wizard.js", () => {
   };
 });
 
+vi.mock("../src/lib/setup.js", () => {
+  return {
+    runSetupCommand: runSetupCommandMock
+  };
+});
+
+vi.mock("../src/lib/validate.js", () => {
+  return {
+    runValidateCommand: runValidateCommandMock
+  };
+});
+
+vi.mock("../src/lib/init.js", () => {
+  return {
+    runInitCommand: runInitCommandMock
+  };
+});
+
 vi.mock("@diagram-tour/parser", () => {
   return {
     loadResolvedTourCollection: loadResolvedTourCollectionMock,
@@ -77,6 +98,9 @@ describe("runCli", () => {
       port: null,
       target: "C:/repo/examples"
     });
+    runSetupCommandMock.mockResolvedValue(0);
+    runValidateCommandMock.mockResolvedValue(0);
+    runInitCommandMock.mockResolvedValue(0);
   });
 
   afterEach(() => {
@@ -88,6 +112,9 @@ describe("runCli", () => {
     startWebServerMock.mockReset();
     validateTargetPathMock.mockReset();
     runWizardMock.mockReset();
+    runSetupCommandMock.mockReset();
+    runValidateCommandMock.mockReset();
+    runInitCommandMock.mockReset();
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
   });
@@ -132,6 +159,49 @@ describe("runCli", () => {
     expect(opener.open).not.toHaveBeenCalled();
   });
 
+  it("dispatches setup through the setup command module", async () => {
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["setup", "--agent"]);
+
+    expect(exitCode).toBe(0);
+    expect(runSetupCommandMock).toHaveBeenCalledWith(
+      {
+        agent: "default",
+        agentPath: null,
+        overwrite: false
+      },
+      expect.objectContaining({
+        question: expect.any(Function),
+        write: expect.any(Function)
+      })
+    );
+    expect(closeMock).toHaveBeenCalledOnce();
+    expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
+  it("dispatches validate through the validate command module", async () => {
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["validate", "./examples"]);
+
+    expect(exitCode).toBe(0);
+    expect(runValidateCommandMock).toHaveBeenCalledWith({
+      target: "./examples"
+    });
+    expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
+  it("dispatches init through the init command module", async () => {
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["init", "./examples/checkout/payment-flow.mmd"]);
+
+    expect(exitCode).toBe(0);
+    expect(runInitCommandMock).toHaveBeenCalledWith({
+      overwrite: false,
+      target: "./examples/checkout/payment-flow.mmd"
+    });
+    expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
   it("runs validate against the current directory when no paths are provided", async () => {
     const opener = { open: vi.fn() };
     const writes: string[] = [];
@@ -145,11 +215,11 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate"], opener);
 
     expect(exitCode).toBe(0);
-    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["."]);
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: null });
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
-    expect(writes.join("")).toBe("0/0 tours valid.\n");
+    expect(writes.join("")).toBe("");
   });
 
   it("prints validation failures and exits non-zero", async () => {
@@ -157,21 +227,7 @@ describe("runCli", () => {
     const stdoutWrites: string[] = [];
     const stderrWrites: string[] = [];
 
-    validateResolvedTourTargetsMock.mockResolvedValue({
-      issues: [
-        {
-          diagnostic: {
-            code: "yaml.parse",
-            location: { column: 4, line: 2 },
-            message: "title is required"
-          },
-          sourceId: "C:/repo/docs/checklist.tour.yaml",
-          sourcePath: "docs/checklist.tour.yaml"
-        }
-      ],
-      total: 1,
-      valid: 0
-    });
+    runValidateCommandMock.mockResolvedValue(1);
 
     process.stdout.write = vi.fn((text: string) => {
       stdoutWrites.push(text);
@@ -186,9 +242,9 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate", "./docs"], opener);
 
     expect(exitCode).toBe(1);
-    expect(validateResolvedTourTargetsMock).toHaveBeenCalledWith(["./docs"]);
-    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
-    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml:2:4 title is required");
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: "./docs" });
+    expect(stdoutWrites.join("")).toBe("");
+    expect(stderrWrites.join("")).toBe("");
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
@@ -199,21 +255,7 @@ describe("runCli", () => {
     const stdoutWrites: string[] = [];
     const stderrWrites: string[] = [];
 
-    validateResolvedTourTargetsMock.mockResolvedValue({
-      issues: [
-        {
-          diagnostic: {
-            code: null,
-            location: null,
-            message: "title is required"
-          },
-          sourceId: "C:/repo/docs/checklist.tour.yaml",
-          sourcePath: "docs/checklist.tour.yaml"
-        }
-      ],
-      total: 1,
-      valid: 0
-    });
+    runValidateCommandMock.mockResolvedValue(1);
 
     process.stdout.write = vi.fn((text: string) => {
       stdoutWrites.push(text);
@@ -228,8 +270,7 @@ describe("runCli", () => {
     const exitCode = await runCli(["validate", "./docs"], opener);
 
     expect(exitCode).toBe(1);
-    expect(stdoutWrites.join("")).toContain("0/1 tours valid.\n");
-    expect(stderrWrites.join("")).toContain("C:/repo/docs/checklist.tour.yaml title is required");
+    expect(runValidateCommandMock).toHaveBeenCalledWith({ target: "./docs" });
     expect(stderrWrites.join("")).not.toContain("C:/repo/docs/checklist.tour.yaml:2:4");
   });
 

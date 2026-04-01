@@ -108,6 +108,7 @@
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
   let zoomScale = DEFAULT_ZOOM_SCALE;
+  $: stepTextLines = readStepTextLines(state.step.text);
 
   async function goPrevious(): Promise<void> {
     await goToStepIndex(state.stepIndex - 1);
@@ -138,6 +139,10 @@
 
   async function zoomOut(): Promise<void> {
     await updateZoomScale(createNextZoomScale(zoomScale, "out"));
+  }
+
+  async function resetZoom(): Promise<void> {
+    await updateZoomScale(DEFAULT_ZOOM_SCALE);
   }
 
   async function fitZoomToView(): Promise<void> {
@@ -1070,6 +1075,14 @@
 
     return svg === null ? null : { context, svg };
   }
+
+  function readStepTextLines(text: string): string[] {
+    return normalizeStepText(text).split("\n");
+  }
+
+  function normalizeStepText(text: string): string {
+    return text.replace(/<br\s*\/?>/giu, "\n");
+  }
 </script>
 
 <svelte:window on:keydown={handleWindowKeyDown} on:pointerdown={handleWindowPointerDown} />
@@ -1127,7 +1140,71 @@
         <div class="teleprompter__nav-left">
           <button
             type="button"
-            class="teleprompter__btn"
+            class="viewport-toolbar__button"
+            data-testid="zoom-out-button"
+            aria-label="Zoom out"
+            disabled={!canZoomOut(zoomScale)}
+            on:click={() => void zoomOut()}
+          >
+            -
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            aria-label="Fit diagram to view"
+            on:click={() => void fitZoomToView()}
+          >
+            Fit
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button viewport-toolbar__button--value"
+            data-testid="zoom-reset-button"
+            aria-label="Reset zoom to 100%"
+            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
+            on:click={() => void resetZoom()}
+          >
+            {formatZoomPercentage(zoomScale)}
+          </button>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            data-testid="zoom-in-button"
+            aria-label="Zoom in"
+            disabled={!canZoomIn(zoomScale)}
+            on:click={() => void zoomIn()}
+          >
+            +
+          </button>
+        </div>
+      <aside class="step-panel step-panel--overlay">
+        <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
+        <div class="step-timeline" data-testid="step-timeline">
+          {#each tour.steps as step, stepIndex (step.index)}
+            <button
+              type="button"
+              class:step-timeline__pill--current={stepIndex === state.stepIndex}
+              class:step-timeline__pill--complete={stepIndex < state.stepIndex}
+              class="step-timeline__pill"
+              data-testid="timeline-step-button"
+              aria-current={stepIndex === state.stepIndex ? "step" : undefined}
+              on:click={() => void goToStepIndex(stepIndex)}
+            >
+              {step.index}
+            </button>
+          {/each}
+        </div>
+        <p class="step-text">
+          {#each stepTextLines as line, index (index)}
+            {line}
+            {#if index < stepTextLines.length - 1}<br />{/if}
+          {/each}
+        </p>
+
+        <div class="controls">
+          <button
+            type="button"
+            class="button button--secondary"
             on:click={goPrevious}
             disabled={!state.canGoPrevious}
             data-testid="previous-button"
@@ -1137,14 +1214,17 @@
           </button>
         </div>
 
-        <div class="teleprompter__text-area" data-testid="step-text-container">
-          <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+          <div class="teleprompter__text-area" data-testid="step-text-container">
+            <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
           <p data-testid="step-text" class="teleprompter__text">
-            {#each createStepTextSegments(state.step.text) as segment, index (`${state.stepIndex}-${index}`)}
+            {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
               {#if segment.isCode}
                 <code class="teleprompter__code">{segment.content}</code>
               {:else}
-                {segment.content}
+                {#each segment.content.split("\n") as line, lineIndex (`${state.stepIndex}-${segmentIndex}-${lineIndex}`)}
+                  {line}
+                  {#if lineIndex < segment.content.split("\n").length - 1}<br />{/if}
+                {/each}
               {/if}
             {/each}
           </p>
@@ -1162,6 +1242,7 @@
             <span class="teleprompter__btn-icon">→</span>
           </button>
         </div>
+      </aside>
       </div>
     </aside>
 
@@ -1242,7 +1323,6 @@
               <button
                 type="button"
                 class="viewport-toolbar__button"
-                data-testid="zoom-out-button"
                 aria-label="Zoom out"
                 disabled={!canZoomOut(zoomScale)}
                 on:click={() => void zoomOut()}
@@ -1261,7 +1341,6 @@
               <button
                 type="button"
                 class="viewport-toolbar__button"
-                data-testid="zoom-in-button"
                 aria-label="Zoom in"
                 disabled={!canZoomIn(zoomScale)}
                 on:click={() => void zoomIn()}

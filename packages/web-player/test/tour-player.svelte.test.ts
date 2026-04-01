@@ -153,7 +153,7 @@ describe("tour-player.svelte", () => {
     });
 
     expect(await screen.findByText("API Gateway", { selector: "code" })).toBeDefined();
-    expect(screen.queryByTestId("timeline-step-button")).toBeNull();
+    expect(screen.getAllByTestId("timeline-step-button")).toHaveLength(4);
   });
 
   it("renders the minimap on desktop, shows focused nodes, and groups controls in a camera cluster", async () => {
@@ -304,7 +304,7 @@ describe("tour-player.svelte", () => {
     ).toContain(
       "public edge of the checkout system",
     );
-    expect(screen.getByText("Step 1 of 4")).toBeDefined();
+    expect(screen.getAllByText("Step 1 of 4")[0]).toBeDefined();
 
     await fireEvent.click(screen.getByTestId("next-button"));
     await fireEvent.click(screen.getByTestId("next-button"));
@@ -523,6 +523,29 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("previous-button")).toBeDefined();
     expect(screen.getByTestId("next-button")).toBeDefined();
     expect(screen.getByTestId("diagram-container")).toBeDefined();
+  });
+  it("renders literal br markers in step text as visible line breaks instead of raw markup", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: {
+        ...resolvedPaymentFlowTour,
+        steps: [
+          {
+            ...resolvedPaymentFlowTour.steps[0],
+            text: "Line one<br/>Line two"
+          },
+          ...resolvedPaymentFlowTour.steps.slice(1)
+        ]
+      }
+    });
+
+    const stepText = await screen.findByTestId("step-text");
+
+    expect(stepText.innerHTML).toContain("<br>");
+    expect(stepText.textContent).toContain("Line one");
+    expect(stepText.textContent).toContain("Line two");
+    expect(stepText.textContent).not.toContain("<br");
   });
 });
 
@@ -813,4 +836,3 @@ function toObjectScrollPositionForTest(
     scrollTop: options.top ?? parent.scrollTop,
   };
 }
-

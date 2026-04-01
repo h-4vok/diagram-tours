@@ -2,15 +2,20 @@ import { createServer, type AddressInfo } from "node:net";
 
 import type { ServerBinding } from "./types.js";
 
+const DEFAULT_AUTOMATIC_PORT = 7733;
+
 export async function resolveServerBinding(options: {
   host: string;
+  preferredPort?: number;
   requestedPort: number | null;
 }): Promise<ServerBinding> {
-  if (options.requestedPort !== null) {
-    return readExplicitBinding(options.host, options.requestedPort);
+  const { host, preferredPort = DEFAULT_AUTOMATIC_PORT, requestedPort } = options;
+
+  if (requestedPort !== null) {
+    return readExplicitBinding(host, requestedPort);
   }
 
-  return readAutomaticBinding(options.host);
+  return readAutomaticBinding(host, preferredPort);
 }
 
 async function readExplicitBinding(host: string, port: number): Promise<ServerBinding> {
@@ -21,9 +26,9 @@ async function readExplicitBinding(host: string, port: number): Promise<ServerBi
   return { host, port };
 }
 
-async function readAutomaticBinding(host: string): Promise<ServerBinding> {
-  if (await isPortAvailable(host, 7733)) {
-    return { host, port: 7733 };
+async function readAutomaticBinding(host: string, preferredPort: number): Promise<ServerBinding> {
+  if (await isPortAvailable(host, preferredPort)) {
+    return { host, port: preferredPort };
   }
 
   return {

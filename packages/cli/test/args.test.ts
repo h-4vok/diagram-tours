@@ -5,121 +5,168 @@ import { parseCliArgs } from "../src/lib/args.js";
 describe("parseCliArgs", () => {
   it("uses the wizard when no target is provided", () => {
     expect(parseCliArgs([])).toEqual({
-      browser: "prompt",
-      hasExplicitTarget: false,
-      host: "127.0.0.1",
-      mode: "wizard",
-      port: null,
-      target: null,
-      targets: []
+      command: "startup",
+      options: {
+        browser: "prompt",
+        hasExplicitTarget: false,
+        host: "127.0.0.1",
+        mode: "wizard",
+        port: null,
+        target: null,
+        targets: []
+      }
     });
   });
 
   it("reads a directory target and skips the wizard", () => {
     expect(parseCliArgs(["./examples", "--host", "0.0.0.0"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: true,
-      host: "0.0.0.0",
-      mode: "direct",
-      port: null,
-      target: "./examples",
-      targets: ["./examples"]
+      command: "startup",
+      options: {
+        browser: "never",
+        hasExplicitTarget: true,
+        host: "0.0.0.0",
+        mode: "direct",
+        port: null,
+        target: "./examples",
+        targets: ["./examples"]
+      }
     });
   });
 
   it("reads a single tour file target", () => {
-    expect(parseCliArgs(["./examples/checkout-payment-flow.tour.yaml"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: true,
-      host: "127.0.0.1",
-      mode: "direct",
-      port: null,
-      target: "./examples/checkout-payment-flow.tour.yaml",
-      targets: ["./examples/checkout-payment-flow.tour.yaml"]
+    expect(parseCliArgs(["./examples/checkout/payment-flow.tour.yaml"])).toEqual({
+      command: "startup",
+      options: {
+        browser: "never",
+        hasExplicitTarget: true,
+        host: "127.0.0.1",
+        mode: "direct",
+        port: null,
+        target: "./examples/checkout/payment-flow.tour.yaml",
+        targets: ["./examples/checkout/payment-flow.tour.yaml"]
+      }
     });
   });
 
   it("reads validate targets and defaults to the current directory", () => {
     expect(parseCliArgs(["validate"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: true,
-      host: "127.0.0.1",
-      mode: "validate",
-      port: null,
-      target: ".",
-      targets: ["."]
-    });
-  });
-
-  it("reads multiple validate targets", () => {
-    expect(parseCliArgs(["validate", "./examples", "./docs"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: true,
-      host: "127.0.0.1",
-      mode: "validate",
-      port: null,
-      target: "./examples",
-      targets: ["./examples", "./docs"]
+      command: "validate",
+      options: {
+        target: null
+      }
     });
   });
 
   it("accepts an explicit port override", () => {
     expect(parseCliArgs(["--port", "9000"])).toEqual({
-      browser: "prompt",
-      hasExplicitTarget: false,
-      host: "127.0.0.1",
-      mode: "wizard",
-      port: 9000,
-      target: null,
-      targets: []
+      command: "startup",
+      options: {
+        browser: "prompt",
+        hasExplicitTarget: false,
+        host: "127.0.0.1",
+        mode: "wizard",
+        port: 9000,
+        target: null,
+        targets: []
+      }
     });
   });
 
   it("reads the short version flag", () => {
     expect(parseCliArgs(["-v"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: false,
-      host: "127.0.0.1",
-      mode: "version",
-      port: null,
-      target: null,
-      targets: []
+      command: "version"
     });
   });
 
   it("reads the long version flag", () => {
     expect(parseCliArgs(["--version"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: false,
-      host: "127.0.0.1",
-      mode: "version",
-      port: null,
-      target: null,
-      targets: []
+      command: "version"
     });
   });
 
   it("accepts an explicit open policy", () => {
     expect(parseCliArgs(["./examples", "--open"])).toEqual({
-      browser: "always",
-      hasExplicitTarget: true,
-      host: "127.0.0.1",
-      mode: "direct",
-      port: null,
-      target: "./examples",
-      targets: ["./examples"]
+      command: "startup",
+      options: {
+        browser: "always",
+        hasExplicitTarget: true,
+        host: "127.0.0.1",
+        mode: "direct",
+        port: null,
+        target: "./examples",
+        targets: ["./examples"]
+      }
     });
   });
 
   it("lets no-open override direct startup explicitly", () => {
     expect(parseCliArgs(["./examples", "--no-open"])).toEqual({
-      browser: "never",
-      hasExplicitTarget: true,
-      host: "127.0.0.1",
-      mode: "direct",
-      port: null,
-      target: "./examples",
-      targets: ["./examples"]
+      command: "startup",
+      options: {
+        browser: "never",
+        hasExplicitTarget: true,
+        host: "127.0.0.1",
+        mode: "direct",
+        port: null,
+        target: "./examples",
+        targets: ["./examples"]
+      }
+    });
+  });
+
+  it("parses setup with the default agent install flag", () => {
+    expect(parseCliArgs(["setup", "--agent"])).toEqual({
+      command: "setup",
+      options: {
+        agent: "default",
+        agentPath: null,
+        overwrite: false
+      }
+    });
+  });
+
+  it("parses setup with a custom agent path", () => {
+    expect(parseCliArgs(["setup", "--agent-path", ".codex/agents/diagram-tours-author.toml"])).toEqual({
+      command: "setup",
+      options: {
+        agent: "default",
+        agentPath: ".codex/agents/diagram-tours-author.toml",
+        overwrite: false
+      }
+    });
+  });
+
+  it("parses validate with no explicit target", () => {
+    expect(parseCliArgs(["validate"])).toEqual({
+      command: "validate",
+      options: {
+        target: null
+      }
+    });
+  });
+
+  it("parses validate with one explicit target", () => {
+    expect(parseCliArgs(["validate", "./examples"])).toEqual({
+      command: "validate",
+      options: {
+        target: "./examples"
+      }
+    });
+  });
+
+  it("rejects multiple validate targets", () => {
+    expect(() => parseCliArgs(["validate", "./examples", "./docs"])).toThrow(
+      "Expected validate to receive zero or one target path."
+    );
+  });
+
+  it("parses init with overwrite and a diagram target", () => {
+    expect(parseCliArgs(["init", "--overwrite", "./examples/checkout/payment-flow.mmd"])).toEqual({
+      command: "init",
+      options: {
+        overwrite: true,
+        target: "./examples/checkout/payment-flow.mmd"
+      }
     });
   });
 
@@ -145,7 +192,7 @@ describe("parseCliArgs", () => {
 
   it("rejects validate with browser or server flags", () => {
     expect(() => parseCliArgs(["validate", "--port", "9000"])).toThrow(
-      "validate does not accept browser or server flags."
+      "Expected validate to receive zero or one target path."
     );
   });
 
@@ -153,6 +200,67 @@ describe("parseCliArgs", () => {
     expect(() => parseCliArgs(["./examples", "./fixtures"])).toThrow(
       "Only one target path may be provided."
     );
+  });
+
+  it("rejects init without a target", () => {
+    expect(() => parseCliArgs(["init"])).toThrow("Expected init to receive a Mermaid diagram path.");
+  });
+
+  it("rejects multiple init targets", () => {
+    expect(() => parseCliArgs(["init", "./one.mmd", "./two.mmd"])).toThrow(
+      "Only one diagram path may be provided to init."
+    );
+  });
+
+  it("rejects unknown init flags", () => {
+    expect(() => parseCliArgs(["init", "--wat", "./one.mmd"])).toThrow(
+      'Unknown flag "--wat" for init.'
+    );
+  });
+
+  it("rejects multiple validate targets", () => {
+    expect(() => parseCliArgs(["validate", "./examples", "./fixtures"])).toThrow(
+      "Expected validate to receive zero or one target path."
+    );
+  });
+
+  it("rejects a flag-like validate target", () => {
+    expect(() => parseCliArgs(["validate", "--wat"])).toThrow(
+      "Expected validate to receive zero or one target path."
+    );
+  });
+
+  it("rejects conflicting setup agent modes", () => {
+    expect(() => parseCliArgs(["setup", "--agent", "--agent-path", "custom.toml"])).toThrow(
+      "Choose only one setup agent installation mode."
+    );
+  });
+
+  it("rejects conflicting setup agent modes in reverse order", () => {
+    expect(() => parseCliArgs(["setup", "--agent-path", "custom.toml", "--agent"])).toThrow(
+      "Choose only one setup agent installation mode."
+    );
+  });
+
+  it("parses setup overwrite and no-agent flags", () => {
+    expect(parseCliArgs(["setup", "--no-agent", "--overwrite"])).toEqual({
+      command: "setup",
+      options: {
+        agent: "none",
+        agentPath: null,
+        overwrite: true
+      }
+    });
+  });
+
+  it("rejects unexpected setup positional arguments", () => {
+    expect(() => parseCliArgs(["setup", "./somewhere"])).toThrow(
+      'Unexpected positional argument "./somewhere" for setup.'
+    );
+  });
+
+  it("rejects unknown setup flags", () => {
+    expect(() => parseCliArgs(["setup", "--wat"])).toThrow('Unknown flag "--wat" for setup.');
   });
 
   it("rejects unknown flags", () => {

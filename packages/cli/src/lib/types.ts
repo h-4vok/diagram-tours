@@ -2,7 +2,7 @@ export type BrowserPreference = "always" | "never" | "prompt";
 
 export type StartupMode = "direct" | "validate" | "version" | "wizard";
 
-export interface ParsedCliArgs {
+export interface ParsedStartupArgs {
   browser: BrowserPreference;
   hasExplicitTarget: boolean;
   host: string;
@@ -11,6 +11,33 @@ export interface ParsedCliArgs {
   target: string | null;
   targets: string[];
 }
+
+export interface ParsedSetupArgs {
+  agent: "default" | "none" | "prompt";
+  agentPath: string | null;
+  overwrite: boolean;
+}
+
+export interface ParsedValidateArgs {
+  target: string | null;
+}
+
+export interface ParsedInitArgs {
+  overwrite: boolean;
+  target: string;
+}
+
+export interface PromptIo {
+  question(prompt: string): Promise<string>;
+  write(text: string): void;
+}
+
+export type ParsedCliArgs =
+  | { command: "init"; options: ParsedInitArgs }
+  | { command: "setup"; options: ParsedSetupArgs }
+  | { command: "startup"; options: ParsedStartupArgs }
+  | { command: "validate"; options: ParsedValidateArgs }
+  | { command: "version" };
 
 export interface ResolvedLaunchOptions {
   browser: Exclude<BrowserPreference, "prompt">;
