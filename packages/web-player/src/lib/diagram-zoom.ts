@@ -13,7 +13,10 @@ export function canZoomOut(scale: number): boolean {
   return scale > MIN_ZOOM_SCALE;
 }
 
-export function createNextZoomScale(scale: number, direction: "in" | "out" | "reset"): number {
+export function createNextZoomScale(
+  scale: number,
+  direction: "in" | "out" | "reset",
+): number {
   if (direction === "reset") {
     return DEFAULT_ZOOM_SCALE;
   }
@@ -34,7 +37,10 @@ export function createPreservedZoomScrollPosition(input: {
   scrollLeft: number;
   scrollTop: number;
 } | null {
-  if (!hasStableMetrics(input.previousMetrics) || !hasStableMetrics(input.nextMetrics)) {
+  if (
+    !hasStableMetrics(input.previousMetrics) ||
+    !hasStableMetrics(input.nextMetrics)
+  ) {
     return null;
   }
 
@@ -42,14 +48,33 @@ export function createPreservedZoomScrollPosition(input: {
 
   return {
     scrollLeft: clampScrollTarget(
-      centerRatios.x * input.nextMetrics.contentWidth - input.nextMetrics.viewportWidth / 2,
-      input.nextMetrics.contentWidth - input.nextMetrics.viewportWidth
+      centerRatios.x * input.nextMetrics.contentWidth -
+        input.nextMetrics.viewportWidth / 2,
+      input.nextMetrics.contentWidth - input.nextMetrics.viewportWidth,
     ),
     scrollTop: clampScrollTarget(
-      centerRatios.y * input.nextMetrics.contentHeight - input.nextMetrics.viewportHeight / 2,
-      input.nextMetrics.contentHeight - input.nextMetrics.viewportHeight
-    )
+      centerRatios.y * input.nextMetrics.contentHeight -
+        input.nextMetrics.viewportHeight / 2,
+      input.nextMetrics.contentHeight - input.nextMetrics.viewportHeight,
+    ),
   };
+}
+
+export function createZoomToFitScale(input: {
+  currentScale: number;
+  metrics: DiagramMinimapMetrics;
+}): number | null {
+  if (!hasStableMetrics(input.metrics)) {
+    return null;
+  }
+
+  return clampZoomScale(
+    input.currentScale *
+      Math.min(
+        input.metrics.viewportWidth / input.metrics.contentWidth,
+        input.metrics.viewportHeight / input.metrics.contentHeight,
+      ),
+  );
 }
 
 export function applySvgZoom(svg: SVGSVGElement, scale: number): boolean {
@@ -61,8 +86,14 @@ export function applySvgZoom(svg: SVGSVGElement, scale: number): boolean {
 
   const normalizedScale = clampZoomScale(scale);
 
-  svg.setAttribute("width", String(roundToPixel(intrinsicSize.width * normalizedScale)));
-  svg.setAttribute("height", String(roundToPixel(intrinsicSize.height * normalizedScale)));
+  svg.setAttribute(
+    "width",
+    String(roundToPixel(intrinsicSize.width * normalizedScale)),
+  );
+  svg.setAttribute(
+    "height",
+    String(roundToPixel(intrinsicSize.height * normalizedScale)),
+  );
   svg.dataset.zoomScale = String(normalizedScale);
 
   return true;
@@ -84,7 +115,9 @@ function roundToQuarterStep(scale: number): number {
   return Math.round(scale / ZOOM_SCALE_STEP) * ZOOM_SCALE_STEP;
 }
 
-function readIntrinsicSvgSize(svg: SVGSVGElement): { height: number; width: number } | null {
+function readIntrinsicSvgSize(
+  svg: SVGSVGElement,
+): { height: number; width: number } | null {
   const width = readIntrinsicSvgDimension(svg, "width");
 
   if (width === null) {
@@ -96,30 +129,56 @@ function readIntrinsicSvgSize(svg: SVGSVGElement): { height: number; width: numb
   return height === null ? null : { height, width };
 }
 
-function readViewportCenterRatios(metrics: DiagramMinimapMetrics): { x: number; y: number } {
+function readViewportCenterRatios(metrics: DiagramMinimapMetrics): {
+  x: number;
+  y: number;
+} {
   return {
-    x: readViewportCenterRatio(metrics.scrollLeft, metrics.viewportWidth, metrics.contentWidth),
-    y: readViewportCenterRatio(metrics.scrollTop, metrics.viewportHeight, metrics.contentHeight)
+    x: readViewportCenterRatio(
+      metrics.scrollLeft,
+      metrics.viewportWidth,
+      metrics.contentWidth,
+    ),
+    y: readViewportCenterRatio(
+      metrics.scrollTop,
+      metrics.viewportHeight,
+      metrics.contentHeight,
+    ),
   };
 }
 
 function readIntrinsicSvgDimension(
   svg: SVGSVGElement,
-  axis: "height" | "width"
+  axis: "height" | "width",
 ): number | null {
   return readPositiveFiniteNumber(readSvgDimensionValue(svg, axis));
 }
 
-function readSvgDimensionValue(svg: SVGSVGElement, axis: "height" | "width"): string | null {
-  return readSvgDatasetDimension(svg, axis) ?? readSvgAttributeDimension(svg, axis);
+function readSvgDimensionValue(
+  svg: SVGSVGElement,
+  axis: "height" | "width",
+): string | null {
+  return (
+    readSvgDatasetDimension(svg, axis) ?? readSvgAttributeDimension(svg, axis)
+  );
 }
 
-function readSvgDatasetDimension(svg: SVGSVGElement, axis: "height" | "width"): string | undefined {
-  return axis === "height" ? svg.dataset.intrinsicHeight : svg.dataset.intrinsicWidth;
+function readSvgDatasetDimension(
+  svg: SVGSVGElement,
+  axis: "height" | "width",
+): string | undefined {
+  return axis === "height"
+    ? svg.dataset.intrinsicHeight
+    : svg.dataset.intrinsicWidth;
 }
 
-function readSvgAttributeDimension(svg: SVGSVGElement, axis: "height" | "width"): string | null {
-  return axis === "height" ? svg.getAttribute("height") : svg.getAttribute("width");
+function readSvgAttributeDimension(
+  svg: SVGSVGElement,
+  axis: "height" | "width",
+): string | null {
+  return axis === "height"
+    ? svg.getAttribute("height")
+    : svg.getAttribute("width");
 }
 
 function readPositiveFiniteNumber(value: string | null): number | null {
@@ -133,14 +192,24 @@ function hasStableMetrics(metrics: DiagramMinimapMetrics): boolean {
 }
 
 function hasStableContent(metrics: DiagramMinimapMetrics): boolean {
-  return isFinitePositive(metrics.contentWidth) && isFinitePositive(metrics.contentHeight);
+  return (
+    isFinitePositive(metrics.contentWidth) &&
+    isFinitePositive(metrics.contentHeight)
+  );
 }
 
 function hasStableViewport(metrics: DiagramMinimapMetrics): boolean {
-  return isFinitePositive(metrics.viewportWidth) && isFinitePositive(metrics.viewportHeight);
+  return (
+    isFinitePositive(metrics.viewportWidth) &&
+    isFinitePositive(metrics.viewportHeight)
+  );
 }
 
-function readViewportCenterRatio(scroll: number, viewport: number, content: number): number {
+function readViewportCenterRatio(
+  scroll: number,
+  viewport: number,
+  content: number,
+): number {
   return (sanitizeFiniteValue(scroll) + viewport / 2) / content;
 }
 

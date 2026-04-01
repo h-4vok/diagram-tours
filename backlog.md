@@ -29,6 +29,10 @@ Cutoff date: 2026-03-17
   - Current state: zoom changes now animate both the SVG resize and the viewport recentering pass, extending the existing smooth step-focus motion into explicit user-driven viewport transitions
   - Testing expectation: player and smoke coverage validate zoom-triggered viewport updates without breaking navigation state
   - Evidence: `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/diagram-player.css`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
+- BT-001 True zoom-to-fit
+  - Current state: the player now exposes a Fit action that computes a real zoom-to-fit scale, applies it to the rendered SVG, and recenters the diagram so the current content fits the viewport
+  - Testing expectation: zoom helper coverage, player component coverage, and smoke coverage validate fit math, control behavior, and visible diagram framing
+  - Evidence: `packages/web-player/src/lib/diagram-zoom.ts`, `packages/web-player/src/lib/tour-player.svelte`, `packages/web-player/src/styles/components/cards.css`, `packages/web-player/test/diagram-zoom.test.ts`, `packages/web-player/test/tour-player.svelte.test.ts`, `packages/web-player/smoke/payment-flow.spec.ts`
 
 - `BD-04` Diagram-first fallback tours for raw Mermaid inputs
   - Current state: directories and direct file targets can now load `.mmd` and `.mermaid` diagrams without authored YAML, with generated overview-plus-node walkthroughs and duplicate suppression when a tour file already owns the same diagram
