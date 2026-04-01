@@ -12,8 +12,8 @@ test("clicking the minimap pans the main diagram viewport", async ({ page }) => 
   assertLayoutBox(minimapBox);
   await page.getByTestId("minimap-surface").click({
     position: {
-      x: minimapBox.width - 10,
-      y: minimapBox.height - 10
+      x: 12,
+      y: 12
     }
   });
 
