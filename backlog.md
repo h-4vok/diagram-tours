@@ -60,6 +60,8 @@ Cutoff date: 2026-03-17
   - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
 - BT-025 Add max-lines-per-file guardrails across code and tests
   - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
+- BT-026 Build a reusable skill for local task checks
+  - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
 
 ## Notes
 
