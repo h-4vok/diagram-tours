@@ -7,7 +7,8 @@ The code lives in `packages/web-player/smoke/`.
 ## Commands
 
 - `bun run smoke`: build the packaged runtime and run the full browser suite
-- `bun run prepush`: run lint, typecheck, unit coverage, and `bun run smoke`
+- `bun run prepush:checks`: run labeled `lint`, `typecheck`, and `test` checks in parallel
+- `bun run prepush`: run `bun run prepush:checks`, then `bun run smoke` if that first stage passes
 
 ## Rules
 

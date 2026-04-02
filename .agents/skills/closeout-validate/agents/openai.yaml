@@ -1,0 +1,3 @@
+interface:
+  display_name: "Closeout Validate"
+  short_description: "Validate touched files and report the exact checks run"

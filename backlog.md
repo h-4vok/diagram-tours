@@ -10,16 +10,11 @@ Initial source: a contrast between [`docs/reqs.md`](docs/reqs.md), the current c
 - `Partial`: partially implemented or not yet fully aligned with the intended requirement
 - `Todo`: not implemented yet
 
+Los items q pasan a `Done` deben ser enviados a backlog.done.md
+
 ## Snapshot
 
 Cutoff date: 2026-03-17
-
-### Partial
-
-- BT-005 Wizard path retry UX
-  - Current state: invalid explicit paths fail clearly during wizard input validation
-  - Gap: the wizard should keep the user on the current path-entry step rather than bouncing back to the top-level menu after a missing path
-  - Evidence: `packages/cli/src/lib/wizard.ts`
 
 ### Todo
 - `BT-01` Improve sequence-diagram highlighting quality
@@ -49,15 +44,7 @@ Cutoff date: 2026-03-17
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
 - BT-019 Enforce LOC limits in Linters (Hard Boundaries)
-  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 150) in the web-player package to ensure modularity and context efficiency
-- BT-020 Strengthen CLI version-mode argument precedence coverage
-  - Note: extend `packages/cli/test/args.test.ts` so `--version` is proven to win even when combined with other inputs such as an explicit target or browser-opening flags, preventing false-green regressions in CLI argument precedence
-- BT-021 Expand CLI missing-value sad-path coverage for option parsing
-  - Note: extend `packages/cli/test/args.test.ts` to cover missing values for both `--host` and `--port`, including the realistic case where the next token is another flag, and assert actionable error text for each failure path
-- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
-  - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
-- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
-  - Note: review `package.json` validation/build scripts and use `concurrently` where tasks are independent, so lint/test/typecheck flows finish faster without hiding failures or changing coverage/smoke semantics
+  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 250) in the web-player package to enforce modularity and context efficiency. We should apply SOLID principles and instill small classes with single responsibilities. This overhaul will require 
 - BT-025 Add max-lines-per-file guardrails across code and tests
   - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 

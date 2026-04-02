@@ -202,8 +202,8 @@ Operational docs:
 
 Agent default:
 
-- targeted local checks on touched files/packages
-- operator runs exhaustive/full validation
+- targeted local checks on touched files/packages via `closeout-validate`
+- operator runs exhaustive/full validation via `repo-validate`
 
 Operator quick path:
 
@@ -213,11 +213,14 @@ bun run allchecks:ai
 
 `allchecks:ai` is the human-facing alias for the full validation pass (`prepush`) with normal logs.
 
+`prepush` now runs labeled `lint`, `typecheck`, and `test` checks in parallel first, then runs `smoke` only after that stage passes.
+
 Other available commands:
 
 - `bun run lint`
 - `bun run typecheck`
 - `bun run test`
+- `bun run prepush:checks`
 - `bun run smoke`
 - `bun run prepush`
 

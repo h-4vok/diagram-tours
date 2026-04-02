@@ -8,6 +8,26 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
+  - Outcome: web-player styles no longer use inline `stylelint-disable selector-class-pattern` escapes, and Mermaid-owned external classes are now handled through a narrow allowlist in stylelint config
+  - Evidence: `packages/web-player/stylelint.config.mjs`, `packages/web-player/src/styles/components/diagram-player.css`
+
+- BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
+  - Outcome: root validation now runs labeled `lint`, `typecheck`, and `test` checks in parallel before gating `smoke`, improving operator speed without changing build or smoke semantics
+  - Evidence: `package.json`, `README.md`, `docs/testing/smoke-tests.md`
+
+- BT-020 Strengthen CLI version-mode argument precedence coverage
+  - Outcome: `--version` is now explicitly proven to win over an explicit startup target and browser-opening flags, preventing false-green precedence regressions
+  - Evidence: `packages/cli/test/args.test.ts`
+
+- BT-021 Expand CLI missing-value sad-path coverage for option parsing
+  - Outcome: missing values for both `--host` and `--port` are now explicitly covered at end-of-input and when the next token is another flag, with actionable error text
+  - Evidence: `packages/cli/test/args.test.ts`
+
+- BT-005 Wizard path retry UX
+  - Outcome: missing paths on both explicit wizard path-entry prompts retry in place instead of bouncing back to the top-level menu
+  - Evidence: `packages/cli/src/lib/wizard.ts`, `packages/cli/test/wizard.test.ts`
+
 - BT-003 Author diagnostics
   - Current state: errors include file, step, and field context, and the player exposes skipped tours through an `Issues` badge with clearer hierarchy, cleaner path presentation, and more scannable summaries
   - Gap: still missing line/column data and a richer dedicated author-diagnostics layer
