@@ -43,9 +43,6 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
-- BT-027 Clean-code refactoring initiative: repository framework and manifesto
-  - Note: define the repository's clean-code and refactoring framework first, including cohesion, responsibility boundaries, architectural direction, and how to adapt clean architecture and SOLID principles to idiomatic TypeScript and Svelte
-  - Related: this is step 1 of the clean-code refactoring initiative and should use `docs/clean-code-refactoring.md` as reference input
 - BT-028 Clean-code refactoring initiative: review rubric and decision criteria
   - Note: translate the framework into an explicit review rubric so future refactors and PR reviews can evaluate cohesion, responsibility boundaries, orchestrator exceptions, and meaningful modularity instead of relying on vague style preferences
   - Related: this is step 2 of the clean-code refactoring initiative, depends on BT-027, and should reference `docs/clean-code-refactoring.md`
