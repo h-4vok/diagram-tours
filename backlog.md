@@ -44,9 +44,7 @@ Cutoff date: 2026-03-17
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
 - BT-019 Enforce LOC limits in Linters (Hard Boundaries)
-  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 150) in the web-player package to ensure modularity and context efficiency
-- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
-  - Note: do a repository-wide audit of existing `stylelint-disable` directives, rename selectors where needed, and eliminate lint bypasses so stylelint reflects the real CSS contract instead of local exceptions
+  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 250) in the web-player package to enforce modularity and context efficiency. We should apply SOLID principles and instill small classes with single responsibilities. This overhaul will require 
 - BT-025 Add max-lines-per-file guardrails across code and tests
   - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
 

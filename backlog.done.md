@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
+  - Outcome: web-player styles no longer use inline `stylelint-disable selector-class-pattern` escapes, and Mermaid-owned external classes are now handled through a narrow allowlist in stylelint config
+  - Evidence: `packages/web-player/stylelint.config.mjs`, `packages/web-player/src/styles/components/diagram-player.css`
+
 - BT-023 Introduce `concurrently` for safe parallel package-level validation scripts
   - Outcome: root validation now runs labeled `lint`, `typecheck`, and `test` checks in parallel before gating `smoke`, improving operator speed without changing build or smoke semantics
   - Evidence: `package.json`, `README.md`, `docs/testing/smoke-tests.md`

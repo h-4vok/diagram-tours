@@ -47,7 +47,6 @@
   transition: opacity 400ms ease;
 }
 
-/* stylelint-disable selector-class-pattern */
 .diagram .edgeLabel rect,
 .diagram .labelBkg {
   backdrop-filter: blur(2px);
@@ -106,13 +105,11 @@
   color: var(--node-warning-text);
   fill: var(--node-warning-text);
 }
-/* stylelint-enable selector-class-pattern */
-/* stylelint-disable selector-class-pattern */
+
 .theme-root[data-theme="dark"] .diagram .edgePath path,
 .theme-root[data-theme="dark"] .diagram .flowchart-link {
   stroke: #fff !important;
 }
-/* stylelint-enable selector-class-pattern */
 
 [data-diagram-element-id] {
   opacity: 1;
@@ -259,11 +256,9 @@
   font-weight: 700;
 }
 
-/* stylelint-disable selector-class-pattern */
 .diagram .edgeLabel foreignObject {
   overflow: visible;
 }
-/* stylelint-enable selector-class-pattern */
 
 .diagram [data-connector-role="label"] {
   transition: opacity 400ms ease;
@@ -319,7 +314,6 @@
   z-index: 20;
 }
 
-/* stylelint-disable selector-class-pattern */
 .teleprompter__progress {
   background: var(--accent-primary);
   height: 2px;
@@ -334,19 +328,19 @@
   padding: 24px 32px;
 }
 
-.teleprompter__nav-left,
-.teleprompter__nav-right {
+.teleprompter__navleft,
+.teleprompter__navright {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.teleprompter__text-area {
+.teleprompter__textarea {
   flex: 1;
   text-align: center;
 }
 
-.teleprompter__step-info {
+.teleprompter__stepinfo {
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -405,7 +399,7 @@
   transform: none;
 }
 
-.teleprompter__btn-icon {
+.teleprompter__btnicon {
   font-size: 1.125rem;
   font-weight: 600;
 }
@@ -419,7 +413,6 @@
   background: rgb(255 255 255 / 6%);
   border-color: rgb(255 255 255 / 8%);
 }
-/* stylelint-enable selector-class-pattern */
 
 .error-panel {
   gap: var(--space-lg);

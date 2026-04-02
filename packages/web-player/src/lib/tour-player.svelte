@@ -1137,7 +1137,7 @@
       <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
       
       <div class="teleprompter__content" data-testid="step-overlay">
-        <div class="teleprompter__nav-left">
+        <div class="teleprompter__navleft">
           <button
             type="button"
             class="viewport-toolbar__button"
@@ -1210,12 +1210,12 @@
             data-testid="previous-button"
             aria-label="Previous step"
           >
-            <span class="teleprompter__btn-icon">←</span>
+            <span class="teleprompter__btnicon">←</span>
           </button>
         </div>
 
-          <div class="teleprompter__text-area" data-testid="step-text-container">
-            <p class="teleprompter__step-info">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+          <div class="teleprompter__textarea" data-testid="step-text-container">
+            <p class="teleprompter__stepinfo">Step {state.stepIndex + 1} of {tour.steps.length}</p>
           <p data-testid="step-text" class="teleprompter__text">
             {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
               {#if segment.isCode}
@@ -1230,7 +1230,7 @@
           </p>
         </div>
 
-        <div class="teleprompter__nav-right">
+        <div class="teleprompter__navright">
           <button
             type="button"
             class="teleprompter__btn"
@@ -1239,7 +1239,7 @@
             data-testid="next-button"
             aria-label="Next step"
           >
-            <span class="teleprompter__btn-icon">→</span>
+            <span class="teleprompter__btnicon">→</span>
           </button>
         </div>
       </aside>
