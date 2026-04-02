@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-028 Clean-code refactoring initiative: review rubric and decision criteria
+  - Outcome: added an `Engineering Review Rubric` that operationalizes the repository manifesto into short universal criteria plus artifact-specific review guidance for modules, UI, tests, smoke, and styles
+  - Evidence: `docs/principles/08-engineering-review-rubric.md`, `docs/principles/README.md`, `README.md`
+
 - BT-027 Clean-code refactoring initiative: repository framework and manifesto
   - Outcome: added a short `Engineering Principles` north-star document plus supporting worked-example docs under `docs/principles/`, keeping the main text focused on cohesion, boundaries, explicitness, refactoring, and testing rather than turning it into a rule dump
   - Evidence: `docs/principles/01-engineering-principles.md`, `docs/principles/README.md`, `README.md`

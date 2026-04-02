@@ -193,6 +193,7 @@ Operational docs:
 - [Authoring Guide](docs/authoring-guide.md)
 - [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
 - [Engineering Principles](docs/principles/01-engineering-principles.md)
+- [Engineering Review Rubric](docs/principles/08-engineering-review-rubric.md)
 - [Principles Examples](docs/principles/README.md)
 - [Coverage Dashboard](docs/testing/coverage.md)
 - [Smoke Tests](docs/testing/smoke-tests.md)
