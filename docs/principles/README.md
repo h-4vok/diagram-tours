@@ -5,6 +5,7 @@ This folder contains the repository's engineering north star for clean code and 
 Start here:
 
 - [Engineering Principles](01-engineering-principles.md)
+- [Engineering Review Rubric](08-engineering-review-rubric.md)
 
 Supporting material:
 

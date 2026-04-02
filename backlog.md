@@ -43,9 +43,6 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
-- BT-028 Clean-code refactoring initiative: review rubric and decision criteria
-  - Note: translate the framework into an explicit review rubric so future refactors and PR reviews can evaluate cohesion, responsibility boundaries, orchestrator exceptions, and meaningful modularity instead of relying on vague style preferences
-  - Related: this is step 2 of the clean-code refactoring initiative, depends on BT-027, and should reference `docs/clean-code-refactoring.md`
 - BT-029 Clean-code refactoring initiative: reusable architecture reviewer
   - Note: create a reusable reviewer skill or subagent that applies the repository-specific rubric during refactoring and future PR reviews, focusing on architectural cohesion and mixed responsibilities rather than acting as simple LOC police
   - Related: this is step 3 of the clean-code refactoring initiative, depends on BT-028, and should reference `docs/clean-code-refactoring.md`
