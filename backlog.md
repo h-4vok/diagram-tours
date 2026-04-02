@@ -43,12 +43,21 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
-- BT-019 Enforce LOC limits in Linters (Hard Boundaries)
-  - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 250) in the web-player package to enforce modularity and context efficiency. We should apply SOLID principles and instill small classes with single responsibilities. This overhaul will require 
-- BT-025 Add max-lines-per-file guardrails across code and tests
-  - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
-- BT-026 Build a reusable skill for local task checks
-  - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
+- BT-027 Clean-code refactoring initiative: repository framework and manifesto
+  - Note: define the repository's clean-code and refactoring framework first, including cohesion, responsibility boundaries, architectural direction, and how to adapt clean architecture and SOLID principles to idiomatic TypeScript and Svelte
+  - Related: this is step 1 of the clean-code refactoring initiative and should use `docs/clean-code-refactoring.md` as reference input
+- BT-028 Clean-code refactoring initiative: review rubric and decision criteria
+  - Note: translate the framework into an explicit review rubric so future refactors and PR reviews can evaluate cohesion, responsibility boundaries, orchestrator exceptions, and meaningful modularity instead of relying on vague style preferences
+  - Related: this is step 2 of the clean-code refactoring initiative, depends on BT-027, and should reference `docs/clean-code-refactoring.md`
+- BT-029 Clean-code refactoring initiative: reusable architecture reviewer
+  - Note: create a reusable reviewer skill or subagent that applies the repository-specific rubric during refactoring and future PR reviews, focusing on architectural cohesion and mixed responsibilities rather than acting as simple LOC police
+  - Related: this is step 3 of the clean-code refactoring initiative, depends on BT-028, and should reference `docs/clean-code-refactoring.md`
+- BT-030 Clean-code refactoring initiative: phased repository refactor program
+  - Note: execute the refactoring gradually across the repository in phases, guided by the framework and rubric rather than by arbitrary max-lines thresholds, and use the work to discover the natural target shape for each source, test, smoke, Svelte, and style file category
+  - Related: this is step 4 of the clean-code refactoring initiative, depends on BT-029, and should reference `docs/clean-code-refactoring.md`
+- BT-031 Clean-code refactoring initiative: post-refactor guardrails and LOC alarms
+  - Note: after the repository has gone through the initial refactoring baseline, define and enforce hard LOC and related tooling guardrails per file type so they protect the intended architecture instead of distorting it
+  - Related: this is step 5 of the clean-code refactoring initiative, depends on BT-030, and should reference `docs/clean-code-refactoring.md`
 
 ## Notes
 

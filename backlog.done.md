@@ -8,6 +8,9 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-026 Build a reusable skill for local task checks
+  - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
+
 - BT-022 Remove `stylelint-disable` escapes and align selectors with repo naming rules
   - Outcome: web-player styles no longer use inline `stylelint-disable selector-class-pattern` escapes, and Mermaid-owned external classes are now handled through a narrow allowlist in stylelint config
   - Evidence: `packages/web-player/stylelint.config.mjs`, `packages/web-player/src/styles/components/diagram-player.css`
