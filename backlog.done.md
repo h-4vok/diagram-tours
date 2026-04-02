@@ -10,7 +10,7 @@ Cutoff date: 2026-03-17
 
 - BT-027 Clean-code refactoring initiative: repository framework and manifesto
   - Outcome: added a short `Engineering Principles` north-star document plus supporting worked-example docs under `docs/principles/`, keeping the main text focused on cohesion, boundaries, explicitness, refactoring, and testing rather than turning it into a rule dump
-  - Evidence: `docs/principles/engineering-principles.md`, `docs/principles/README.md`, `README.md`
+  - Evidence: `docs/principles/01-engineering-principles.md`, `docs/principles/README.md`, `README.md`
 
 - BT-026 Build a reusable skill for local task checks
   - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
