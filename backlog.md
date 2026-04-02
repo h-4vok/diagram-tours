@@ -47,6 +47,8 @@ Cutoff date: 2026-03-17
   - Note: transition from "agent promises" to hard technical boundaries by configuring max-lines in ESLint (TS/JS <= 200, Svelte <= 300) and installing/configuring stylelint-max-lines (CSS <= 250) in the web-player package to enforce modularity and context efficiency. We should apply SOLID principles and instill small classes with single responsibilities. This overhaul will require 
 - BT-025 Add max-lines-per-file guardrails across code and tests
   - Note: review repository file sizes and enforce hard per-file LOC limits in lint/tooling so oversized source, test, smoke, and style files fail automatically instead of relying on manual discipline
+- BT-026 Build a reusable skill for local task checks
+  - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
 
 ## Notes
 
