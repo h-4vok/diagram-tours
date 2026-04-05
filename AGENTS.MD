@@ -42,7 +42,7 @@ Load first:
 - Final message: list targeted checks passed.
 - Exhaustive checks: operator-run via `repo-validate`.
 - Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush.
-- Operator request: `Run bun run allchecks:ai; send failing summary only.`  
+- Operator request: `Run bun run allchecks:ai; send failing summary only.`
 - Narrow request: `Run [command]; send failing file/assertion/stack only.`
 - Analyze summary, stack, failing assertion, failing file.
 - Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
@@ -68,3 +68,8 @@ Load first:
 - `parser`: Mermaid/YAML/Markdown ingestion, validation, discovery, slugging, resolved outputs.
 - `web-player`: SvelteKit player, overlays, focus state, viewport, browse, diagnostics, theme.
 - `cli`: args, wizard, startup target selection, server/browser launch, runtime packaging.
+
+## Some important skills
+
+- `product-manager`: `/.agents/skills/product-manager/SKILL.md` for requirement discovery/refinement. Interview the user, work through GitHub Issues directly, and finish by labeling the issue `pm-done`.
+- `tech-lead`: `/.agents/skills/tech-lead/SKILL.md` for technical planning after product scope is clear.
