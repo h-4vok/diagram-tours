@@ -1,0 +1,55 @@
+flowchart LR
+  caller["Caller (CLI, tests, or local preview)"] --> facade["index.ts facade"]
+
+  subgraph public_surface["Public surface"]
+    facade --> contracts["parser-contracts.ts"]
+  end
+
+  subgraph authored_path["Authored tour load path"]
+    loader["authored-tour-loader.ts"]
+    draft["authored-tour-draft.ts"]
+    markdown["markdown-blocks.ts"]
+    context["tour-context.ts + diagnostics.ts"]
+    model["diagram-model.ts"]
+    sequence["sequence-diagram-model.ts"]
+    resolved_diag["resolved-draft-diagnostics.ts"]
+  end
+
+  subgraph discovery_path["Collection and generated discovery"]
+    collection["tour-collection.ts"]
+    discovery["source-path-discovery.ts"]
+    generated["generated-tours.ts"]
+    naming["tour-file-naming.ts"]
+    skipped["skipped-tour.ts"]
+  end
+
+  subgraph validation_path["Validation flow"]
+    validation["validation-targets.ts"]
+  end
+
+  facade --> loader
+  facade --> collection
+  facade --> validation
+
+  loader --> draft
+  loader --> markdown
+  loader --> context
+  loader --> model
+  loader --> resolved_diag
+
+  model --> sequence
+
+  collection --> discovery
+  collection --> loader
+  collection --> generated
+  collection --> naming
+  collection --> skipped
+
+  generated --> markdown
+  generated --> model
+  generated --> naming
+
+  validation --> collection
+  validation --> discovery
+  validation --> skipped
+  validation --> contracts
