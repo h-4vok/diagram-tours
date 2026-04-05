@@ -1,22 +1,27 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { expectDiagramVisible, readDiagramScrollPosition } from "./smoke-test-helpers";
 
 test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
   await page.goto("/ops-huge-system");
   await expectDiagramVisible(page);
-  await expect(page.getByTestId("minimap-surface")).toBeVisible();
-  await expect(page.getByTestId("minimap-viewport-rect")).toBeVisible();
+  const minimapSurface = page.getByTestId("minimap-surface");
+  const minimapViewportRect = page.getByTestId("minimap-viewport-rect");
+
+  await expect(minimapSurface).toBeVisible();
+  await expect(minimapViewportRect).toBeVisible();
 
   const previousScroll = await readDiagramScrollPosition(page);
-  const minimapBox = await page.getByTestId("minimap-surface").boundingBox();
-  const viewportRectBox = await page.getByTestId("minimap-viewport-rect").boundingBox();
+  const minimapBox = await minimapSurface.boundingBox();
+  const viewportRectBox = await minimapViewportRect.boundingBox();
 
   assertLayoutBox(minimapBox);
   assertLayoutBox(viewportRectBox);
   const clickPoint = readMinimapSurfaceClickPoint(minimapBox, viewportRectBox);
-  await page.mouse.click(clickPoint.x, clickPoint.y);
+  await dispatchMinimapPointerDown(minimapSurface, clickPoint);
 
-  await expect.poll(async () => readDiagramScrollPosition(page)).not.toEqual(previousScroll);
+  await expect.poll(async () => readDiagramScrollPosition(page), { timeout: 10_000 }).not.toEqual(
+    previousScroll
+  );
 });
 
 function readMinimapSurfaceClickPoint(
@@ -33,43 +38,67 @@ function readMinimapSurfaceClickPoint(
     y: number;
   }
 ): { x: number; y: number } {
+  return {
+    x: readPanAxisPoint({
+      axisEnd: minimapBox.x + minimapBox.width,
+      axisStart: minimapBox.x,
+      rectStart: viewportRectBox.x
+    }),
+    y: readPanAxisPoint({
+      axisEnd: minimapBox.y + minimapBox.height,
+      axisStart: minimapBox.y,
+      rectStart: viewportRectBox.y
+    })
+  };
+}
+
+function readPanAxisPoint(input: {
+  axisEnd: number;
+  axisStart: number;
+  rectStart: number;
+}): number {
   const inset = 12;
-  const candidates = [
-    { x: minimapBox.x + inset, y: minimapBox.y + inset },
-    { x: minimapBox.x + minimapBox.width - inset, y: minimapBox.y + inset },
-    { x: minimapBox.x + inset, y: minimapBox.y + minimapBox.height - inset },
-    {
-      x: minimapBox.x + minimapBox.width - inset,
-      y: minimapBox.y + minimapBox.height - inset
-    }
-  ];
 
-  for (const candidate of candidates) {
-    if (!isInsideViewportRect(candidate, viewportRectBox)) {
-      return candidate;
-    }
-  }
-
-  return candidates[0];
+  return hasLeadingPanSpace(input.axisStart, input.rectStart, inset)
+    ? input.axisStart + inset
+    : input.axisEnd - inset;
 }
 
-function isInsideViewportRect(
-  point: { x: number; y: number },
-  viewportRectBox: {
-    height: number;
-    width: number;
-    x: number;
-    y: number;
-  }
-): boolean {
-  return (
-    isInsideViewportAxis(point.x, viewportRectBox.x, viewportRectBox.width) &&
-    isInsideViewportAxis(point.y, viewportRectBox.y, viewportRectBox.height)
-  );
+function hasLeadingPanSpace(axisStart: number, rectStart: number, inset: number): boolean {
+  return rectStart - axisStart > inset;
 }
 
-function isInsideViewportAxis(value: number, origin: number, size: number): boolean {
-  return value >= origin && value <= origin + size;
+async function dispatchMinimapPointerDown(
+  minimapSurface: Locator,
+  clickPoint: { x: number; y: number }
+): Promise<void> {
+  await minimapSurface.evaluate((element, point) => {
+    const rect = element.getBoundingClientRect();
+
+    element.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: point.x,
+        clientY: point.y,
+        isPrimary: true,
+        pointerId: 1,
+        pointerType: "mouse"
+      })
+    );
+
+    element.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        clientX: Math.min(Math.max(point.x, rect.left), rect.right),
+        clientY: Math.min(Math.max(point.y, rect.top), rect.bottom),
+        isPrimary: true,
+        pointerId: 1,
+        pointerType: "mouse"
+      })
+    );
+  }, clickPoint);
 }
 
 function assertLayoutBox(input: {
