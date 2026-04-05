@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { expectDiagramVisible, readDiagramScrollPosition } from "./smoke-test-helpers";
 
 test("clicking the minimap pans the main diagram viewport", async ({ page }) => {
@@ -17,7 +17,7 @@ test("clicking the minimap pans the main diagram viewport", async ({ page }) => 
   assertLayoutBox(minimapBox);
   assertLayoutBox(viewportRectBox);
   const clickPoint = readMinimapSurfaceClickPoint(minimapBox, viewportRectBox);
-  await dispatchMinimapPointerDown(minimapSurface, clickPoint);
+  await page.mouse.click(clickPoint.x, clickPoint.y);
 
   await expect.poll(async () => readDiagramScrollPosition(page), { timeout: 10_000 }).not.toEqual(
     previousScroll
@@ -42,11 +42,13 @@ function readMinimapSurfaceClickPoint(
     x: readPanAxisPoint({
       axisEnd: minimapBox.x + minimapBox.width,
       axisStart: minimapBox.x,
+      rectEnd: viewportRectBox.x + viewportRectBox.width,
       rectStart: viewportRectBox.x
     }),
     y: readPanAxisPoint({
       axisEnd: minimapBox.y + minimapBox.height,
       axisStart: minimapBox.y,
+      rectEnd: viewportRectBox.y + viewportRectBox.height,
       rectStart: viewportRectBox.y
     })
   };
@@ -55,50 +57,25 @@ function readMinimapSurfaceClickPoint(
 function readPanAxisPoint(input: {
   axisEnd: number;
   axisStart: number;
+  rectEnd: number;
   rectStart: number;
 }): number {
-  const inset = 12;
-
-  return hasLeadingPanSpace(input.axisStart, input.rectStart, inset)
-    ? input.axisStart + inset
-    : input.axisEnd - inset;
+  return hasLeadingPanSpace(input)
+    ? readAxisMidpoint(input.axisStart, input.rectStart)
+    : readAxisMidpoint(input.rectEnd, input.axisEnd);
 }
 
-function hasLeadingPanSpace(axisStart: number, rectStart: number, inset: number): boolean {
-  return rectStart - axisStart > inset;
+function hasLeadingPanSpace(input: {
+  axisEnd: number;
+  axisStart: number;
+  rectEnd: number;
+  rectStart: number;
+}): boolean {
+  return input.rectStart - input.axisStart > input.axisEnd - input.rectEnd;
 }
 
-async function dispatchMinimapPointerDown(
-  minimapSurface: Locator,
-  clickPoint: { x: number; y: number }
-): Promise<void> {
-  await minimapSurface.evaluate((element, point) => {
-    const rect = element.getBoundingClientRect();
-
-    element.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        bubbles: true,
-        button: 0,
-        clientX: point.x,
-        clientY: point.y,
-        isPrimary: true,
-        pointerId: 1,
-        pointerType: "mouse"
-      })
-    );
-
-    element.dispatchEvent(
-      new PointerEvent("pointerup", {
-        bubbles: true,
-        button: 0,
-        clientX: Math.min(Math.max(point.x, rect.left), rect.right),
-        clientY: Math.min(Math.max(point.y, rect.top), rect.bottom),
-        isPrimary: true,
-        pointerId: 1,
-        pointerType: "mouse"
-      })
-    );
-  }, clickPoint);
+function readAxisMidpoint(start: number, end: number): number {
+  return start + (end - start) / 2;
 }
 
 function assertLayoutBox(input: {
