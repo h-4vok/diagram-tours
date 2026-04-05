@@ -190,6 +190,33 @@ describe("tour-player.svelte", () => {
     ).not.toBeNull();
   });
 
+  it("clicking the minimap surface recenters the diagram viewport", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const minimapSurface = await screen.findByTestId("minimap-surface");
+
+    expect(screen.getByTestId("minimap-viewport-rect")).toBeDefined();
+    mockElementRect(minimapSurface, { height: 154, left: 0, top: 0, width: 220 });
+    diagramContainer.scrollLeft = 180;
+    diagramContainer.scrollTop = 120;
+
+    await fireEvent.pointerDown(minimapSurface, {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    });
+
+    await waitFor(() => {
+      expect(diagramContainer.scrollLeft).toBe(0);
+      expect(diagramContainer.scrollTop).toBe(0);
+    });
+  });
+
   it("hides the minimap automatically on small screens", async () => {
     setWindowWidth(640);
 
@@ -770,6 +797,10 @@ function createDomRect(input: RectInput): DOMRect {
     top: input.top,
     width: input.width,
   } as DOMRect;
+}
+
+function mockElementRect(element: Element, input: RectInput): void {
+  element.getBoundingClientRect = () => createDomRect(input);
 }
 
 function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {
