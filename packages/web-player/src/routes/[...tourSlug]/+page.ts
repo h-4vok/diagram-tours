@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
-import type { PageServerLoad } from "./$types";
+import type { PageLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ params, parent, url }) => {
+export const load: PageLoad = async ({ params, parent, url }) => {
   const { collection } = await parent();
   const selectedSlug = params.tourSlug;
   const entry = collection.entries.find(

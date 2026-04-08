@@ -187,6 +187,7 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("camera-control-panel").lastElementChild).toBe(
       screen.getByTestId("viewport-toolbar"),
     );
+    expect(screen.getByTestId("zoom-one-hundred-button")).toBeDefined();
     expect(
       container.querySelector('[data-testid="step-overlay"]'),
     ).not.toBeNull();
@@ -261,7 +262,7 @@ describe("tour-player.svelte", () => {
     );
   });
 
-  it("zooms the rendered svg and updates the segmented zoom value", async () => {
+  it("zooms the rendered svg, keeps the visible percentage separate, and enables the explicit 100 percent reset", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -276,6 +277,18 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("zoom-value").textContent).toContain(
       "100%",
     );
+    expect(
+      Array.from(screen.getByTestId("viewport-toolbar").children).map(
+        (element) => element.getAttribute("data-testid") ?? element.textContent?.trim(),
+      ),
+    ).toEqual(["zoom-primary-controls", "zoom-value", "zoom-one-hundred-button"]);
+    expect(screen.getByTestId("zoom-primary-controls").textContent?.replace(/\s+/gu, "")).toBe(
+      "-Fit+",
+    );
+    expect(
+      (screen.getByTestId("zoom-one-hundred-button") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
 
     await fireEvent.click(screen.getByTestId("zoom-in-button"));
 
@@ -285,6 +298,13 @@ describe("tour-player.svelte", () => {
       expect(screen.getByTestId("zoom-value").textContent).toContain(
         "125%",
       );
+      expect(screen.getByTestId("zoom-one-hundred-button").textContent).toBe(
+        "100%",
+      );
+      expect(
+        (screen.getByTestId("zoom-one-hundred-button") as HTMLButtonElement)
+          .disabled,
+      ).toBe(false);
     });
 
     await fireEvent.click(screen.getByTestId("zoom-out-button"));
@@ -298,7 +318,7 @@ describe("tour-player.svelte", () => {
     });
   });
 
-  it("fits the current diagram to the viewport when requested", async () => {
+  it("keeps fit stable after a manual zoom change", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -313,11 +333,52 @@ describe("tour-player.svelte", () => {
     await fireEvent.click(screen.getByTestId("zoom-fit-button"));
 
     await waitFor(() => {
-      expect(svg?.getAttribute("width")).toBe("480");
-      expect(svg?.getAttribute("height")).toBe("320");
+      expect(svg?.getAttribute("width")).toBe("720");
+      expect(svg?.getAttribute("height")).toBe("480");
       expect(screen.getByTestId("zoom-value").textContent).toContain(
-        "50%",
+        "75%",
       );
+    });
+
+    const fittedScrollLeft = diagramContainer.scrollLeft;
+    const fittedScrollTop = diagramContainer.scrollTop;
+
+    await fireEvent.click(screen.getByTestId("zoom-in-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("960");
+      expect(screen.getByTestId("zoom-value").textContent).toContain("100%");
+    });
+
+    await fireEvent.click(screen.getByTestId("zoom-fit-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("720");
+      expect(svg?.getAttribute("height")).toBe("480");
+      expect(diagramContainer.scrollLeft).toBe(fittedScrollLeft);
+      expect(diagramContainer.scrollTop).toBe(fittedScrollTop);
+    });
+  });
+
+  it("resets back to 100 percent and recenters on the diagram content", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const svg = diagramContainer.querySelector("svg");
+
+    await fireEvent.click(screen.getByTestId("zoom-fit-button"));
+    await fireEvent.click(screen.getByTestId("zoom-one-hundred-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("960");
+      expect(svg?.getAttribute("height")).toBe("640");
+      expect(screen.getByTestId("zoom-value").textContent).toContain("100%");
+      expect(diagramContainer.scrollLeft).toBe(300);
+      expect(diagramContainer.scrollTop).toBe(234);
     });
   });
 
@@ -654,6 +715,7 @@ function renderDiagramForTest(input: {
 }): Promise<void> {
   const parent = input.container.parentElement as HTMLElement;
   const positions = createNodePositions();
+  const svgOrigin = { left: 180, top: 140 };
 
   input.container.innerHTML = `<svg data-testid="diagram-svg" width="960" height="640" data-intrinsic-width="960" data-intrinsic-height="640">${input.diagram.elements
     .map(
@@ -690,7 +752,12 @@ function renderDiagramForTest(input: {
   const svg = input.container.querySelector("svg") as SVGSVGElement;
 
   svg.getBoundingClientRect = () =>
-    createDomRect({ height: 640, left: 160, top: 140, width: 960 });
+    createDomRect({
+      height: readRenderedSvgDimension(svg, "height"),
+      left: svgOrigin.left,
+      top: svgOrigin.top,
+      width: readRenderedSvgDimension(svg, "width"),
+    });
 
   input.container
     .querySelectorAll<SVGGElement>("[data-node-id]")
@@ -698,7 +765,13 @@ function renderDiagramForTest(input: {
       const nodeId = element.dataset.nodeId ?? "";
       const rect = positions[nodeId];
 
-      element.getBoundingClientRect = () => createDomRect(rect);
+      element.getBoundingClientRect = () =>
+        createScaledNodeRect(rect, readRenderedZoomScale(svg), svgOrigin);
+      Object.assign(element, {
+        getBBox() {
+          return createSvgRect(rect);
+        },
+      });
     });
 
   const connector = input.container.querySelector(".flowchart-link") as SVGElement;
@@ -722,12 +795,12 @@ function renderDiagramForTest(input: {
 
 function createNodePositions(): Record<string, RectInput> {
   return {
-    api_gateway: { height: 82, left: 360, top: 290, width: 122 },
-    client: { height: 76, left: 150, top: 292, width: 118 },
-    payment_provider: { height: 84, left: 930, top: 290, width: 136 },
-    payment_service: { height: 84, left: 760, top: 290, width: 126 },
-    response: { height: 76, left: 1120, top: 292, width: 128 },
-    validation_service: { height: 84, left: 560, top: 290, width: 142 },
+    api_gateway: { height: 82, left: 220, top: 292, width: 122 },
+    client: { height: 76, left: 40, top: 294, width: 118 },
+    payment_provider: { height: 84, left: 690, top: 292, width: 136 },
+    payment_service: { height: 84, left: 540, top: 292, width: 126 },
+    response: { height: 76, left: 812, top: 294, width: 108 },
+    validation_service: { height: 84, left: 370, top: 292, width: 142 },
   };
 }
 
@@ -860,6 +933,19 @@ interface RectInput {
   width: number;
 }
 
+function createScaledNodeRect(
+  input: RectInput,
+  zoomScale: number,
+  svgOrigin: { left: number; top: number },
+): DOMRect {
+  return createDomRect({
+    height: input.height * zoomScale,
+    left: svgOrigin.left + input.left * zoomScale,
+    top: svgOrigin.top + input.top * zoomScale,
+    width: input.width * zoomScale,
+  });
+}
+
 function createDomRect(input: RectInput): DOMRect {
   return {
     bottom: input.top + input.height,
@@ -871,8 +957,28 @@ function createDomRect(input: RectInput): DOMRect {
   } as DOMRect;
 }
 
+function createSvgRect(input: RectInput): SVGRect {
+  return {
+    height: input.height,
+    width: input.width,
+    x: input.left,
+    y: input.top,
+  } as SVGRect;
+}
+
 function mockElementRect(element: Element, input: RectInput): void {
   element.getBoundingClientRect = () => createDomRect(input);
+}
+
+function readRenderedZoomScale(svg: SVGSVGElement): number {
+  return Number(svg.dataset.zoomScale ?? 1);
+}
+
+function readRenderedSvgDimension(
+  svg: SVGSVGElement,
+  axis: "height" | "width",
+): number {
+  return Number(svg.getAttribute(axis));
 }
 
 function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {

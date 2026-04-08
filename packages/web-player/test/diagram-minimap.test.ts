@@ -268,6 +268,62 @@ describe("diagram minimap helpers", () => {
     ]);
   });
 
+  it("scales sampled connector geometry with the rendered svg zoom", () => {
+    const fixture = createFixture();
+    const svg = readSvg(fixture.content) as SVGSVGElement & {
+      dataset: Record<string, string>;
+    };
+
+    svg.dataset = {
+      intrinsicHeight: "600",
+      intrinsicWidth: "740"
+    };
+    mockRect(svg, { height: 1200, left: 40, top: 30, width: 1480 });
+    mockConnector(fixture, ".flowchart-link", createPathConnectorStub([
+      { x: 120, y: 80 },
+      { x: 220, y: 80 }
+    ]));
+
+    expect(
+      readDiagramMinimapConnectors({
+        content: fixture.content
+      })
+    ).toEqual([
+      {
+        arrowhead: { angle: 0, x: 480, y: 190 },
+        segments: expect.arrayContaining([{ x1: 280, y1: 190, x2: 320, y2: 190 }])
+      }
+    ]);
+  });
+
+  it("falls back to unscaled connector geometry when rendered svg bounds collapse", () => {
+    const fixture = createFixture();
+    const svg = readSvg(fixture.content) as SVGSVGElement & {
+      dataset: Record<string, string>;
+    };
+
+    svg.dataset = {
+      intrinsicHeight: "600",
+      intrinsicWidth: "740"
+    };
+    mockRect(svg, { height: 0, left: 40, top: 30, width: 0 });
+    mockConnector(fixture, ".flowchart-link", createPathConnectorStub([
+      { x: 120, y: 80 },
+      { x: 220, y: 80 }
+    ]));
+
+    expect(
+      readDiagramMinimapConnectors({
+        content: fixture.content
+      })
+    ).toEqual([
+      {
+        arrowhead: { angle: 0, x: 260, y: 110 },
+        segments: expect.arrayContaining([{ x1: 160, y1: 110, x2: 180, y2: 110 }])
+      }
+    ]);
+  });
+
   it("defaults connector geometry to an empty list when connectors are omitted", () => {
     expect(
       createDiagramMinimapGeometry({

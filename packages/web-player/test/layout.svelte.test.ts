@@ -1,14 +1,30 @@
-import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { gotoMock, pageState } = vi.hoisted(() => ({
-  gotoMock: vi.fn(() => Promise.resolve()),
-  pageState: {
+const { afterNavigateMock, gotoMock, pageState, resetNavigationMocks, setPageUrl } = vi.hoisted(() => {
+  const currentPage = {
     url: new URL("https://example.test/payment-flow")
-  }
-}));
+  };
+  const afterNavigateCallbacks = new Set<(value: { to: { url: URL } }) => void>();
+
+  return {
+    afterNavigateMock(callback: (value: { to: { url: URL } }) => void) {
+      afterNavigateCallbacks.add(callback);
+    },
+    gotoMock: vi.fn(() => Promise.resolve()),
+    pageState: currentPage,
+    resetNavigationMocks() {
+      afterNavigateCallbacks.clear();
+    },
+    setPageUrl(url: string) {
+      currentPage.url = new URL(url);
+      afterNavigateCallbacks.forEach((run) => run({ to: currentPage }));
+    }
+  };
+});
 
 vi.mock("$app/navigation", () => ({
+  afterNavigate: afterNavigateMock,
   goto: gotoMock
 }));
 
@@ -37,9 +53,10 @@ const directorySourceTarget = {
 describe("+layout.svelte", () => {
   beforeEach(() => {
     gotoMock.mockClear();
+    resetNavigationMocks();
     window.localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
-    pageState.url = new URL("https://example.test/payment-flow");
+    setPageUrl("https://example.test/payment-flow");
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn(() => Promise.resolve())
@@ -188,7 +205,7 @@ describe("+layout.svelte", () => {
   });
 
   it("tracks the active row from the current route, arrow keys, and enter", async () => {
-    pageState.url = new URL("https://example.test/refund-flow");
+    setPageUrl("https://example.test/refund-flow");
 
     render(Layout, {
       data: {
@@ -256,7 +273,7 @@ describe("+layout.svelte", () => {
   });
 
   it("keeps the command palette open when reopened after a route change settles", async () => {
-    pageState.url = new URL("https://example.test/payment-flow");
+    setPageUrl("https://example.test/payment-flow");
 
     render(Layout, {
       data: {
@@ -265,7 +282,7 @@ describe("+layout.svelte", () => {
       }
     });
 
-    pageState.url = new URL("https://example.test/refund-flow");
+    setPageUrl("https://example.test/refund-flow");
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     expect(await screen.findByTestId("browse-panel")).toBeDefined();
@@ -273,6 +290,23 @@ describe("+layout.svelte", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(screen.getByTestId("browse-panel")).toBeDefined();
+  });
+
+  it("updates breadcrumbs when the active route changes inside the shell", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Payment Flow");
+
+    setPageUrl("https://example.test/refund-flow");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Refund Flow");
+    });
   });
 
   it("shows the preview notice for single-file author previews", async () => {

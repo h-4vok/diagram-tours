@@ -39,6 +39,7 @@ test("docs shell browse navigation changes tours without breaking the player", a
   await page.getByText("Refund Flow").click();
 
   await expect(page).toHaveURL(/\/checkout-refund-flow$/);
+  await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Refund Flow");
   await expect(page.getByTestId("step-text-container")).toContainText("reverse a payment");
 
   await page.getByTestId("search-hint-trigger").click();
@@ -50,5 +51,6 @@ test("docs shell browse navigation changes tours without breaking the player", a
   await page.getByText("Decision Flow").click();
 
   await expect(page).toHaveURL(/\/checkout-decision-flow$/);
+  await expect(page.getByTestId("topbar-breadcrumbs")).toContainText("Decision Flow");
   await expect(page.getByTestId("step-text")).toBeVisible();
 });
