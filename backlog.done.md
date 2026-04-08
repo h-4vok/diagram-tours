@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-010 `diagram-tours init` scaffolding for new authored tours
+  - Outcome: `diagram-tours init` now supports deriving editable `*.tour.yaml` files from Mermaid or Markdown sources, including interactive Markdown block selection, and can also create a valid authored `*.tour.yaml` plus sibling `.mmd` starter diagram from scratch
+  - Evidence: `packages/cli/src/lib/init.ts`, `packages/cli/test/init.test.ts`, `README.md`, `docs/authoring-guide.md`
+
 - BT-026 Build a reusable skill for local task checks
   - Note: create a reusable Codex skill that standardizes how local task-level validation is selected and run, so bounded changes consistently use the right narrow lint, typecheck, test, and smoke commands before escalation to full repo checks
 

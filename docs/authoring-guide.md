@@ -177,13 +177,21 @@ That creates `.diagram-tours/instructions.md` and can optionally install a Codex
 
 Run `setup` with no flags for the interactive flow, or use `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite` directly.
 
-When you want a starter authored tour from a Mermaid file instead of starting from scratch, run:
+When you want a starter authored tour without writing everything by hand, run:
 
 ```bash
 diagram-tours init ./examples/checkout/payment-flow.mmd
+diagram-tours init ./docs/checklist.md#details
+diagram-tours init ./examples/checkout/payment-flow.tour.yaml
 ```
 
-`init` currently targets standalone `.mmd` or `.mermaid` files and writes a sibling `*.tour.yaml`. Pass `--overwrite` if the sibling tour file already exists and you intentionally want to replace it.
+`init` accepts a single target path and picks the scaffold mode from that target:
+
+- `.mmd` or `.mermaid`: generate a sibling `*.tour.yaml` from the existing Mermaid source
+- `.md`: generate a `*.tour.yaml` from a Mermaid fenced block; if the Markdown file has multiple Mermaid blocks, use `#fragment` or choose a block interactively
+- `.tour.yaml`: create that YAML file from scratch and also create a sibling `.mmd` starter diagram with the same stem
+
+Pass `--overwrite` if the destination scaffold files already exist and you intentionally want to replace them.
 
 ## Validate Common Failure Cases
 
@@ -213,20 +221,12 @@ With no target, validation walks the current directory recursively and checks au
 
 A practical local loop is:
 
-<<<<<<< HEAD
-1. run `diagram-tours init <diagram.mmd>` if you need a starter authored tour
+1. run `diagram-tours init <target>` if you need a starter authored tour or an empty authored scaffold
 2. start the player against the target you want to edit
 3. iterate on Mermaid and YAML together
-4. run `diagram-tours validate [target]`
+4. run `diagram-tours validate` on the file or folder you changed
 5. run `bun run test`
 6. run `bun run smoke` if viewport or interaction behavior changed
-=======
-1. start the player against the target you want to edit
-2. iterate on Mermaid and YAML together
-3. run `diagram-tours validate` on the file or folder you changed
-4. run `bun run test`
-5. run `bun run smoke` if viewport or interaction behavior changed
->>>>>>> origin/main
 
 For the published product flow, use the global CLI:
 

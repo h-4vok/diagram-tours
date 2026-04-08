@@ -188,6 +188,26 @@ describe("parseCliArgs", () => {
     });
   });
 
+  it("parses init with a markdown fragment target", () => {
+    expect(parseCliArgs(["init", "./docs/checklist.md#review"])).toEqual({
+      command: "init",
+      options: {
+        overwrite: false,
+        target: "./docs/checklist.md#review"
+      }
+    });
+  });
+
+  it("parses init with an empty-tour target", () => {
+    expect(parseCliArgs(["init", "./examples/checkout/payment-flow.tour.yaml"])).toEqual({
+      command: "init",
+      options: {
+        overwrite: false,
+        target: "./examples/checkout/payment-flow.tour.yaml"
+      }
+    });
+  });
+
   it("rejects invalid ports", () => {
     expect(() => parseCliArgs(["--port", "wat"])).toThrow("Expected --port to be an integer.");
   });
@@ -233,12 +253,12 @@ describe("parseCliArgs", () => {
   });
 
   it("rejects init without a target", () => {
-    expect(() => parseCliArgs(["init"])).toThrow("Expected init to receive a Mermaid diagram path.");
+    expect(() => parseCliArgs(["init"])).toThrow("Expected init to receive a target path.");
   });
 
   it("rejects multiple init targets", () => {
     expect(() => parseCliArgs(["init", "./one.mmd", "./two.mmd"])).toThrow(
-      "Only one diagram path may be provided to init."
+      "Only one target path may be provided to init."
     );
   });
 

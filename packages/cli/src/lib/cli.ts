@@ -54,7 +54,7 @@ async function handleInitCommand(
   parsed: Extract<ParsedCliArgs, { command: "init" }>,
   _opener: BrowserOpener
 ): Promise<number> {
-  return await runInitCommand(parsed.options);
+  return await withPromptIo((io) => runInitCommand(parsed.options, io));
 }
 
 async function handleSetupCommand(

@@ -198,7 +198,11 @@ describe("runCli", () => {
     expect(runInitCommandMock).toHaveBeenCalledWith({
       overwrite: false,
       target: "./examples/checkout/payment-flow.mmd"
-    });
+    }, expect.objectContaining({
+      question: expect.any(Function),
+      write: expect.any(Function)
+    }));
+    expect(closeMock).toHaveBeenCalledOnce();
     expect(startWebServerMock).not.toHaveBeenCalled();
   });
 

@@ -92,9 +92,42 @@ describe("validateTargetPath", () => {
     expect(validateInitTarget("./examples/checkout-payment-flow.mmd")).toContain("payment-flow.mmd");
   });
 
-  it("rejects tour files for init", () => {
-    expect(() => validateInitTarget("./examples/checkout-payment-flow.tour.yaml")).toThrow(
-      "Expected a .mmd or .mermaid file for init:"
+  it("accepts markdown files for init", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "diagram-tours-cli-"));
+    const target = join(directory, "preview.md");
+
+    await writeFile(target, "# Preview");
+
+    expect(validateInitTarget(target)).toContain("preview.md");
+  });
+
+  it("accepts markdown fragment targets for init", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "diagram-tours-cli-"));
+    const target = join(directory, "preview.md");
+
+    await writeFile(target, "# Preview");
+
+    expect(validateInitTarget(`${target}#overview`)).toContain("preview.md#overview");
+  });
+
+  it("accepts tour files for empty init", () => {
+    expect(validateInitTarget("./examples/checkout-payment-flow.tour.yaml")).toContain("payment-flow.tour.yaml");
+  });
+
+  it("rejects non-markdown fragments for init", () => {
+    expect(() => validateInitTarget("./examples/checkout-payment-flow.mmd#overview")).toThrow(
+      "Expected a .mmd, .mermaid, .md, or .tour.yaml file for init:"
     );
+  });
+
+  it("suggests a .tour.yaml target when init receives a missing simple stem", () => {
+    expect(() => validateInitTarget("cosa")).toThrow(
+      "If you want to create a new authored tour from scratch, run: diagram-tours init ./cosa.tour.yaml"
+    );
+  });
+
+  it("does not suggest scaffold creation when init receives a missing path-like target", () => {
+    expect(() => validateInitTarget("cosa/cosa2")).toThrow(`Path does not exist: ${resolve(REPO_ROOT, "cosa/cosa2")}`);
+    expect(() => validateInitTarget("cosa/cosa2")).not.toThrow("If you want to create a new authored tour");
   });
 });

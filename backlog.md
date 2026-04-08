@@ -25,8 +25,8 @@ Cutoff date: 2026-03-17
   - Note: dark mode remains noticeably weaker on sequence diagrams than on the rest of the player and still needs a dedicated visual pass
 - `BT-04` Stepper and step-text presentation redesign
   - Note: the current overlay works functionally, but the step pills and text presentation should be revisited together
-- BT-010 `diagram-tours init` scaffolding for new authored tours
-  - Note: add a CLI command that can create a new `*.tour.yaml` from scratch, or inspect an existing Mermaid source and scaffold a starter tour with the right `diagram` target and step structure
+- BT-032 Support flowchart decision nodes in parser and player contracts
+  - Note: flowchart decision nodes such as `id{Decision}` should become addressable in generated tours and authored focus/text references instead of being skipped by the current node extraction
 - BT-011 Installable authoring reference for AI agents and repository tooling
   - Note: add a command that installs a reusable Markdown reference describing the `tour.yaml` standard so files like `AGENTS.md` or other agent instructions can point to one stable doc for Codex, Claude Code, and similar tools
 - BT-013 Adoption and onboarding strategy for people and AI assistants
@@ -58,6 +58,11 @@ Cutoff date: 2026-03-17
 - BT-031 Clean-code refactoring initiative: post-refactor guardrails and LOC alarms
   - Note: after the repository has gone through the initial refactoring baseline, define and enforce hard LOC and related tooling guardrails per file type so they protect the intended architecture instead of distorting it
   - Related: this is step 5 of the clean-code refactoring initiative, depends on BT-030, and should reference `docs/clean-code-refactoring.md`
+
+### Done
+- BT-010 `diagram-tours init` scaffolding for new authored tours
+  - Outcome: `diagram-tours init` now supports deriving editable `*.tour.yaml` files from Mermaid or Markdown sources, including interactive Markdown block selection, and can also create a valid authored `*.tour.yaml` plus sibling `.mmd` starter diagram from scratch
+  - Evidence: `packages/cli/src/lib/init.ts`, `packages/cli/test/init.test.ts`, `README.md`, `docs/authoring-guide.md`
 
 ## Notes
 

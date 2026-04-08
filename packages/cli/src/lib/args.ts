@@ -277,7 +277,7 @@ function parseInitArgs(input: string[]): ParsedInitArgs {
   input.forEach((value) => readInitValue(value, state));
 
   if (state.target === null) {
-    throw new Error("Expected init to receive a Mermaid diagram path.");
+    throw new Error("Expected init to receive a target path.");
   }
 
   return state as ParsedInitArgs;
@@ -318,7 +318,7 @@ function assignInitTarget(
   target: string
 ): void {
   if (state.target !== null) {
-    throw new Error("Only one diagram path may be provided to init.");
+    throw new Error("Only one target path may be provided to init.");
   }
 
   state.target = target;
