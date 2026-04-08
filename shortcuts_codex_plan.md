@@ -116,7 +116,7 @@ The goal is to make keyboard interaction feel intentional and learnable, not "hi
 - Documentation:
   - update `README.md` capability list
   - update `docs/testing/smoke-tests.md`
-  - update `backlog.md` by moving the item to `In Progress` at start, with testing notes, then to `Done` if fully delivered
+  - update the corresponding GitHub Issue status and notes as the implementation progresses
 
 ## Assumptions and Defaults
 

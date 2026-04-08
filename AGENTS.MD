@@ -53,7 +53,7 @@ Load first:
 ## Docs / Tracking
 - Update docs when behavior, contracts, startup flow, validation flow, or contributor workflow changes.
 - Check when relevant: `README.md`, `docs/runtime-loading.md`, `docs/authoring-guide.md`, `docs/adoption-onboarding.md`, `docs/testing/smoke-tests.md`, `docs/tour-spec-v1.md`.
-- If `backlog.md` item changed materially, update it in same change.
+- Track backlog and planning work in GitHub Issues, not repo-local backlog files.
 - `docs/reqs.md`: reference only after checking code/newer docs.
 
 ## UX / PR

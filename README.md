@@ -187,6 +187,8 @@ Contributor guidance lives here:
 
 - [AGENTS.md](AGENTS.md)
 
+Backlog and planning now live in GitHub Issues. Use issue numbers as the canonical work-item identifiers instead of repo-local `BT-*` codes.
+
 Operational docs:
 
 - [Runtime Loading](docs/runtime-loading.md)
