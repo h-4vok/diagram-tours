@@ -321,18 +321,9 @@ describe("@diagram-tour/parser tour collection", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout-decision-flow",
       "checkout-payment-flow",
-      "checkout-refund-flow",
-      "navigation-viewport-centering",
-      "navigation-viewport-stability",
-      "ops-huge-system",
-      "ops-incident-response",
-      "ops-parallel-onboarding",
-      "ops-release-pipeline",
+      "payments-platform-overview",
       "sequence-order-sequence",
-      "support-support-decision-tree",
-      "support-support-handoff"
     ]);
   });
 });

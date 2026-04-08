@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectDiagramVisible } from "./smoke-test-helpers";
 
 test("deep-linked step changes reuse the same Mermaid svg", async ({ page }) => {
-  await page.goto("/checkout-decision-flow?step=2");
+  await page.goto("/sequence-order-sequence?step=2");
 
   await expectDiagramVisible(page);
 
@@ -16,7 +16,7 @@ test("deep-linked step changes reuse the same Mermaid svg", async ({ page }) => 
 
   await page.getByTestId("next-button").click();
 
-  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
+  await expect(page).toHaveURL(/\/sequence-order-sequence\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] svg')).toHaveAttribute(
     "data-test-instance-id",
     diagramInstanceId

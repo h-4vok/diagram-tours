@@ -4,7 +4,7 @@ import { startDevServer } from "./dev-server";
 
 test("interactive startup skips the prompt when a target is explicit", async ({ page }) => {
   const server = await startDevServer({
-    args: ["./examples/checkout-refund-flow.tour.yaml"],
+    args: ["./examples/payments-platform-overview.tour.yaml"],
     port: 4180
   });
 
@@ -14,8 +14,8 @@ test("interactive startup skips the prompt when a target is explicit", async ({ 
     await expect(page.getByTestId("browse-panel")).toBeVisible();
 
     await expectSingleTourBrowse(page, {
-      expectedTitle: "Refund Flow",
-      filename: "checkout-refund-flow.tour.yaml",
+      expectedTitle: "Payments Platform Overview",
+      filename: "payments-platform-overview.tour.yaml",
       unexpectedTitle: "Payment Flow"
     });
     expect(server.output).not.toContain("Choose what to open:");

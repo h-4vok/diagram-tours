@@ -1,0 +1,80 @@
+flowchart TD
+  customer_apps[Customer Apps]
+  merchant_portal[Merchant Portal]
+  partner_integrations[Partner Integrations]
+  edge_gateway[Edge Gateway]
+  api_protection[API Protection]
+  auth_service[Auth Service]
+  rate_limits[Rate Limits]
+  traffic_router[Traffic Router]
+
+  checkout_orchestrator[Checkout Orchestrator]
+  payment_service[Payment Service]
+  risk_engine[Risk Engine]
+  fraud_model[Fraud Model]
+  ledger_service[Ledger Service]
+  settlement_jobs[Settlement Jobs]
+
+  catalog_service[Catalog Service]
+  cart_service[Cart Service]
+  order_service[Order Service]
+  inventory_service[Inventory Service]
+  shipping_service[Shipping Service]
+
+  event_bus[(Event Bus)]
+  notifications[Notification Hub]
+  analytics_stream[(Analytics Stream)]
+  audit_log[(Audit Log)]
+  operations_console[Operations Console]
+  support_console[Support Console]
+  compliance_exports[Compliance Exports]
+  dead_letter_queue[(Dead Letter Queue)]
+
+  customer_apps --> edge_gateway
+  merchant_portal --> edge_gateway
+  partner_integrations --> edge_gateway
+
+  edge_gateway --> api_protection
+  api_protection --> auth_service
+  auth_service --> rate_limits
+  rate_limits --> traffic_router
+
+  traffic_router --> checkout_orchestrator
+  traffic_router --> catalog_service
+  traffic_router --> cart_service
+  traffic_router --> order_service
+  traffic_router --> shipping_service
+
+  checkout_orchestrator --> payment_service
+  checkout_orchestrator --> risk_engine
+  checkout_orchestrator --> order_service
+
+  risk_engine --> fraud_model
+  risk_engine --> payment_service
+
+  payment_service --> ledger_service
+  payment_service --> settlement_jobs
+  payment_service --> event_bus
+  payment_service --> audit_log
+
+  order_service --> inventory_service
+  order_service --> shipping_service
+  order_service --> event_bus
+  order_service --> audit_log
+
+  catalog_service --> event_bus
+  cart_service --> event_bus
+  shipping_service --> event_bus
+  inventory_service --> event_bus
+
+  event_bus --> notifications
+  event_bus --> analytics_stream
+  event_bus --> operations_console
+  event_bus --> support_console
+  event_bus --> compliance_exports
+  event_bus --> dead_letter_queue
+
+  settlement_jobs --> audit_log
+  dead_letter_queue --> operations_console
+  support_console --> order_service
+  support_console --> payment_service

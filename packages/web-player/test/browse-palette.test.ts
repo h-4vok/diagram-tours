@@ -17,10 +17,10 @@ const entries = [
     type: "flowchart"
   }),
   createEntry({
-    slug: "checkout-refund-flow",
-    sourcePath: "examples/checkout-refund-flow.tour.yaml",
-    stepCount: 2,
-    title: "Refund Flow",
+    slug: "payments-platform-overview",
+    sourcePath: "examples/payments-platform-overview.tour.yaml",
+    stepCount: 6,
+    title: "Payments Platform Overview",
     type: "flowchart"
   }),
   createEntry({
@@ -36,9 +36,9 @@ describe("browse-palette", () => {
   it("builds favorites, recent, and all sections without duplicates", () => {
     const sections = buildBrowsePaletteSections({
       entries,
-      favoriteSlugs: ["checkout-refund-flow"],
+      favoriteSlugs: ["payments-platform-overview"],
       query: "",
-      recentSlugs: ["checkout-refund-flow", "checkout-payment-flow"]
+      recentSlugs: ["payments-platform-overview", "checkout-payment-flow"]
     });
 
     expect(sections).toEqual([
@@ -47,10 +47,10 @@ describe("browse-palette", () => {
         items: [
           {
             diagramType: "flowchart",
-            slug: "checkout-refund-flow",
-            sourcePath: "examples/checkout-refund-flow.tour.yaml",
-            stepCount: 2,
-            title: "Refund Flow"
+            slug: "payments-platform-overview",
+            sourcePath: "examples/payments-platform-overview.tour.yaml",
+            stepCount: 6,
+            title: "Payments Platform Overview"
           }
         ],
         title: "Favorites"
@@ -89,7 +89,7 @@ describe("browse-palette", () => {
       buildBrowsePaletteSections({
         entries,
         favoriteSlugs: [],
-        query: "refund",
+        query: "platform",
         recentSlugs: []
       })
     ).toEqual([
@@ -98,10 +98,10 @@ describe("browse-palette", () => {
         items: [
           {
             diagramType: "flowchart",
-            slug: "checkout-refund-flow",
-            sourcePath: "examples/checkout-refund-flow.tour.yaml",
-            stepCount: 2,
-            title: "Refund Flow"
+            slug: "payments-platform-overview",
+            sourcePath: "examples/payments-platform-overview.tour.yaml",
+            stepCount: 6,
+            title: "Payments Platform Overview"
           }
         ],
         title: "All Diagrams"
@@ -112,10 +112,10 @@ describe("browse-palette", () => {
       buildBrowsePaletteSections({
         entries,
         favoriteSlugs: [],
-        query: "rfnd",
+        query: "pltf",
         recentSlugs: []
       })[0]?.items.map((item) => item.slug)
-    ).toEqual(["checkout-refund-flow"]);
+    ).toEqual(["payments-platform-overview"]);
 
     expect(
       buildBrowsePaletteSections({
@@ -131,14 +131,14 @@ describe("browse-palette", () => {
     const items = flattenBrowsePaletteSections(
       buildBrowsePaletteSections({
         entries,
-        favoriteSlugs: ["checkout-refund-flow"],
+        favoriteSlugs: ["payments-platform-overview"],
         query: "",
         recentSlugs: ["checkout-payment-flow"]
       })
     );
 
     expect(items.map((item) => item.slug)).toEqual([
-      "checkout-refund-flow",
+      "payments-platform-overview",
       "checkout-payment-flow",
       "sequence-order-sequence"
     ]);
@@ -162,7 +162,7 @@ describe("browse-palette", () => {
         currentSlug: null,
         items
       })
-    ).toBe("checkout-refund-flow");
+    ).toBe("payments-platform-overview");
     expect(
       readInitialBrowsePaletteSlug({
         activeSlug: null,
@@ -201,11 +201,11 @@ describe("browse-palette", () => {
     ).toBe("sequence-order-sequence");
     expect(
       moveBrowsePaletteSlug({
-        activeSlug: "checkout-refund-flow",
+        activeSlug: "payments-platform-overview",
         direction: 1,
         items
       })
-    ).toBe("checkout-refund-flow");
+    ).toBe("payments-platform-overview");
     expect(moveBrowsePaletteSlug({ activeSlug: null, direction: -1, items: [] })).toBeNull();
   });
 });
@@ -239,3 +239,4 @@ function createEntry(input: {
     }
   };
 }
+

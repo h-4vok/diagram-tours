@@ -1,8 +1,0 @@
-sequenceDiagram
-  actor customer as Customer
-  participant triage as Triage Bot
-  participant agent as Support Agent
-
-  customer->>triage: [open_case] Open case
-  triage->>agent: [handoff_case] Handoff case
-  agent-->>customer: Confirm next steps

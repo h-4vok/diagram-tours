@@ -1,26 +1,24 @@
 # Examples
 
-Shipped tours and diagrams live directly under `examples/`.
+The public example library is intentionally minimal and canonical.
 
-Naming:
+Visible public set:
 
-- domain-prefixed flat stems
-- matching `.mmd` and `.tour.yaml` pairs share the same stem
-- direct preview paths stay short: `./examples/checkout-payment-flow.tour.yaml`
+- `checkout-payment-flow.*` for a small authored flowchart
+- `sequence-order-sequence.*` for a small authored sequence diagram
+- `payments-platform-overview.*` for a large authored interactive demo
 
-Stress fixture:
-
-- `ops-huge-system.*` remains the oversized regression example for viewport, focus, deep-link, and long-text behavior
+Every public example keeps a matching `.mmd` and `.tour.yaml` pair.
 
 Focused preview:
 
 ```bash
-DIAGRAM_TOUR_SOURCE_TARGET=./examples/ops-huge-system.tour.yaml bun run dev
+DIAGRAM_TOUR_SOURCE_TARGET=./examples/payments-platform-overview.tour.yaml bun run dev
 ```
 
 PowerShell:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/ops-huge-system.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/payments-platform-overview.tour.yaml"
 bun run dev
 ```

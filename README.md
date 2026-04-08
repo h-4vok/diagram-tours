@@ -230,7 +230,7 @@ Other available commands:
 - `bun run smoke`
 - `bun run prepush`
 
-The shipped example library lives directly under `examples/` with flat, domain-prefixed stems such as `checkout-payment-flow` and `ops-huge-system`.
+The shipped example library lives directly under `examples/` as a minimal canonical set with `checkout-payment-flow`, `sequence-order-sequence`, and `payments-platform-overview`.
 
 ## Repository Packages
 

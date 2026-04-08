@@ -1,7 +1,0 @@
-flowchart LR
-  plan[Plan Release] --> build[Build Artifacts]
-  build --> qa[QA Verification]
-  build --> docs[Docs Review]
-  qa --> go[Go Live]
-  docs --> go
-  go --> monitor[Monitor Rollout]
