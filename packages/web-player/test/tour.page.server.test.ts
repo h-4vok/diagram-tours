@@ -8,9 +8,9 @@ describe("tour +page", () => {
   it("loads the selected tour from the collection", async () => {
     const result = (await load({
       params: {
-        tourSlug: "refund-flow"
+        tourSlug: "payments-platform-overview"
       },
-      url: new URL("http://localhost/refund-flow"),
+      url: new URL("http://localhost/payments-platform-overview"),
       parent: async () => ({
         collection: resolvedTourCollection
       })
@@ -20,8 +20,8 @@ describe("tour +page", () => {
       tour: ResolvedDiagramTour;
     };
 
-    expect(result.selectedSlug).toBe("refund-flow");
-    expect(result.tour.title).toBe("Refund Flow");
+    expect(result.selectedSlug).toBe("payments-platform-overview");
+    expect(result.tour.title).toBe("Payments Platform Overview");
     expect(result.tour.steps).toHaveLength(2);
     expect(result.initialStepIndex).toBe(0);
   });

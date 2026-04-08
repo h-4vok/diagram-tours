@@ -26,18 +26,9 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout-decision-flow",
       "checkout-payment-flow",
-      "checkout-refund-flow",
-      "navigation-viewport-centering",
-      "navigation-viewport-stability",
-      "ops-huge-system",
-      "ops-incident-response",
-      "ops-parallel-onboarding",
-      "ops-release-pipeline",
-      "sequence-order-sequence",
-      "support-support-decision-tree",
-      "support-support-handoff"
+      "payments-platform-overview",
+      "sequence-order-sequence"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
     expect(result.sourceTarget).toEqual({
@@ -51,51 +42,24 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
-      "Decision Flow",
       "Payment Flow",
-      "Refund Flow",
-      "Viewport Centering",
-      "Viewport Stability",
-      "Huge System Stress Test",
-      "Incident Response",
-      "Parallel Onboarding",
-      "Release Pipeline",
+      "Payments Platform Overview",
       "Order Sequence",
-      "Support Decision Tree",
-      "Support Support Handoff"
     ]);
     expect(result.collection.skipped).toEqual([]);
     expect(result.sourceTarget.kind).toBe("directory");
   });
 
-  it("loads the viewport stability example with an empty-focus step", async () => {
-    const entry = await loadExampleEntry("navigation-viewport-stability");
+  it("loads the payments platform example as the large interactive tour", async () => {
+    const entry = await loadExampleEntry("payments-platform-overview");
 
-    expectViewportStabilityExample(entry);
-  });
-
-  it("loads the huge system example as a discoverable stress-test tour", async () => {
-    const entry = await loadExampleEntry("ops-huge-system");
-
-    expectHugeSystemExample(entry);
+    expectPaymentsPlatformExample(entry);
   });
 
   it("loads the authored sequence example with participant and message focus", async () => {
     const entry = await loadExampleEntry("sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
-  });
-
-  it("loads the viewport centering example with top, bottom, grouped, and empty focus steps", async () => {
-    const entry = await loadExampleEntry("navigation-viewport-centering");
-
-    expectViewportCenteringExample(entry);
-  });
-
-  it("loads a generated fallback sequence example from the examples directory", async () => {
-    const entry = await loadExampleEntry("support-support-handoff");
-
-    expectSupportHandoffExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
@@ -234,41 +198,18 @@ async function loadExampleEntry(slug: string) {
   return (await loadExamplesCollection()).collection.entries.find((item) => item.slug === slug);
 }
 
-function expectViewportStabilityExample(
+function expectPaymentsPlatformExample(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ): void {
   const steps = readSteps(entry);
 
-  expect(steps).toHaveLength(3);
-  expect(readFocusLength(steps, 0)).toBe(1);
-  expect(steps[1]?.focus).toEqual([]);
-  expect(readFocusLength(steps, 2)).toBe(2);
-}
-
-function expectViewportCenteringExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const steps = readSteps(entry);
-
-  expect(steps).toHaveLength(4);
-  expect(readFocusLength(steps, 0)).toBe(1);
-  expect(readFocusLength(steps, 1)).toBe(1);
-  expect(readFocusLength(steps, 2)).toBe(2);
-  expect(steps[3]?.focus).toEqual([]);
-}
-
-function expectHugeSystemExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const steps = readSteps(entry);
-
-  expect(readTitle(entry)).toBe("Huge System Stress Test");
-  expect(readNodeCount(entry)).toBeGreaterThanOrEqual(30);
-  expect(steps).toHaveLength(8);
+  expect(readTitle(entry)).toBe("Payments Platform Overview");
+  expect(readNodeCount(entry)).toBeGreaterThanOrEqual(25);
+  expect(steps).toHaveLength(6);
   expect(readFocusLength(steps, 0)).toBe(1);
   expect(readFocusLength(steps, 2)).toBe(3);
-  expect(readFocusLength(steps, 5)).toBe(3);
-  expect(steps[6]?.focus).toEqual([]);
+  expect(readFocusLength(steps, 4)).toBe(4);
+  expect(steps[5]?.focus).toEqual([]);
 }
 
 function expectOrderSequenceExample(
@@ -280,26 +221,6 @@ function expectOrderSequenceExample(
   expect(entry?.tour.diagram.type).toBe("sequence");
   expect(steps).toHaveLength(3);
   expect(readPrimaryFocusIds(steps)).toEqual(["customer", "submit_order", "enqueue_order"]);
-}
-
-function expectSupportHandoffExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const tour = readTour(entry);
-  const steps = tour.steps;
-
-  expect(readTitle(entry)).toBe("Support Support Handoff");
-  expect(tour.sourceKind).toBe("generated");
-  expect(tour.diagram.type).toBe("sequence");
-  expect(steps[0]?.text).toBe("Overview of Support Support Handoff.");
-  expect(readPrimaryFocusIds(steps)).toEqual([
-    undefined,
-    "customer",
-    "triage",
-    "agent",
-    "open_case",
-    "handoff_case"
-  ]);
 }
 
 function readSteps(

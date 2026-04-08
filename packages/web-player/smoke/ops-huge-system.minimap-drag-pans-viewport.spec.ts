@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectDiagramVisible, readDiagramScrollPosition } from "./smoke-test-helpers";
 
 test("dragging the minimap viewport rectangle pans the main diagram viewport", async ({ page }) => {
-  await page.goto("/ops-huge-system");
+  await page.goto("/payments-platform-overview");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("minimap-viewport-rect")).toBeVisible();
   await expectMinimapEdgesToStayInsideSurface(page);

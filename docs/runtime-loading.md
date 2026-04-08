@@ -97,7 +97,7 @@ Examples:
 - `examples/checkout-payment-flow.tour.yaml` -> `checkout-payment-flow`
 - `examples/checkout-payment-flow.mmd` -> `checkout-payment-flow`
 - `fixtures/markdown/checklist.md#details` -> `fixtures/markdown/checklist/details`
-- `examples/ops-incident-response.tour.yaml` -> `ops-incident-response`
+- `examples/payments-platform-overview.tour.yaml` -> `payments-platform-overview`
 - `examples/nested/demo.tour.yaml` -> `nested/demo`
 
 If the filename stem matches the containing directory name, the directory path becomes the slug.

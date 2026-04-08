@@ -15,7 +15,7 @@ test("repo-wide startup exposes repo-only tours in browse", async ({ page }) => 
     await expect(server.output).toContain(server.baseUrl);
     await expectBrowseSearchMatch(page, "alpha", "Alpha Tour");
     await expectBrowseSearchMatch(page, "beta", "Beta Tour");
-    await expectBrowseSearchMatch(page, "release", "Release Pipeline");
+    await expectBrowseSearchMatch(page, "platform", "Payments Platform Overview");
   } finally {
     await server.stop();
   }

@@ -117,8 +117,10 @@ The current convention is a flat `examples/` library with domain-prefixed stems:
 examples/
   checkout-payment-flow.mmd
   checkout-payment-flow.tour.yaml
-  checkout-refund-flow.mmd
-  checkout-refund-flow.tour.yaml
+  sequence-order-sequence.mmd
+  sequence-order-sequence.tour.yaml
+  payments-platform-overview.mmd
+  payments-platform-overview.tour.yaml
 ```
 
 That layout keeps contributor discovery simple while preserving readable slugs.
@@ -203,8 +205,8 @@ Use the CLI validation command while authoring:
 
 ```bash
 diagram-tours validate
-diagram-tours validate ./examples/checkout
-diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+diagram-tours validate ./examples
+diagram-tours validate ./examples/checkout-payment-flow.tour.yaml
 ```
 
 With no target, validation walks the current directory recursively and checks authored `*.tour.yaml` files only.
@@ -213,20 +215,12 @@ With no target, validation walks the current directory recursively and checks au
 
 A practical local loop is:
 
-<<<<<<< HEAD
 1. run `diagram-tours init <diagram.mmd>` if you need a starter authored tour
 2. start the player against the target you want to edit
 3. iterate on Mermaid and YAML together
 4. run `diagram-tours validate [target]`
 5. run `bun run test`
 6. run `bun run smoke` if viewport or interaction behavior changed
-=======
-1. start the player against the target you want to edit
-2. iterate on Mermaid and YAML together
-3. run `diagram-tours validate` on the file or folder you changed
-4. run `bun run test`
-5. run `bun run smoke` if viewport or interaction behavior changed
->>>>>>> origin/main
 
 For the published product flow, use the global CLI:
 
@@ -263,9 +257,6 @@ bun run dev
 
 Use the repository examples as references:
 
-- `payment-flow` for a simple baseline tour
-- `order-sequence` for authored Mermaid sequence diagrams
-- `support-handoff` for generated fallback on a raw sequence diagram
-- `viewport-stability` for empty-focus behavior
-- `viewport-centering` for grouped and edge-position focus behavior
-- `huge-system` for large diagrams and dense label conditions
+- `checkout-payment-flow` for a small authored flowchart
+- `sequence-order-sequence` for an authored Mermaid sequence diagram
+- `payments-platform-overview` for a large authored demo that stresses minimap, zoom, and pan

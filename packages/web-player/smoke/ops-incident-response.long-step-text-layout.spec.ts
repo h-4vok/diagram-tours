@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectDiagramVisible } from "./smoke-test-helpers";
 
 test("long step text does not break the usable diagram area", async ({ page }) => {
-  await page.goto("/ops-incident-response?step=4");
+  await page.goto("/payments-platform-overview?step=4");
 
   await expectDiagramVisible(page);
 

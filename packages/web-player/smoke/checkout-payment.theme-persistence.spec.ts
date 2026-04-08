@@ -13,7 +13,7 @@ test("theme selection persists across reloads and direct navigation", async ({ p
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 
-  await page.goto("/checkout-refund-flow");
+  await page.goto("/sequence-order-sequence");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "light");
 });

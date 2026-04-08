@@ -110,7 +110,7 @@ describe("+layout.svelte", () => {
   });
 
   it("shows favorites and recents as separate sections above all diagrams", async () => {
-    window.localStorage.setItem(FAVORITES_STORAGE_KEY, '["refund-flow"]');
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, '["payments-platform-overview"]');
     window.localStorage.setItem(RECENT_STORAGE_KEY, '["payment-flow"]');
 
     render(Layout, {
@@ -124,7 +124,7 @@ describe("+layout.svelte", () => {
 
     expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Favorites");
     expect(screen.getByText("Recent")).toBeDefined();
-    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Refund Flow");
+    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Payments Platform Overview");
     expect(screen.getByTestId("browse-recent-row").textContent).toContain("Payment Flow");
   });
 
@@ -138,11 +138,11 @@ describe("+layout.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
     await fireEvent.input(screen.getByTestId("browse-search-input"), {
-      currentTarget: { value: "rfnd" },
-      target: { value: "rfnd" }
+      currentTarget: { value: "pltf" },
+      target: { value: "pltf" }
     });
 
-    expect(screen.getByText("Refund Flow")).toBeDefined();
+    expect(screen.getByText("Payments Platform Overview")).toBeDefined();
     expect(screen.queryByText("Payment Flow")).toBeNull();
 
     await fireEvent.input(screen.getByTestId("browse-search-input"), {
@@ -166,14 +166,14 @@ describe("+layout.svelte", () => {
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
     const refundRow = screen
       .getAllByTestId("browse-tour-row")
-      .find((element) => element.textContent?.includes("Refund Flow"));
+      .find((element) => element.textContent?.includes("Payments Platform Overview"));
 
     expect(refundRow).toBeDefined();
 
     await fireEvent.click(within(refundRow!).getByTestId("favorite-toggle"));
 
-    expect(window.localStorage.getItem(FAVORITES_STORAGE_KEY)).toBe('["refund-flow"]');
-    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Refund Flow");
+    expect(window.localStorage.getItem(FAVORITES_STORAGE_KEY)).toBe('["payments-platform-overview"]');
+    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Payments Platform Overview");
   });
 
   it("opens the command palette from Ctrl/Cmd+K and slash, but ignores slash while typing", async () => {
@@ -205,7 +205,7 @@ describe("+layout.svelte", () => {
   });
 
   it("tracks the active row from the current route, arrow keys, and enter", async () => {
-    setPageUrl("https://example.test/refund-flow");
+    setPageUrl("https://example.test/payments-platform-overview");
 
     render(Layout, {
       data: {
@@ -217,7 +217,7 @@ describe("+layout.svelte", () => {
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     const refundOption = within(
-      screen.getAllByTestId("browse-recent-row").find((element) => element.dataset.tourSlug === "refund-flow")!
+      screen.getAllByTestId("browse-recent-row").find((element) => element.dataset.tourSlug === "payments-platform-overview")!
     ).getByRole("option");
 
     expect(refundOption.getAttribute("aria-selected")).toBe("true");
@@ -282,7 +282,7 @@ describe("+layout.svelte", () => {
       }
     });
 
-    setPageUrl("https://example.test/refund-flow");
+    setPageUrl("https://example.test/payments-platform-overview");
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     expect(await screen.findByTestId("browse-panel")).toBeDefined();
@@ -302,10 +302,10 @@ describe("+layout.svelte", () => {
 
     expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Payment Flow");
 
-    setPageUrl("https://example.test/refund-flow");
+    setPageUrl("https://example.test/payments-platform-overview");
 
     await waitFor(() => {
-      expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Refund Flow");
+      expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Payments Platform Overview");
     });
   });
 
@@ -389,3 +389,5 @@ describe("+layout.svelte", () => {
     expect(screen.getByText("All clear")).toBeDefined();
   });
 });
+
+

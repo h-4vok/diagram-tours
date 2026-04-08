@@ -13,7 +13,7 @@ test("interactive open-all matches repo-wide startup", async ({ page }) => {
 
     await expectBrowseSearchMatch(page, "alpha", "Alpha Tour");
     await expectBrowseSearchMatch(page, "beta", "Beta Tour");
-    await expectBrowseSearchMatch(page, "release", "Release Pipeline");
+    await expectBrowseSearchMatch(page, "platform", "Payments Platform Overview");
   } finally {
     await server.stop();
   }
