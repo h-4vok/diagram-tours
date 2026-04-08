@@ -15,6 +15,15 @@ test("docs shell browse navigation changes tours without breaking the player", a
   await expect(page.getByTestId("browse-search-input")).toBeVisible();
   await expect(page.getByTestId("browse-tour-row").first()).toBeVisible();
   await expect(page.getByTestId("step-text-container")).toContainText("human or audited service");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
+  await expect(page.getByTestId("step-text-container")).toContainText("human or audited service");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("browse-panel")).toBeHidden();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/\/checkout-decision-flow\?step=4$/);
+  await page.keyboard.press("ArrowLeft");
   await expectDiagramVisible(page);
   await expect(page).toHaveURL(/\/checkout-decision-flow\?step=3$/);
   await expect(page.locator('[data-testid="diagram-container"] [data-node-id="review"]')).toHaveCount(1);
@@ -23,6 +32,8 @@ test("docs shell browse navigation changes tours without breaking the player", a
     page.locator('[data-testid="diagram-container"][data-focus-group-mode="group"][data-focus-group-size="2"]')
   ).toHaveCount(1);
 
+  await page.getByTestId("search-hint-trigger").click();
+  await expect(page.getByTestId("browse-panel")).toBeVisible();
   await page.getByTestId("browse-search-input").fill("refund");
   await expect(page.getByText("Refund Flow")).toBeVisible();
   await page.getByText("Refund Flow").click();
