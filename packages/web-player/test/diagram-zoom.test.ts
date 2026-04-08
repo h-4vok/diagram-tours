@@ -4,6 +4,8 @@ import {
   applySvgZoom,
   canZoomIn,
   canZoomOut,
+  createCenteredContentScrollPosition,
+  createContentZoomToFitScale,
   createNextZoomScale,
   createPreservedZoomScrollPosition,
   createZoomToFitScale,
@@ -105,8 +107,6 @@ describe("diagram zoom helpers", () => {
     ).toBeNull();
   });
 
-  it("returns null when zoom preservation metrics are unstable", () => {});
-
   it("returns null when zoom preservation metrics are unstable", () => {
     expect(
       createPreservedZoomScrollPosition({
@@ -114,6 +114,127 @@ describe("diagram zoom helpers", () => {
         previousMetrics: createMetrics({
           contentWidth: 0,
         }),
+      }),
+    ).toBeNull();
+  });
+
+  it("creates a fit scale from real content bounds instead of the stage size", () => {
+    expect(
+      createContentZoomToFitScale({
+        bounds: {
+          height: 120,
+          left: 180,
+          top: 140,
+          width: 320,
+        },
+        svgHeight: 640,
+        svgWidth: 960,
+        viewportHeight: 480,
+        viewportWidth: 720,
+      }),
+    ).toBe(2);
+  });
+
+  it("creates a fit scale that can zoom out for large diagrams", () => {
+    expect(
+      createContentZoomToFitScale({
+        bounds: {
+          height: 560,
+          left: 0,
+          top: 0,
+          width: 1400,
+        },
+        svgHeight: 640,
+        svgWidth: 1600,
+        viewportHeight: 480,
+        viewportWidth: 720,
+      }),
+    ).toBe(0.5);
+  });
+
+  it("returns null when real-content fit inputs are unstable", () => {
+    expect(
+      createContentZoomToFitScale({
+        bounds: {
+          height: 0,
+          left: 0,
+          top: 0,
+          width: 400,
+        },
+        svgHeight: 640,
+        svgWidth: 960,
+        viewportHeight: 480,
+        viewportWidth: 720,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when clamped real-content bounds collapse outside the svg", () => {
+    expect(
+      createContentZoomToFitScale({
+        bounds: {
+          height: 80,
+          left: 980,
+          top: 120,
+          width: 120,
+        },
+        svgHeight: 640,
+        svgWidth: 960,
+        viewportHeight: 480,
+        viewportWidth: 720,
+      }),
+    ).toBeNull();
+  });
+
+  it("clamps negative real-content bounds back into the svg before fitting", () => {
+    expect(
+      createContentZoomToFitScale({
+        bounds: {
+          height: 100,
+          left: -20,
+          top: -10,
+          width: 200,
+        },
+        svgHeight: 640,
+        svgWidth: 960,
+        viewportHeight: 480,
+        viewportWidth: 720,
+      }),
+    ).toBe(2);
+  });
+
+  it("recenters the viewport on real content bounds", () => {
+    expect(
+      createCenteredContentScrollPosition({
+        bounds: {
+          height: 84,
+          left: 150,
+          top: 290,
+          width: 1098,
+        },
+        metrics: createMetrics({
+          contentHeight: 920,
+          contentWidth: 1320,
+          viewportHeight: 480,
+          viewportWidth: 720,
+        }),
+      }),
+    ).toEqual({
+      scrollLeft: 339,
+      scrollTop: 92,
+    });
+  });
+
+  it("returns null when centered-content scroll inputs are unstable", () => {
+    expect(
+      createCenteredContentScrollPosition({
+        bounds: {
+          height: 84,
+          left: 150,
+          top: 290,
+          width: 0,
+        },
+        metrics: createMetrics(),
       }),
     ).toBeNull();
   });

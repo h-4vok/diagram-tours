@@ -1,10 +1,10 @@
 import type { ResolvedDiagramTour } from "@diagram-tour/core";
 import { describe, expect, it } from "vitest";
 
-import { load } from "../src/routes/[...tourSlug]/+page.server";
+import { load } from "../src/routes/[...tourSlug]/+page";
 import { resolvedTourCollection } from "./fixtures/tour-collection";
 
-describe("tour +page.server", () => {
+describe("tour +page", () => {
   it("loads the selected tour from the collection", async () => {
     const result = (await load({
       params: {

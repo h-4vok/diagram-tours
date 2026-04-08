@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
@@ -69,9 +69,14 @@
   let diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
   let isHydrated = false;
   let breadcrumbs = ["diagram-tours", "collection"];
+  let currentPathname: string = page.url.pathname;
+
+  afterNavigate((navigation) => {
+    currentPathname = navigation.to?.url.pathname ?? window.location.pathname;
+  });
 
   $: {
-    activeSlug = readActiveSlug(page.url.pathname);
+    activeSlug = readActiveSlug(currentPathname);
     activeEntry = readActiveEntry(data.collection.entries, activeSlug);
     diagnosticGroups = createDiagnosticDisplayGroups(data.collection.skipped);
     diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
@@ -106,7 +111,7 @@
 
     closeDiagnostics();
     browseOpenedAt = Date.now();
-    browseOpenedForPath = page.url.pathname;
+    browseOpenedForPath = currentPathname;
     isBrowseOpen = true;
     activeBrowseSlug = readInitialBrowsePaletteSlug({
       activeSlug: null,
@@ -189,7 +194,7 @@
     recentSlugs = readStoredRecentSlugs(window.localStorage);
     browseShortcutHint = isMacPlatform(window.navigator) ? "Cmd K" : "Ctrl K";
     setDocumentTheme(document, theme);
-    previousPathname = page.url.pathname;
+    previousPathname = currentPathname;
     isHydrated = true;
     rememberActiveSlug(activeSlug);
     window.addEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
@@ -199,9 +204,9 @@
     };
   });
 
-  $: if (page.url.pathname !== previousPathname) {
-    previousPathname = page.url.pathname;
-    if (browseOpenedForPath !== page.url.pathname) {
+  $: if (currentPathname !== previousPathname) {
+    previousPathname = currentPathname;
+    if (browseOpenedForPath !== currentPathname) {
       closeBrowse();
     }
     closeDiagnostics();
@@ -222,7 +227,10 @@
   }
 
   async function navigateToBrowseSlug(slug: string): Promise<void> {
+    const nextPathname = resolve(`/${slug}`);
+
     closeBrowse();
+    currentPathname = nextPathname;
     await goto(resolve(`/${slug}`));
   }
 

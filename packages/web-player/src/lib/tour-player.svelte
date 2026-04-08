@@ -15,11 +15,13 @@
     applySvgZoom,
     canZoomIn,
     canZoomOut,
+    createCenteredContentScrollPosition,
+    createContentZoomToFitScale,
     createNextZoomScale,
     createPreservedZoomScrollPosition,
-    createZoomToFitScale,
     DEFAULT_ZOOM_SCALE,
-    formatZoomPercentage
+    formatZoomPercentage,
+    type DiagramZoomContentBounds
   } from "$lib/diagram-zoom";
   import {
     createDiagramMinimapGeometry,
@@ -32,7 +34,7 @@
     type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
-  import { createOverviewScrollPosition, focusDiagramViewport } from "$lib/diagram-viewport";
+  import { focusDiagramViewport } from "$lib/diagram-viewport";
   import { createFocusGroup, type FocusGroup } from "$lib/focus-group";
   import { createTourPlayer } from "$lib/player-state";
   import {
@@ -78,6 +80,11 @@
   const INTERACTIVE_DIAGRAM_ELEMENT_SELECTOR = [
     '[data-diagram-element-id]:not([data-diagram-element-auxiliary="true"])',
     '[data-node-id]:not([data-diagram-element-auxiliary="true"])'
+  ].join(", ");
+  const DIAGRAM_FIT_ELEMENT_SELECTOR = [
+    "[data-diagram-element-id]",
+    "[data-node-id]",
+    "[data-connector-role]"
   ].join(", ");
 
   type ViewportDragInput = {
@@ -142,7 +149,19 @@
   }
 
   async function resetZoom(): Promise<void> {
-    await updateZoomScale(DEFAULT_ZOOM_SCALE);
+    const zoomContext = readZoomContext();
+
+    if (zoomContext === null) {
+      return;
+    }
+
+    if (!applyZoomScaleToSvg(zoomContext.svg, DEFAULT_ZOOM_SCALE)) {
+      return;
+    }
+
+    zoomScale = DEFAULT_ZOOM_SCALE;
+    await waitForDiagramLayout();
+    centerZoomViewportOnDiagram(zoomContext.context);
   }
 
   async function fitZoomToView(): Promise<void> {
@@ -152,38 +171,12 @@
       return;
     }
 
-    if (!applyZoomToFitScale(zoomContext)) {
+    if (!applyContentFitZoomScale(zoomContext)) {
       return;
     }
 
     await waitForDiagramLayout();
-
-    const nextPosition = createOverviewScrollPosition(readCurrentMetrics(zoomContext.context));
-
-    writeDiagramScrollPosition(nextPosition, "auto");
-  }
-
-  function applyZoomToFitScale(zoomContext: {
-    context: { container: HTMLDivElement; content: HTMLDivElement };
-    svg: SVGSVGElement;
-  }): boolean {
-    const previousMetrics = readDiagramMinimapMetrics(zoomContext.context);
-    const nextZoomScale = createZoomToFitScale({
-      currentScale: zoomScale,
-      metrics: previousMetrics
-    });
-
-    if (nextZoomScale === null) {
-      return false;
-    }
-
-    if (!applyZoomScaleToSvg(zoomContext.svg, nextZoomScale)) {
-      return false;
-    }
-
-    zoomScale = nextZoomScale;
-
-    return true;
+    centerZoomViewportOnDiagram(zoomContext.context);
   }
 
   async function syncFocusState(behavior: ScrollBehavior = "smooth"): Promise<void> {
@@ -457,6 +450,59 @@
     return applySvgZoom(svg, nextZoomScale);
   }
 
+  function createContentFitZoomScale(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): number | null {
+    const contentBounds = readIntrinsicDiagramBounds(zoomContext);
+    const svgSize = readZoomSvgSize(zoomContext.svg);
+
+    return contentBounds === null || svgSize === null
+      ? null
+      : createContentZoomToFitScale({
+          bounds: contentBounds,
+          svgHeight: svgSize.height,
+          svgWidth: svgSize.width,
+          viewportHeight: zoomContext.context.container.clientHeight,
+          viewportWidth: zoomContext.context.container.clientWidth
+        });
+  }
+
+  function applyContentFitZoomScale(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): boolean {
+    return applyNextZoomScale(zoomContext.svg, createContentFitZoomScale(zoomContext));
+  }
+
+  function centerZoomViewportOnDiagram(
+    context: { container: HTMLDivElement; content: HTMLDivElement }
+  ): void {
+    const contentBounds = readRenderedDiagramBounds(context.content);
+
+    if (contentBounds === null) {
+      return;
+    }
+
+    writeDiagramScrollPosition(
+      createCenteredContentScrollPosition({
+        bounds: contentBounds,
+        metrics: readCurrentMetrics(context)
+      }),
+      "auto"
+    );
+  }
+
+  function applyNextZoomScale(svg: SVGSVGElement, nextZoomScale: number | null): boolean {
+    if (nextZoomScale === null || !applyZoomScaleToSvg(svg, nextZoomScale)) {
+      return false;
+    }
+
+    zoomScale = nextZoomScale;
+
+    return true;
+  }
+
   function preserveZoomViewport(context: {
     container: HTMLDivElement;
     content: HTMLDivElement;
@@ -474,6 +520,164 @@
     content: HTMLDivElement;
   }): DiagramMinimapMetrics {
     return readDiagramMinimapMetrics(context);
+  }
+
+  function readIntrinsicDiagramBounds(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): DiagramZoomContentBounds | null {
+    const renderedBounds = readRenderedDiagramBounds(zoomContext.context.content);
+    const svgOrigin = readRenderedSvgOrigin(zoomContext.context.content, zoomContext.svg);
+    const currentZoomScale = readZoomScaleFromSvg(zoomContext.svg);
+
+    if (hasMissingIntrinsicBoundsInput(renderedBounds, svgOrigin, currentZoomScale)) {
+      return null;
+    }
+
+    const intrinsicBoundsInput = {
+      currentZoomScale,
+      renderedBounds,
+      svgOrigin
+    } as {
+      currentZoomScale: number;
+      renderedBounds: DiagramZoomContentBounds;
+      svgOrigin: { left: number; top: number };
+    };
+
+    return createIntrinsicDiagramBounds({
+      currentZoomScale: intrinsicBoundsInput.currentZoomScale,
+      renderedBounds: intrinsicBoundsInput.renderedBounds,
+      svgOrigin: intrinsicBoundsInput.svgOrigin
+    });
+  }
+
+  function readRenderedDiagramBounds(content: HTMLDivElement): DiagramZoomContentBounds | null {
+    return mergeDiagramBounds(
+      Array.from(content.querySelectorAll<Element>(DIAGRAM_FIT_ELEMENT_SELECTOR))
+        .map((element) => toRenderedDiagramBounds(content, element))
+        .filter((bounds): bounds is DiagramZoomContentBounds => bounds !== null)
+    );
+  }
+
+  function toRenderedDiagramBounds(
+    content: HTMLDivElement,
+    element: Element
+  ): DiagramZoomContentBounds | null {
+    const contentRect = content.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+
+    return hasUsableDiagramRect(elementRect)
+      ? {
+          left: elementRect.left - contentRect.left,
+          top: elementRect.top - contentRect.top,
+          width: elementRect.width,
+          height: elementRect.height
+        }
+      : null;
+  }
+
+  function mergeDiagramBounds(boundsList: DiagramZoomContentBounds[]): DiagramZoomContentBounds | null {
+    if (boundsList.length === 0) {
+      return null;
+    }
+
+    return boundsList.reduce((currentBounds, bounds) => {
+      const right = Math.max(currentBounds.left + currentBounds.width, bounds.left + bounds.width);
+      const bottom = Math.max(currentBounds.top + currentBounds.height, bounds.top + bounds.height);
+      const left = Math.min(currentBounds.left, bounds.left);
+      const top = Math.min(currentBounds.top, bounds.top);
+
+      return {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top
+      };
+    });
+  }
+
+  function readRenderedSvgOrigin(
+    content: HTMLDivElement,
+    svg: SVGSVGElement
+  ): { left: number; top: number } | null {
+    const contentRect = content.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+
+    return hasUsableDiagramRect(svgRect)
+      ? {
+          left: svgRect.left - contentRect.left,
+          top: svgRect.top - contentRect.top
+        }
+      : null;
+  }
+
+  function readZoomScaleFromSvg(svg: SVGSVGElement): number | null {
+    return readPositiveFiniteNumber(svg.dataset.zoomScale ?? String(zoomScale));
+  }
+
+  function readZoomSvgSize(svg: SVGSVGElement): { height: number; width: number } | null {
+    const currentZoomScale = readZoomScaleFromSvg(svg);
+    const width = readZoomSvgDimension(svg.dataset.intrinsicWidth, svg.getAttribute("width"), currentZoomScale);
+    const height = readZoomSvgDimension(
+      svg.dataset.intrinsicHeight,
+      svg.getAttribute("height"),
+      currentZoomScale
+    );
+
+    return width === null || height === null ? null : { height, width };
+  }
+
+  function readZoomSvgDimension(
+    intrinsicValue: string | undefined,
+    renderedValue: string | null,
+    currentZoomScale: number | null
+  ): number | null {
+    return (
+      readPositiveFiniteNumber(intrinsicValue ?? null) ??
+      readRenderedZoomSvgDimension(renderedValue, currentZoomScale)
+    );
+  }
+
+  function hasUsableDiagramRect(rect: DOMRect): boolean {
+    return [rect.left, rect.top, rect.width, rect.height].every(Number.isFinite) && rect.width > 0 && rect.height > 0;
+  }
+
+  function hasMissingIntrinsicBoundsInput(
+    renderedBounds: DiagramZoomContentBounds | null,
+    svgOrigin: { left: number; top: number } | null,
+    currentZoomScale: number | null
+  ): boolean {
+    return renderedBounds === null || svgOrigin === null || currentZoomScale === null;
+  }
+
+  function createIntrinsicDiagramBounds(input: {
+    currentZoomScale: number;
+    renderedBounds: DiagramZoomContentBounds;
+    svgOrigin: { left: number; top: number };
+  }): DiagramZoomContentBounds {
+    return {
+      left: (input.renderedBounds.left - input.svgOrigin.left) / input.currentZoomScale,
+      top: (input.renderedBounds.top - input.svgOrigin.top) / input.currentZoomScale,
+      width: input.renderedBounds.width / input.currentZoomScale,
+      height: input.renderedBounds.height / input.currentZoomScale
+    };
+  }
+
+  function readRenderedZoomSvgDimension(
+    renderedValue: string | null,
+    currentZoomScale: number | null
+  ): number | null {
+    const renderedDimension = readPositiveFiniteNumber(renderedValue);
+
+    return renderedDimension === null || currentZoomScale === null
+      ? null
+      : renderedDimension / currentZoomScale;
+  }
+
+  function readPositiveFiniteNumber(value: string | null): number | null {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
   async function handleDiagramClick(event: MouseEvent): Promise<void> {
@@ -1141,7 +1345,6 @@
           <button
             type="button"
             class="viewport-toolbar__button"
-            data-testid="zoom-out-button"
             aria-label="Zoom out"
             disabled={!canZoomOut(zoomScale)}
             on:click={() => void zoomOut()}
@@ -1158,23 +1361,22 @@
           </button>
           <button
             type="button"
-            class="viewport-toolbar__button viewport-toolbar__button--value"
-            data-testid="zoom-reset-button"
-            aria-label="Reset zoom to 100%"
-            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
-            on:click={() => void resetZoom()}
-          >
-            {formatZoomPercentage(zoomScale)}
-          </button>
-          <button
-            type="button"
             class="viewport-toolbar__button"
-            data-testid="zoom-in-button"
             aria-label="Zoom in"
             disabled={!canZoomIn(zoomScale)}
             on:click={() => void zoomIn()}
           >
             +
+          </button>
+          <p class="viewport-toolbar__value">{formatZoomPercentage(zoomScale)}</p>
+          <button
+            type="button"
+            class="viewport-toolbar__button"
+            aria-label="Reset zoom to 100%"
+            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
+            on:click={() => void resetZoom()}
+          >
+            100%
           </button>
         </div>
       <aside class="step-panel step-panel--overlay">
@@ -1318,11 +1520,11 @@
           </aside>
 
           <aside class="viewport-toolbar" data-testid="viewport-toolbar">
-            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
-            <div class="viewport-toolbar__actions">
+            <div class="viewport-toolbar__actions" data-testid="zoom-primary-controls">
               <button
                 type="button"
                 class="viewport-toolbar__button"
+                data-testid="zoom-out-button"
                 aria-label="Zoom out"
                 disabled={!canZoomOut(zoomScale)}
                 on:click={() => void zoomOut()}
@@ -1341,6 +1543,7 @@
               <button
                 type="button"
                 class="viewport-toolbar__button"
+                data-testid="zoom-in-button"
                 aria-label="Zoom in"
                 disabled={!canZoomIn(zoomScale)}
                 on:click={() => void zoomIn()}
@@ -1348,6 +1551,17 @@
                 +
               </button>
             </div>
+            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
+            <button
+              type="button"
+              class="viewport-toolbar__button"
+              data-testid="zoom-one-hundred-button"
+              aria-label="Reset zoom to 100%"
+              disabled={zoomScale === DEFAULT_ZOOM_SCALE}
+              on:click={() => void resetZoom()}
+            >
+              100%
+            </button>
           </aside>
         </div>
       </div>

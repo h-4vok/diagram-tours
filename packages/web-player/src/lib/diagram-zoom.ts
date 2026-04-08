@@ -4,6 +4,14 @@ export const DEFAULT_ZOOM_SCALE = 1;
 export const MIN_ZOOM_SCALE = 0.5;
 export const MAX_ZOOM_SCALE = 2;
 export const ZOOM_SCALE_STEP = 0.25;
+const FIT_VIEW_PADDING = 32;
+
+export interface DiagramZoomContentBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
 
 export function canZoomIn(scale: number): boolean {
   return scale < MAX_ZOOM_SCALE;
@@ -28,6 +36,50 @@ export function createNextZoomScale(
 
 export function formatZoomPercentage(scale: number): string {
   return `${Math.round(clampZoomScale(scale) * 100)}%`;
+}
+
+export function createContentZoomToFitScale(input: {
+  bounds: DiagramZoomContentBounds;
+  svgHeight: number;
+  svgWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
+}): number | null {
+  const normalizedBounds = readNormalizedFitBounds(input);
+
+  if (normalizedBounds === null) {
+    return null;
+  }
+
+  return clampZoomScale(
+    Math.min(
+      readAvailableViewport(input.viewportWidth) / normalizedBounds.width,
+      readAvailableViewport(input.viewportHeight) / normalizedBounds.height,
+    ),
+  );
+}
+
+export function createCenteredContentScrollPosition(input: {
+  bounds: DiagramZoomContentBounds;
+  metrics: DiagramMinimapMetrics;
+}): {
+  scrollLeft: number;
+  scrollTop: number;
+} | null {
+  if (!hasStableMetrics(input.metrics) || !hasStableZoomBounds(input.bounds)) {
+    return null;
+  }
+
+  return {
+    scrollLeft: clampScrollTarget(
+      input.bounds.left + input.bounds.width / 2 - input.metrics.viewportWidth / 2,
+      input.metrics.contentWidth - input.metrics.viewportWidth,
+    ),
+    scrollTop: clampScrollTarget(
+      input.bounds.top + input.bounds.height / 2 - input.metrics.viewportHeight / 2,
+      input.metrics.contentHeight - input.metrics.viewportHeight,
+    ),
+  };
 }
 
 export function createPreservedZoomScrollPosition(input: {
@@ -115,6 +167,35 @@ function roundToQuarterStep(scale: number): number {
   return Math.round(scale / ZOOM_SCALE_STEP) * ZOOM_SCALE_STEP;
 }
 
+function normalizeBoundsToSvg(
+  bounds: DiagramZoomContentBounds,
+  svgSize: { height: number; width: number },
+): DiagramZoomContentBounds | null {
+  const left = clampBoundsOrigin(bounds.left, svgSize.width);
+  const top = clampBoundsOrigin(bounds.top, svgSize.height);
+  const right = clampBoundsOrigin(bounds.left + bounds.width, svgSize.width);
+  const bottom = clampBoundsOrigin(bounds.top + bounds.height, svgSize.height);
+  const width = right - left;
+  const height = bottom - top;
+
+  return width > 0 && height > 0 ? { left, top, width, height } : null;
+}
+
+function readNormalizedFitBounds(input: {
+  bounds: DiagramZoomContentBounds;
+  svgHeight: number;
+  svgWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
+}): DiagramZoomContentBounds | null {
+  return hasStableZoomBounds(input.bounds) && hasStableViewportSize(input)
+    ? normalizeBoundsToSvg(input.bounds, {
+        height: input.svgHeight,
+        width: input.svgWidth,
+      })
+    : null;
+}
+
 function readIntrinsicSvgSize(
   svg: SVGSVGElement,
 ): { height: number; width: number } | null {
@@ -187,8 +268,37 @@ function readPositiveFiniteNumber(value: string | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function hasStableZoomBounds(bounds: DiagramZoomContentBounds): boolean {
+  return hasFiniteBoundsOrigin(bounds) && hasFiniteBoundsSize(bounds);
+}
+
 function hasStableMetrics(metrics: DiagramMinimapMetrics): boolean {
   return hasStableContent(metrics) && hasStableViewport(metrics);
+}
+
+function hasStableViewportSize(input: {
+  svgHeight: number;
+  svgWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
+}): boolean {
+  return (
+    hasStableSvgSize({ height: input.svgHeight, width: input.svgWidth }) &&
+    isFinitePositive(input.viewportWidth) &&
+    isFinitePositive(input.viewportHeight)
+  );
+}
+
+function hasStableSvgSize(size: { height: number; width: number }): boolean {
+  return isFinitePositive(size.width) && isFinitePositive(size.height);
+}
+
+function hasFiniteBoundsOrigin(bounds: DiagramZoomContentBounds): boolean {
+  return Number.isFinite(bounds.left) && Number.isFinite(bounds.top);
+}
+
+function hasFiniteBoundsSize(bounds: DiagramZoomContentBounds): boolean {
+  return isFinitePositive(bounds.width) && isFinitePositive(bounds.height);
 }
 
 function hasStableContent(metrics: DiagramMinimapMetrics): boolean {
@@ -226,6 +336,24 @@ function clampScrollTarget(target: number, maxScroll: number): number {
   }
 
   return Math.round(sanitizedTarget);
+}
+
+function clampBoundsOrigin(value: number, maxValue: number): number {
+  const sanitizedValue = sanitizeFiniteValue(value);
+
+  if (sanitizedValue < 0) {
+    return 0;
+  }
+
+  if (sanitizedValue > maxValue) {
+    return maxValue;
+  }
+
+  return sanitizedValue;
+}
+
+function readAvailableViewport(value: number): number {
+  return Math.max(1, sanitizeFiniteValue(value) - FIT_VIEW_PADDING * 2);
 }
 
 function isFinitePositive(value: number): boolean {
