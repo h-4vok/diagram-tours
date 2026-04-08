@@ -6,6 +6,7 @@ Start here:
 
 - [Engineering Principles](01-engineering-principles.md)
 - [Engineering Review Rubric](08-engineering-review-rubric.md)
+- [Architecture Reviewer Workflow](09-architecture-reviewer-workflow.md)
 
 Supporting material:
 

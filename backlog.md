@@ -43,9 +43,6 @@ Cutoff date: 2026-03-17
   - Note: grouped centering exists today, but not a more advanced strategy than the current one
 - `BT-13` Explicit viewport constraints
   - Note: no current implementation was found in the repository
-- BT-029 Clean-code refactoring initiative: reusable architecture reviewer
-  - Note: create a reusable reviewer skill or subagent that applies the repository-specific rubric during refactoring and future PR reviews, focusing on architectural cohesion and mixed responsibilities rather than acting as simple LOC police
-  - Related: this is step 3 of the clean-code refactoring initiative, depends on BT-028, and should reference `docs/clean-code-refactoring.md`
 - BT-030 Clean-code refactoring initiative: phased repository refactor program
   - Note: execute the refactoring gradually across the repository in phases, guided by the framework and rubric rather than by arbitrary max-lines thresholds, and use the work to discover the natural target shape for each source, test, smoke, Svelte, and style file category
   - Related: this is step 4 of the clean-code refactoring initiative, depends on BT-029, and should reference `docs/clean-code-refactoring.md`
