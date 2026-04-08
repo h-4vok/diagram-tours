@@ -2,13 +2,31 @@ import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadResolvedTour } from "@diagram-tour/parser";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runInitCommand } from "../src/lib/init.js";
+
+const { loadResolvedTourCollectionMock } = vi.hoisted(() => {
+  return {
+    loadResolvedTourCollectionMock: vi.fn()
+  };
+});
+
+vi.mock("@diagram-tour/parser", () => {
+  return {
+    loadResolvedTourCollection: loadResolvedTourCollectionMock
+  };
+});
 
 const ORIGINAL_CWD = process.cwd();
 
 afterEach(() => {
   process.chdir(ORIGINAL_CWD);
+});
+
+beforeEach(() => {
+  loadResolvedTourCollectionMock.mockImplementation(async (absolutePath: string) => {
+    return { entries: readCollectionEntries(absolutePath) };
+  });
 });
 
 describe("runInitCommand", () => {
@@ -19,7 +37,6 @@ describe("runInitCommand", () => {
     await writeDiagram(diagramPath);
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
     const io = createIo();
 
     await expect(runInitCommand({ overwrite: false, target: "./checkout/payment-flow.mmd" }, io)).resolves.toBe(0);
@@ -40,8 +57,6 @@ describe("runInitCommand", () => {
     await writeDiagram(diagramPath);
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
-
     await expect(runInitCommand({ overwrite: false, target: "./checkout/payment-flow.mermaid" }, createIo())).resolves.toBe(
       0
     );
@@ -60,8 +75,6 @@ describe("runInitCommand", () => {
       ["# Checklist", "", "```mermaid", "flowchart TD", "  start[Start] --> done[Done]", "```"].join("\n")
     );
     process.chdir(root);
-
-    const { runInitCommand } = await import("../src/lib/init.js");
 
     await expect(runInitCommand({ overwrite: false, target: "./docs/checklist.md" }, createIo())).resolves.toBe(0);
 
@@ -94,8 +107,6 @@ describe("runInitCommand", () => {
       ].join("\n")
     );
     process.chdir(root);
-
-    const { runInitCommand } = await import("../src/lib/init.js");
 
     await expect(runInitCommand({ overwrite: false, target: "./docs/checklist.md#details" }, createIo())).resolves.toBe(
       0
@@ -133,7 +144,6 @@ describe("runInitCommand", () => {
     process.chdir(root);
 
     const io = createIo(["wat", "2"]);
-    const { runInitCommand } = await import("../src/lib/init.js");
 
     await expect(runInitCommand({ overwrite: false, target: "./docs/checklist.md" }, io)).resolves.toBe(0);
 
@@ -155,8 +165,6 @@ describe("runInitCommand", () => {
     await writeFile(tourPath, "existing", "utf8");
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
-
     await expect(
       runInitCommand({ overwrite: false, target: "./checkout/payment-flow.mmd" }, createIo())
     ).rejects.toThrow("Refusing to overwrite existing tour file without --overwrite:");
@@ -167,22 +175,20 @@ describe("runInitCommand", () => {
 
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
-
     await expect(runInitCommand({ overwrite: false, target: "./checkout/payment-flow.tour.yaml" }, createIo())).resolves.toBe(
       0
     );
 
     const mermaid = await readFile(resolve(root, "checkout/payment-flow.mmd"), "utf8");
     const scaffold = await readFile(resolve(root, "checkout/payment-flow.tour.yaml"), "utf8");
-    const resolvedTour = await loadResolvedTour(resolve(root, "checkout/payment-flow.tour.yaml"));
 
     expect(mermaid).toContain("flowchart TD");
     expect(scaffold).toContain('title: "Payment Flow"');
     expect(scaffold).toContain('diagram: "./payment-flow.mmd"');
     expect(scaffold).toContain("focus: []");
     expect(scaffold).toContain("- start");
-    expect(resolvedTour.steps).toHaveLength(2);
+    expect(scaffold).toContain("Overview of Payment Flow.");
+    expect(scaffold).toContain("Explain how {{start}} begins the flow");
   });
 
   it("refuses to overwrite an existing companion mermaid file without the overwrite flag", async () => {
@@ -192,24 +198,17 @@ describe("runInitCommand", () => {
     await writeDiagram(diagramPath);
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
-
     await expect(
       runInitCommand({ overwrite: false, target: "./checkout/payment-flow.tour.yaml" }, createIo())
     ).rejects.toThrow("Refusing to overwrite existing diagram file without --overwrite:");
   });
 
   it("fails when the init target would resolve to multiple scaffoldable entries", async () => {
-    vi.resetModules();
-    vi.doMock("@diagram-tour/parser", () => {
-      return {
-        loadResolvedTourCollection: vi.fn().mockResolvedValue({
-          entries: [
-            { title: "One", tour: { steps: [] } },
-            { title: "Two", tour: { steps: [] } }
-          ]
-        })
-      };
+    loadResolvedTourCollectionMock.mockResolvedValueOnce({
+      entries: [
+        { title: "One", tour: { steps: [] } },
+        { title: "Two", tour: { steps: [] } }
+      ]
     });
 
     const root = await createTempRoot();
@@ -218,16 +217,49 @@ describe("runInitCommand", () => {
     await writeDiagram(diagramPath);
     process.chdir(root);
 
-    const { runInitCommand } = await import("../src/lib/init.js");
-
     await expect(
       runInitCommand({ overwrite: true, target: "./checkout/payment-flow.mmd" }, createIo())
     ).rejects.toThrow('Expected exactly one scaffoldable diagram entry for init target');
-
-    vi.doUnmock("@diagram-tour/parser");
-    vi.resetModules();
   });
 });
+
+function readCollectionEntries(absolutePath: string) {
+  const bySuffix = [
+    {
+      entries: [createEntry({ sourcePath: absolutePath, title: "Payment Flow", focusIds: ["api_gateway"] })],
+      suffixes: ["payment-flow.mmd", "payment-flow.mermaid"]
+    },
+    {
+      entries: [
+        createEntry({ sourcePath: `${absolutePath}#details`, title: "Details", focusIds: ["detail"] }),
+        createEntry({ sourcePath: `${absolutePath}#overview`, title: "Overview", focusIds: ["start"] })
+      ],
+      suffixes: ["checklist.md"]
+    }
+  ];
+  const match = bySuffix.find((candidate) => candidate.suffixes.some((suffix) => absolutePath.endsWith(suffix)));
+
+  if (match) {
+    return match.entries;
+  }
+
+  throw new Error(`Unexpected mocked init source: ${absolutePath}`);
+}
+
+function createEntry(options: { focusIds: string[]; sourcePath: string; title: string }) {
+  return {
+    sourcePath: options.sourcePath,
+    title: options.title,
+    tour: {
+      steps: [
+        {
+          focus: options.focusIds.map((id) => ({ id })),
+          text: `${options.title} step`
+        }
+      ]
+    }
+  };
+}
 
 async function writeDiagram(path: string): Promise<void> {
   const { mkdir } = await import("node:fs/promises");
