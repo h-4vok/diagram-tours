@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE } from "../src/lib/interaction-context";
 import TourPlayer from "../src/lib/tour-player.svelte";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
@@ -47,6 +48,7 @@ describe("tour-player.svelte", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    document.documentElement.removeAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE);
     setWindowWidth(1280);
     mockElementAnimate();
   });
@@ -341,6 +343,76 @@ describe("tour-player.svelte", () => {
         invalidateAll: false,
         keepFocus: true,
         noScroll: true,
+      });
+    });
+  });
+
+  it("allows arrow navigation when diagram is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "diagram");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
+    });
+  });
+
+  it("blocks arrow navigation when browse is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "browse");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks arrow navigation when diagnostics is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "diagnostics");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to diagram behavior when context marker is missing", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
       });
     });
   });

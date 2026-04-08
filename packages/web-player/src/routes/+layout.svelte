@@ -25,6 +25,11 @@
     countDiagnosticIssues,
     createDiagnosticDisplayGroups
   } from "$lib/diagnostics";
+  import {
+    readActiveInteractionContext,
+    type ActiveInteractionContext,
+    ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE
+  } from "$lib/interaction-context";
   import type { SourceTargetInfo } from "$lib/source-target";
   import {
     DEFAULT_THEME,
@@ -69,6 +74,7 @@
   let diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
   let isHydrated = false;
   let breadcrumbs = ["diagram-tours", "collection"];
+  let activeInteractionContext: ActiveInteractionContext = "diagram";
 
   $: {
     activeSlug = readActiveSlug(page.url.pathname);
@@ -88,6 +94,10 @@
       items: browseItems
     });
     breadcrumbs = readBreadcrumbs(activeEntry);
+    activeInteractionContext = readActiveInteractionContext({
+      isBrowseOpen,
+      isDiagnosticsOpen
+    });
   }
 
   function handleThemeToggle(): void {
@@ -421,7 +431,13 @@
 
 <svelte:window on:keydown={handleWindowKeydown} on:resize={handleWindowResize} />
 
-<div class="theme-root" data-theme={theme} data-hydrated={isHydrated} data-testid="theme-root">
+<div
+  class="theme-root"
+  data-theme={theme}
+  data-hydrated={isHydrated}
+  data-testid="theme-root"
+  {...{ [ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE]: activeInteractionContext }}
+>
   <Toaster richColors position="bottom-right" />
 
   <div class="app-shell">
