@@ -194,6 +194,7 @@ Operational docs:
 - [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
 - [Engineering Principles](docs/principles/01-engineering-principles.md)
 - [Engineering Review Rubric](docs/principles/08-engineering-review-rubric.md)
+- [Architecture Reviewer Workflow](docs/principles/09-architecture-reviewer-workflow.md)
 - [Principles Examples](docs/principles/README.md)
 - [Coverage Dashboard](docs/testing/coverage.md)
 - [Smoke Tests](docs/testing/smoke-tests.md)

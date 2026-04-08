@@ -8,6 +8,10 @@ Cutoff date: 2026-03-17
 
 ### Done
 
+- BT-029 Clean-code refactoring initiative: reusable architecture reviewer
+  - Outcome: added a reusable `architecture-reviewer` skill, a dedicated reviewer identity, and a short workflow doc so Codex can implement first, then spawn an advisory reviewer that returns findings plus a verdict against the repository rubric
+  - Evidence: `.agents/skills/architecture-reviewer/SKILL.md`, `.agents/skills/architecture-reviewer/agents/openai.yaml`, `docs/principles/09-architecture-reviewer-workflow.md`
+
 - BT-028 Clean-code refactoring initiative: review rubric and decision criteria
   - Outcome: added an `Engineering Review Rubric` that operationalizes the repository manifesto into short universal criteria plus artifact-specific review guidance for modules, UI, tests, smoke, and styles
   - Evidence: `docs/principles/08-engineering-review-rubric.md`, `docs/principles/README.md`, `README.md`

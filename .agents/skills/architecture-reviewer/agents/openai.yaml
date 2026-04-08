@@ -1,0 +1,3 @@
+interface:
+  display_name: "Architecture Reviewer"
+  short_description: "Review changes against the repo architecture rubric"
