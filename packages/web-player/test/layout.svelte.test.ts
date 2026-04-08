@@ -36,6 +36,7 @@ import Layout from "../src/routes/+layout.svelte";
 import {
   FAVORITES_STORAGE_KEY
 } from "../src/lib/browse-favorites";
+import { ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE } from "../src/lib/interaction-context";
 import { RECENT_STORAGE_KEY } from "../src/lib/browse-recents";
 import {
   nestedTourCollection,
@@ -245,6 +246,30 @@ describe("+layout.svelte", () => {
     await new Promise((resolve) => setTimeout(resolve, 160));
     await fireEvent.click(screen.getByTestId("browse-backdrop"));
     expect(screen.queryByTestId("browse-panel")).toBeNull();
+  });
+
+  it("publishes active interaction context across overlay transitions", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    const themeRoot = screen.getByTestId("theme-root");
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
+
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("browse");
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
+
+    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagnostics");
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
   });
 
   it("keeps the command palette open when reopened after a route change settles", async () => {

@@ -36,6 +36,7 @@
   } from "$lib/diagram-minimap";
   import { focusDiagramViewport } from "$lib/diagram-viewport";
   import { createFocusGroup, type FocusGroup } from "$lib/focus-group";
+  import { readActiveInteractionContextFromDocument } from "$lib/interaction-context";
   import { createTourPlayer } from "$lib/player-state";
   import {
     createNodeStepChoices,
@@ -1220,7 +1221,19 @@
   }
 
   function shouldIgnoreKeyboardNavigation(event: KeyboardEvent): boolean {
-    return event.defaultPrevented || hasNavigationModifierKeys(event) || isTypingTarget(event.target);
+    if (hasKeyboardNavigationBlocker(event)) {
+      return true;
+    }
+
+    return readActiveInteractionContextFromDocument(document) !== "diagram";
+  }
+
+  function hasKeyboardNavigationBlocker(event: KeyboardEvent): boolean {
+    return [
+      event.defaultPrevented,
+      hasNavigationModifierKeys(event),
+      isTypingTarget(event.target)
+    ].some(Boolean);
   }
 
   function hasNavigationModifierKeys(event: KeyboardEvent): boolean {
