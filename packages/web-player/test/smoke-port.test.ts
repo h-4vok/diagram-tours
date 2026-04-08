@@ -21,29 +21,29 @@ afterEach(async () => {
 });
 
 describe("readPreferredSmokePort", () => {
-  it("returns a stable port for the same worktree and run id", () => {
-    const options = { worktreePath: "C:/worktrees/one", runId: 1234 };
+  it("returns a stable port for the same worktree", () => {
+    const options = { worktreePath: "C:/worktrees/one" };
 
     expect(readPreferredSmokePort(options)).toBe(readPreferredSmokePort(options));
   });
 
-  it("varies across different runs", () => {
+  it("varies across different worktrees", () => {
     const worktreePath = "C:/worktrees/one";
 
-    expect(readPreferredSmokePort({ worktreePath, runId: 1234 })).not.toBe(
-      readPreferredSmokePort({ worktreePath, runId: 1235 })
+    expect(readPreferredSmokePort({ worktreePath })).not.toBe(
+      readPreferredSmokePort({ worktreePath: "C:/worktrees/two" })
     );
   });
 });
 
 describe("resolveSmokeServerPort", () => {
   it("falls back to another free port when the preferred one is busy", async () => {
-    const preferredPort = readPreferredSmokePort({ worktreePath: "C:/worktrees/two", runId: 7 });
+    const preferredPort = readPreferredSmokePort({ worktreePath: "C:/worktrees/two" });
 
     await occupyPort(preferredPort);
 
     await expect(
-      resolveSmokeServerPort({ worktreePath: "C:/worktrees/two", runId: 7, probeLimit: 1 })
+      resolveSmokeServerPort({ worktreePath: "C:/worktrees/two", probeLimit: 1 })
     ).resolves.not.toBe(preferredPort);
   });
 });

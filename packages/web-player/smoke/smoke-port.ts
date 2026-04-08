@@ -7,15 +7,11 @@ const SMOKE_HOST = "127.0.0.1";
 
 export interface SmokePortSeed {
   worktreePath?: string;
-  runId?: number;
   probeLimit?: number;
 }
 
 export function readPreferredSmokePort(options: SmokePortSeed = {}): number {
-  const seed = createHash("sha256")
-    .update(`${readWorktreePath(options)}:${readRunId(options)}`)
-    .digest()
-    .readUInt32BE(0);
+  const seed = createHash("sha256").update(readWorktreePath(options)).digest().readUInt32BE(0);
 
   return SMOKE_PORT_BASE + (seed % SMOKE_PORT_RANGE);
 }
@@ -26,10 +22,6 @@ export async function resolveSmokeServerPort(options: SmokePortSeed = {}): Promi
 
 function readWorktreePath(options: SmokePortSeed): string {
   return options.worktreePath ?? process.cwd();
-}
-
-function readRunId(options: SmokePortSeed): number {
-  return options.runId ?? process.pid;
 }
 
 function readProbeLimit(options: SmokePortSeed): number {
