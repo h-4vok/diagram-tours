@@ -112,16 +112,16 @@ The published CLI also includes authoring-oriented commands:
 ```bash
 diagram-tours setup
 diagram-tours init ./examples/checkout/payment-flow.mmd
+diagram-tours init ./docs/architecture/checklist.md#details
+diagram-tours init ./examples/checkout/payment-flow.tour.yaml
 diagram-tours validate
 diagram-tours validate ./examples/checkout
 diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
 ```
 
 - `diagram-tours setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition that points back to that file. Run it with no flags for the interactive flow, or use `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite` directly.
-- `diagram-tours init <diagram.mmd>` creates a sibling starter `*.tour.yaml` next to a Mermaid diagram so authors do not start from scratch. Use `--overwrite` if you want to replace an existing scaffold.
+- `diagram-tours init <target>` scaffolds authored tours in one of two ways. Point it at `.mmd`, `.mermaid`, or `.md` to derive an editable `*.tour.yaml` from an existing diagram source, or point it at a new `*.tour.yaml` path to create a valid starter tour plus a sibling `.mmd` diagram. Use `--overwrite` if you want to replace an existing scaffold.
 - `diagram-tours validate [target]` validates one authored `*.tour.yaml` file or all authored tours under a directory tree. With no target, it validates the current directory recursively.
-
-`init` currently scaffolds from standalone `.mmd` or `.mermaid` files.
 
 ## Diagrams And Tour Files
 

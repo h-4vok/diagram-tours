@@ -195,10 +195,17 @@ describe("runCli", () => {
     const exitCode = await runCli(["init", "./examples/checkout/payment-flow.mmd"]);
 
     expect(exitCode).toBe(0);
-    expect(runInitCommandMock).toHaveBeenCalledWith({
-      overwrite: false,
-      target: "./examples/checkout/payment-flow.mmd"
-    });
+    expect(runInitCommandMock).toHaveBeenCalledWith(
+      {
+        overwrite: false,
+        target: "./examples/checkout/payment-flow.mmd"
+      },
+      expect.objectContaining({
+        question: expect.any(Function),
+        write: expect.any(Function)
+      })
+    );
+    expect(closeMock).toHaveBeenCalledOnce();
     expect(startWebServerMock).not.toHaveBeenCalled();
   });
 
