@@ -234,7 +234,7 @@ describe("tour-player.svelte", () => {
     expect(screen.queryByTestId("minimap-shell")).toBeNull();
   });
 
-  it("restores the persisted collapsed minimap state and can be reopened", async () => {
+  it("restores the persisted hidden minimap state and can be reopened from the dock", async () => {
     window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
 
     render(TourPlayer, {
@@ -243,22 +243,112 @@ describe("tour-player.svelte", () => {
       tour: resolvedPaymentFlowTour,
     });
 
-    expect(await screen.findByTestId("minimap-shell")).toBeDefined();
-    expect(screen.queryByTestId("minimap-surface")).toBeNull();
-    expect(
-      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
-    ).toBe("false");
+    await screen.findByTestId("step-text");
+    expect(screen.queryByTestId("camera-control-panel")).toBeNull();
+    expect(screen.getByTestId("floating-panel-dock")).toBeDefined();
+    expect(screen.getByTestId("restore-minimap-button")).toBeDefined();
 
-    await fireEvent.click(screen.getByTestId("minimap-toggle"));
+    await fireEvent.click(screen.getByTestId("restore-minimap-button"));
 
-    expect(
-      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
-    ).toBe("true");
     await waitFor(() => {
+      expect(screen.getByTestId("camera-control-panel")).toBeDefined();
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
     });
     expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe(
       "false",
+    );
+  });
+
+  it("restores the persisted hidden teleprompter state and can be reopened from the dock", async () => {
+    window.localStorage.setItem("diagram-tour:teleprompter-hidden", "true");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    await screen.findByTestId("camera-control-panel");
+    expect(screen.queryByTestId("teleprompter")).toBeNull();
+    expect(screen.getByTestId("floating-panel-dock")).toBeDefined();
+    expect(screen.getByTestId("restore-teleprompter-button")).toBeDefined();
+
+    await fireEvent.click(screen.getByTestId("restore-teleprompter-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teleprompter")).toBeDefined();
+    });
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "false",
+    );
+  });
+
+  it("hides the minimap panel and lets the teleprompter take that space", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const teleprompter = await screen.findByTestId("teleprompter");
+    const initialStyle = teleprompter.getAttribute("style") ?? "";
+
+    expect(screen.getByTestId("camera-control-panel")).toBeDefined();
+    expect(initialStyle).toContain("15.5rem");
+
+    await fireEvent.click(screen.getByTestId("minimap-toggle"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("camera-control-panel")).toBeNull();
+      expect(screen.getByTestId("restore-minimap-button")).toBeDefined();
+      expect(screen.getByTestId("teleprompter").getAttribute("style")).toContain("right: 24px");
+      expect(screen.getByTestId("floating-panel-dock").getAttribute("style")).toContain(
+        "var(--floating-panel-height)",
+      );
+    });
+  });
+
+  it("can hide and restore the teleprompter from the dock", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    expect(await screen.findByTestId("teleprompter")).toBeDefined();
+
+    await fireEvent.click(screen.getByTestId("teleprompter-toggle"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("teleprompter")).toBeNull();
+      expect(screen.getByTestId("restore-teleprompter-button")).toBeDefined();
+    });
+
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "true",
+    );
+
+    await fireEvent.click(screen.getByTestId("restore-teleprompter-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teleprompter")).toBeDefined();
+    });
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "false",
+    );
+  });
+
+  it("uses underscore minimize affordances for both panels", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    expect(await screen.findByTestId("teleprompter-toggle")).toBeDefined();
+    expect(screen.getByTestId("minimap-toggle").textContent?.trim()).toContain("_");
+    expect(screen.getByTestId("teleprompter-toggle").getAttribute("title")).toBe(
+      "Hide teleprompter",
     );
   });
 

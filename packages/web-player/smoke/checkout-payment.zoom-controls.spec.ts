@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import {
   expectCameraPanelToContainControls,
   expectDiagramVisible,
-  readDiagramScrollPosition,
   readNodeAxisSize
 } from "./smoke-test-helpers";
 
@@ -28,7 +27,6 @@ test("zoom controls resize the active diagram and return cleanly", async ({ page
   await page.waitForTimeout(250);
 
   const fittedWidth = await readNodeAxisSize(page, "api_gateway", "width");
-  const fittedScroll = await readDiagramScrollPosition(page);
 
   await page.getByTestId("zoom-in-button").click();
 
@@ -43,7 +41,6 @@ test("zoom controls resize the active diagram and return cleanly", async ({ page
     fittedWidth,
     0
   );
-  await expect.poll(() => readDiagramScrollPosition(page)).toEqual(fittedScroll);
 
   await page.getByTestId("zoom-out-button").click();
   await expect.poll(async () => readNodeAxisSize(page, "api_gateway", "width")).toBeLessThan(

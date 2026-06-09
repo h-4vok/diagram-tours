@@ -41,7 +41,10 @@
 }
 
 .camera-control-panel {
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 4%), transparent 60%),
+    color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(120%);
   border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
   border-radius: 1rem;
   box-shadow: var(--shadow-overlay, var(--shadow-soft));
@@ -87,8 +90,8 @@
 
 .viewport-toolbar__button {
   appearance: none;
-  background: color-mix(in srgb, var(--color-bg-soft) 78%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-bg-soft) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 52%, var(--color-border));
   border-radius: 999px;
   color: var(--color-text);
   cursor: pointer;
@@ -101,7 +104,22 @@
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.viewport-toolbar__button--accent {
+  background: color-mix(in srgb, var(--color-button-bg) 90%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-button-bg-hover) 82%, var(--color-border));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-button-bg) 18%, transparent);
+  color: var(--color-button-text);
+}
+
+.viewport-toolbar__button--soft {
+  background: color-mix(in srgb, var(--color-button-bg) 18%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-button-bg) 52%, var(--color-border));
+  color: var(--color-button-bg-hover);
 }
 
 .viewport-toolbar__button:hover,
@@ -109,6 +127,19 @@
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   border-color: color-mix(in srgb, var(--color-node-focus-stroke) 42%, var(--color-border));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
+  transform: translateY(-1px);
+}
+
+.viewport-toolbar__button--accent:hover,
+.viewport-toolbar__button--accent:focus-visible,
+.viewport-toolbar__button--soft:hover,
+.viewport-toolbar__button--soft:focus-visible {
+  background: var(--color-button-bg-hover);
+  border-color: color-mix(in srgb, var(--color-button-bg-hover) 82%, var(--color-border));
+  box-shadow:
+    0 10px 20px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+  color: var(--color-button-text);
 }
 
 .viewport-toolbar__button:disabled {
@@ -209,11 +240,6 @@
   width: 100%;
 }
 
-.minimap-shell--collapsed {
-  gap: 0;
-  width: 100%;
-}
-
 .minimap-shell__actions {
   display: flex;
   gap: 0.3rem;
@@ -222,27 +248,104 @@
 
 .minimap-shell__toggle {
   appearance: none;
-  background: color-mix(in srgb, var(--color-bg-soft) 84%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-button-bg) 88%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-button-bg-hover) 80%, var(--color-border));
   border-radius: 999px;
-  color: var(--color-text);
+  color: var(--color-button-text);
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  min-height: 1.6rem;
-  padding: 0.2rem 0.55rem;
+  font-size: 0;
+  font-weight: 700;
+  height: 1.95rem;
+  min-height: 1.95rem;
+  min-width: 1.95rem;
+  padding: 0;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 1.95rem;
+}
+
+.minimap-shell__toggle::before {
+  content: "_";
+  font-size: 0.92rem;
+  line-height: 1;
+  transform: translateY(-0.18rem);
 }
 
 .minimap-shell__toggle:hover,
 .minimap-shell__toggle:focus-visible {
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  border-color: color-mix(in srgb, var(--color-node-focus-stroke) 42%, var(--color-border));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-node-focus-stroke) 22%, transparent);
+  background: var(--color-button-bg-hover);
+  border-color: color-mix(in srgb, var(--color-button-bg-hover) 82%, var(--color-border));
+  box-shadow:
+    0 8px 18px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.floating-panel-dock {
+  align-items: center;
+  backdrop-filter: blur(16px) saturate(120%);
+  background: color-mix(in srgb, var(--color-surface) 58%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong, var(--color-border)) 34%, var(--color-border));
+  border-radius: 999px;
+  bottom: 24px;
+  box-shadow: var(--shadow-overlay, var(--shadow-soft));
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.45rem;
+  pointer-events: auto;
+  position: absolute;
+  right: 24px;
+  z-index: 26;
+}
+
+.floating-panel-dock__button {
+  align-items: center;
+  appearance: none;
+  background: color-mix(in srgb, var(--color-button-bg) 90%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-button-bg-hover) 80%, var(--color-border));
+  border-radius: 999px;
+  color: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0;
+  font-weight: 700;
+  height: 2.2rem;
+  justify-content: center;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 2.2rem;
+}
+
+.floating-panel-dock__button::before {
+  color: var(--color-button-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.floating-panel-dock__button[data-testid="restore-teleprompter-button"]::before {
+  content: "T";
+}
+
+.floating-panel-dock__button[data-testid="restore-minimap-button"]::before {
+  content: "M";
+}
+
+.floating-panel-dock__button:hover,
+.floating-panel-dock__button:focus-visible {
+  background: var(--color-button-bg-hover);
+  border-color: color-mix(in srgb, var(--color-button-bg-hover) 82%, var(--color-border));
+  box-shadow:
+    0 10px 20px color-mix(in srgb, var(--color-button-bg-hover) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+  transform: translateY(-1px);
 }
 
 .minimap-surface {
