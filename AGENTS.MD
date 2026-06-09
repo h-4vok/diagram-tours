@@ -11,6 +11,10 @@ Load first:
 - Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
 - Reuse examples/fixtures before new patterns.
 
+## Communication
+- Use the `caveman` skill by default for all Codex responses in this repo.
+- Stay in Caveman mode unless the user explicitly asks for normal mode or the message needs clearer phrasing for safety, irreversible actions, or multi-step instructions.
+
 ## Boundaries
 - `packages/core`: domain only. No filesystem, YAML, CLI, browser, Svelte.
 - `packages/parser`: loading, parsing, validation, discovery, slugging. No UI.
