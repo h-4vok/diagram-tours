@@ -1,0 +1,7 @@
+flowchart LR
+  request(Request) --> decision{Decision}
+  decision -- Approved --> archive
+  decision -- Review --> manual_review[/Manual Review\]
+  manual_review --> queue[(Review Queue)]
+  queue --> worker((Worker))
+  worker --> done@{ shape: rect, label: "Done" }

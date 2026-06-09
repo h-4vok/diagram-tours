@@ -10,10 +10,10 @@ flowchart TD
 
   checkout_orchestrator[Checkout Orchestrator]
   payment_service[Payment Service]
-  risk_engine[Risk Engine]
-  fraud_model[Fraud Model]
+  risk_engine{Risk Engine}
+  fraud_model((Fraud Model))
   ledger_service[Ledger Service]
-  settlement_jobs[Settlement Jobs]
+  settlement_jobs@{ shape: rect, label: "Settlement Jobs" }
 
   catalog_service[Catalog Service]
   cart_service[Cart Service]

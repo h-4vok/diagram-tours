@@ -108,6 +108,51 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
   });
 
+  it("resolves shaped and bare flowchart nodes in authored focus and text", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "flowchart LR",
+        "  start(Start) --> decision{Decision}",
+        "  decision --> archive",
+        "  metadata@{ shape: rect, label: Metadata Node }"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Mixed Flowchart",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - decision",
+        "      - archive",
+        "      - metadata",
+        "    text: >",
+        "      {{decision}} routes to {{archive}} and {{metadata}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        elements: [
+          { id: "start", kind: "node", label: "Start" },
+          { id: "decision", kind: "node", label: "Decision" },
+          { id: "archive", kind: "node", label: "archive" },
+          { id: "metadata", kind: "node", label: "Metadata Node" }
+        ]
+      },
+      steps: [
+        {
+          focus: [
+            { id: "decision", kind: "node", label: "Decision" },
+            { id: "archive", kind: "node", label: "archive" },
+            { id: "metadata", kind: "node", label: "Metadata Node" }
+          ],
+          text: "Decision routes to archive and Metadata Node.\n"
+        }
+      ]
+    });
+  });
+
   it("fails when the tour version is unsupported", async () => {
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",

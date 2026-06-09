@@ -49,6 +49,7 @@
 
   const MINIMAP_BREAKPOINT = 720;
   const MINIMAP_STORAGE_KEY = "diagram-tour:minimap-collapsed";
+  const TELEPROMPTER_STORAGE_KEY = "diagram-tour:teleprompter-hidden";
   const MINIMAP_SIZE = {
     maxHeight: 160,
     maxWidth: 220
@@ -108,6 +109,7 @@
   let hasRenderedDiagram = false;
   let isCompactViewport = false;
   let isMinimapCollapsed = false;
+  let isTeleprompterHidden = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
   let nodeStepChooser: NodeStepChooser | null = null;
   let nodeStepIndex = createDiagramElementStepIndex(tour);
@@ -116,7 +118,17 @@
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
   let zoomScale = DEFAULT_ZOOM_SCALE;
-  $: stepTextLines = readStepTextLines(state.step.text);
+  $: isDesktopFloatingUi = !isCompactViewport;
+  $: isMinimapVisible = isDesktopFloatingUi && !isMinimapCollapsed;
+  $: isTeleprompterVisible = !isTeleprompterHidden;
+  $: teleprompterStyle = isDesktopFloatingUi
+    ? `right: ${isMinimapVisible ? "calc(24px + 15.5rem + 24px)" : "24px"};`
+    : "";
+  $: floatingPanelDockStyle = readFloatingPanelDockStyle({
+    isDesktopFloatingUi,
+    isMinimapVisible,
+    isTeleprompterVisible
+  });
 
   async function goPrevious(): Promise<void> {
     await goToStepIndex(state.stepIndex - 1);
@@ -314,6 +326,27 @@
     persistMinimapState();
   }
 
+  function toggleTeleprompter(): void {
+    isTeleprompterHidden = !isTeleprompterHidden;
+    persistTeleprompterState();
+  }
+
+  function readFloatingPanelDockStyle(input: {
+    isDesktopFloatingUi: boolean;
+    isMinimapVisible: boolean;
+    isTeleprompterVisible: boolean;
+  }): string {
+    if (!input.isDesktopFloatingUi) {
+      return "";
+    }
+
+    if (input.isMinimapVisible !== input.isTeleprompterVisible) {
+      return "bottom: calc(24px + var(--floating-panel-height) + 12px); right: 24px;";
+    }
+
+    return "bottom: 24px; right: 24px;";
+  }
+
   async function renderInitialDiagram(): Promise<void> {
     try {
       await renderMermaidDiagram({
@@ -342,6 +375,7 @@
     }
 
     isMinimapCollapsed = window.localStorage.getItem(MINIMAP_STORAGE_KEY) === "true";
+    isTeleprompterHidden = window.localStorage.getItem(TELEPROMPTER_STORAGE_KEY) === "true";
   }
 
   function persistMinimapState(): void {
@@ -350,6 +384,14 @@
     }
 
     window.localStorage.setItem(MINIMAP_STORAGE_KEY, String(isMinimapCollapsed));
+  }
+
+  function persistTeleprompterState(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(TELEPROMPTER_STORAGE_KEY, String(isTeleprompterHidden));
   }
 
   function attachWindowListeners(): () => void {
@@ -1293,10 +1335,6 @@
     return svg === null ? null : { context, svg };
   }
 
-  function readStepTextLines(text: string): string[] {
-    return normalizeStepText(text).split("\n");
-  }
-
   function normalizeStepText(text: string): string {
     return text.replace(/<br\s*\/?>/giu, "\n");
   }
@@ -1347,125 +1385,93 @@
       </div>
     {/if}
 
+    {#if isTeleprompterVisible}
     <aside
       class="teleprompter"
       data-testid="teleprompter"
+      style={teleprompterStyle}
     >
       <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
       
       <div class="teleprompter__content" data-testid="step-overlay">
-        <div class="teleprompter__navleft">
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            aria-label="Zoom out"
-            disabled={!canZoomOut(zoomScale)}
-            on:click={() => void zoomOut()}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            aria-label="Fit diagram to view"
-            on:click={() => void fitZoomToView()}
-          >
-            Fit
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            aria-label="Zoom in"
-            disabled={!canZoomIn(zoomScale)}
-            on:click={() => void zoomIn()}
-          >
-            +
-          </button>
-          <p class="viewport-toolbar__value">{formatZoomPercentage(zoomScale)}</p>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            aria-label="Reset zoom to 100%"
-            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
-            on:click={() => void resetZoom()}
-          >
-            100%
-          </button>
-        </div>
-      <aside class="step-panel step-panel--overlay">
-        <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
-        <div class="step-timeline" data-testid="step-timeline">
-          {#each tour.steps as step, stepIndex (step.index)}
+        <div class="teleprompter__main">
+          <div class="teleprompter__actions">
             <button
               type="button"
-              class:step-timeline__pill--current={stepIndex === state.stepIndex}
-              class:step-timeline__pill--complete={stepIndex < state.stepIndex}
-              class="step-timeline__pill"
-              data-testid="timeline-step-button"
-              aria-current={stepIndex === state.stepIndex ? "step" : undefined}
-              on:click={() => void goToStepIndex(stepIndex)}
+              class="teleprompter__paneltoggle"
+              data-testid="teleprompter-toggle"
+              aria-label="Hide teleprompter"
+              title="Hide teleprompter"
+              on:click={toggleTeleprompter}
             >
-              {step.index}
+              <span aria-hidden="true">×</span>
             </button>
-          {/each}
-        </div>
-        <p class="step-text">
-          {#each stepTextLines as line, index (index)}
-            {line}
-            {#if index < stepTextLines.length - 1}<br />{/if}
-          {/each}
-        </p>
+          </div>
 
-        <div class="controls">
-          <button
-            type="button"
-            class="button button--secondary"
-            on:click={goPrevious}
-            disabled={!state.canGoPrevious}
-            data-testid="previous-button"
-            aria-label="Previous step"
-          >
-            <span class="teleprompter__btnicon">←</span>
-          </button>
-        </div>
-
-          <div class="teleprompter__textarea" data-testid="step-text-container">
-            <p class="teleprompter__stepinfo">Step {state.stepIndex + 1} of {tour.steps.length}</p>
-          <p data-testid="step-text" class="teleprompter__text">
-            {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
-              {#if segment.isCode}
-                <code class="teleprompter__code">{segment.content}</code>
-              {:else}
-                {#each segment.content.split("\n") as line, lineIndex (`${state.stepIndex}-${segmentIndex}-${lineIndex}`)}
-                  {line}
-                  {#if lineIndex < segment.content.split("\n").length - 1}<br />{/if}
-                {/each}
-              {/if}
+          <div class="step-timeline" data-testid="step-timeline">
+            {#each tour.steps as step, stepIndex (step.index)}
+              <button
+                type="button"
+                class:step-timeline__pill--current={stepIndex === state.stepIndex}
+                class:step-timeline__pill--complete={stepIndex < state.stepIndex}
+                class="step-timeline__pill"
+                data-testid="timeline-step-button"
+                aria-current={stepIndex === state.stepIndex ? "step" : undefined}
+                on:click={() => void goToStepIndex(stepIndex)}
+              >
+                {step.index}
+              </button>
             {/each}
-          </p>
-        </div>
+          </div>
 
-        <div class="teleprompter__navright">
-          <button
-            type="button"
-            class="teleprompter__btn"
-            on:click={goNext}
-            disabled={!state.canGoNext}
-            data-testid="next-button"
-            aria-label="Next step"
-          >
-            <span class="teleprompter__btnicon">→</span>
-          </button>
+          <div class="teleprompter__reader">
+            <button
+              type="button"
+              class="teleprompter__btn teleprompter__btn--cta"
+              on:click={goPrevious}
+              disabled={!state.canGoPrevious}
+              data-testid="previous-button"
+              aria-label="Previous step"
+            >
+              <span class="teleprompter__btnicon">&larr;</span>
+            </button>
+
+            <div class="teleprompter__textarea" data-testid="step-text-container">
+              <p class="teleprompter__stepinfo">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+              <p data-testid="step-text" class="teleprompter__text">
+                {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
+                  {#if segment.isCode}
+                    <code class="teleprompter__code">{segment.content}</code>
+                  {:else}
+                    {#each segment.content.split("\n") as line, lineIndex (`${state.stepIndex}-${segmentIndex}-${lineIndex}`)}
+                      {line}
+                      {#if lineIndex < segment.content.split("\n").length - 1}<br />{/if}
+                    {/each}
+                  {/if}
+                {/each}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="teleprompter__btn teleprompter__btn--cta"
+              on:click={goNext}
+              disabled={!state.canGoNext}
+              data-testid="next-button"
+              aria-label="Next step"
+            >
+              <span class="teleprompter__btnicon">&rarr;</span>
+            </button>
+          </div>
         </div>
-      </aside>
       </div>
     </aside>
+    {/if}
 
-    {#if !isCompactViewport}
+    {#if isMinimapVisible}
       <div class="camera-control-cluster" data-testid="camera-control-cluster">
         <div class="camera-control-panel" data-testid="camera-control-panel">
           <aside
-            class:minimap-shell--collapsed={isMinimapCollapsed}
             class="minimap-shell"
             data-testid="minimap-shell"
           >
@@ -1474,14 +1480,15 @@
                 type="button"
                 class="minimap-shell__toggle"
                 data-testid="minimap-toggle"
-                aria-expanded={!isMinimapCollapsed}
+                aria-expanded="true"
+                aria-label="Hide minimap panel"
                 on:click={toggleMinimap}
               >
-                {isMinimapCollapsed ? "Show" : "Hide"}
+                _
               </button>
             </div>
 
-            {#if !isMinimapCollapsed && minimapGeometry !== null}
+            {#if minimapGeometry !== null}
               <div
                 bind:this={minimapSurface}
                 class="minimap-surface"
@@ -1536,7 +1543,7 @@
             <div class="viewport-toolbar__actions" data-testid="zoom-primary-controls">
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--soft"
                 data-testid="zoom-out-button"
                 aria-label="Zoom out"
                 disabled={!canZoomOut(zoomScale)}
@@ -1546,7 +1553,7 @@
               </button>
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--accent"
                 data-testid="zoom-fit-button"
                 aria-label="Fit diagram to view"
                 on:click={() => void fitZoomToView()}
@@ -1555,7 +1562,7 @@
               </button>
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--soft"
                 data-testid="zoom-in-button"
                 aria-label="Zoom in"
                 disabled={!canZoomIn(zoomScale)}
@@ -1567,7 +1574,7 @@
             <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
             <button
               type="button"
-              class="viewport-toolbar__button"
+              class="viewport-toolbar__button viewport-toolbar__button--accent"
               data-testid="zoom-one-hundred-button"
               aria-label="Reset zoom to 100%"
               disabled={zoomScale === DEFAULT_ZOOM_SCALE}
@@ -1578,6 +1585,40 @@
           </aside>
         </div>
       </div>
+    {/if}
+
+    {#if isMinimapCollapsed || isTeleprompterHidden}
+      <aside
+        class="floating-panel-dock"
+        data-testid="floating-panel-dock"
+        style={floatingPanelDockStyle}
+      >
+        {#if isTeleprompterHidden}
+          <button
+            type="button"
+            class="floating-panel-dock__button"
+            data-testid="restore-teleprompter-button"
+            aria-label="Show teleprompter"
+            title="Show teleprompter"
+            on:click={toggleTeleprompter}
+          >
+            <span aria-hidden="true">≣</span>
+          </button>
+        {/if}
+
+        {#if isMinimapCollapsed}
+          <button
+            type="button"
+            class="floating-panel-dock__button"
+            data-testid="restore-minimap-button"
+            aria-label="Show minimap panel"
+            title="Show minimap panel"
+            on:click={toggleMinimap}
+          >
+            <span aria-hidden="true">⌖</span>
+          </button>
+        {/if}
+      </aside>
     {/if}
 
     {#if diagramError.length > 0}

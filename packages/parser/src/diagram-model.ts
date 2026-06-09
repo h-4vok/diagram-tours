@@ -7,6 +7,7 @@ import type {
 } from "@diagram-tour/core";
 
 import type { DiagramModel } from "./parser-contracts.js";
+import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
 import {
   createStepFieldMessage,
@@ -15,7 +16,6 @@ import {
   type TourContext
 } from "./tour-context.js";
 
-const FLOWCHART_NODE_PATTERN = /([A-Za-z][A-Za-z0-9_]*)\[([^\]]+)\]/g;
 const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
 const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
 
@@ -105,28 +105,6 @@ export function readTextReferenceIds(text: string): string[] {
 
 function detectDiagramType(source: string): DiagramType {
   return SEQUENCE_DIAGRAM_PATTERN.test(source) ? "sequence" : "flowchart";
-}
-
-function createFlowchartDiagramModel(source: string): DiagramModel {
-  return {
-    elements: extractFlowchartElements(source),
-    renderSource: source,
-    type: "flowchart"
-  };
-}
-
-function extractFlowchartElements(source: string): DiagramElement[] {
-  const elements = new Map<string, DiagramElement>();
-
-  for (const match of source.matchAll(FLOWCHART_NODE_PATTERN)) {
-    elements.set(match[1], {
-      id: match[1],
-      kind: "node",
-      label: match[2].trim()
-    });
-  }
-
-  return Array.from(elements.values());
 }
 
 function resolveLoadedTourSteps(
