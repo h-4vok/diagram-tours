@@ -15,8 +15,15 @@ Use readable, stable IDs:
 ```mermaid
 flowchart LR
 api_gateway[API Gateway]
-validation_service[Validation Service]
+validation_service(Validation Service)
+decision{Decision}
+queue[(Queue)]
+manual_review[/Manual Review\]
+metadata@{ shape: rect, label: "Metadata Node" }
+api_gateway --> response
 ```
+
+Flowchart IDs must match `[A-Za-z][A-Za-z0-9_]*`. Common Mermaid node shapes are addressable when they have an ID, including square, round, diamond, circle, database, subroutine, stadium, trapezoid, parallelogram, and `@{ shape: ..., label: ... }` forms. Bare linked endpoints like `api_gateway --> response` are addressable too, with the ID as their fallback label.
 
 Prefer:
 

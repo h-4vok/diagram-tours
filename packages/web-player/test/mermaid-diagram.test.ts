@@ -46,6 +46,23 @@ describe("mermaid diagram helpers", () => {
     );
   });
 
+  it("adds app-owned node classes for newly addressable flowchart IDs", () => {
+    const source = createRenderableDiagramSource({
+      elements: [
+        { id: "decision", kind: "node", label: "Decision" },
+        { id: "archive", kind: "node", label: "archive" },
+        { id: "metadata", kind: "node", label: "Metadata Node" }
+      ],
+      path: "./flowchart-addressability.mmd",
+      source: "flowchart LR\n  decision{Decision} --> archive\n  metadata@{ shape: rect, label: Metadata Node }",
+      type: "flowchart"
+    });
+
+    expect(source).toContain("class decision diagram_tour_node_decision;");
+    expect(source).toContain("class archive diagram_tour_node_archive;");
+    expect(source).toContain("class metadata diagram_tour_node_metadata;");
+  });
+
   it("keeps sequence-diagram source unchanged", () => {
     const source = createRenderableDiagramSource({
       elements: [

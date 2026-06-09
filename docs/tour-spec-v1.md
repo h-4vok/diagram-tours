@@ -85,11 +85,18 @@ diagram: ./country-checklist.md#details
 
 The referenced diagram must contain addressable Mermaid element IDs.
 
-For flowcharts, that means explicit node IDs such as:
+For flowcharts, that means node IDs that start with a letter and then use only letters, digits, or underscores:
 
 ```mermaid
 api_gateway[API Gateway]
+decision{Decision}
+queue[(Queue)]
+manual_review[/Manual Review\]
+metadata@{ shape: rect, label: "Metadata Node" }
+api_gateway --> response
 ```
+
+Bare linked endpoints such as `api_gateway --> response` are addressable too. Their fallback label is the ID until the diagram later gives that ID an explicit label.
 
 For sequence diagrams, that means:
 
@@ -238,7 +245,6 @@ Example:
 Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
-<<<<<<< HEAD
 The published CLI exposes that validation through:
 
 ```bash
@@ -252,20 +258,22 @@ Validation is authored-tour focused:
 - a single `*.tour.yaml` target validates exactly that file
 - a directory target validates authored `*.tour.yaml` files recursively beneath it
 - raw diagrams are not considered validation targets for this command
-=======
+
 When a workspace contains invalid authored tours, the player may still load valid tours and expose the skipped authored files through the `Issues` panel with grouped per-file diagnostics.
->>>>>>> origin/main
 
 ## Mermaid Requirements
 
 Version 1 supports Mermaid flowcharts and Mermaid sequence diagrams.
 
-Flowchart nodes must use explicit IDs:
+Flowchart node IDs must match `[A-Za-z][A-Za-z0-9_]*`.
 
 ```mermaid
 flowchart LR
   client[Client] --> api_gateway[API Gateway]
-  api_gateway --> validation_service[Validation Service]
+  api_gateway --> validation_service(Validation Service)
+  validation_service --> decision{Decision}
+  decision --> archive
+  queue@{ shape: rect, label: "Queue" }
 ```
 
 In this example, the usable IDs are:
@@ -274,7 +282,12 @@ In this example, the usable IDs are:
 client
 api_gateway
 validation_service
+decision
+archive
+queue
 ```
+
+Flowchart labels can come from common Mermaid node forms such as `id[Label]`, `id(Label)`, `id{Label}`, `id((Label))`, bracket variants like database or trapezoid nodes, and `id@{ shape: ..., label: "Label" }`. Bare linked endpoints such as `archive` use the ID as the fallback label. If the same ID appears later with a new explicit label, the first source position is kept and the latest explicit label is used.
 
 Sequence diagrams support two addressable element kinds:
 
@@ -339,6 +352,7 @@ Not supported:
 - conditional steps
 - player-specific viewport instructions in the tour file
 - Mermaid notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs
+- flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
 
 ## Future Directions
 

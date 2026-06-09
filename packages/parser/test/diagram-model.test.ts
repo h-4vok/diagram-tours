@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createDiagramModel, resolveLoadedTour } from "../src/diagram-model.js";
+import { createDiagramModel, createGeneratedSteps, resolveLoadedTour } from "../src/diagram-model.js";
 import { createTourContext } from "../src/tour-context.js";
 import { restoreParserTestState } from "./parser-test-support.js";
 
@@ -25,6 +25,121 @@ describe("@diagram-tour/parser diagram model", () => {
         { id: "response", kind: "node", label: "Response" }
       ]
     });
+  });
+
+  it("extracts flowchart nodes from common shapes and metadata syntax", () => {
+    const model = createDiagramModel(
+      [
+        "flowchart LR",
+        "  start(Start) --> decision{Decision}",
+        "  decision --> cache[(Cache)]",
+        "  cache --> worker((Worker))",
+        "  worker --> stadium([Stadium])",
+        "  stadium --> subroutine[[Subroutine]]",
+        "  subroutine --> hexagon{{Hexagon}}",
+        "  hexagon --> trapezoid[/Trapezoid\\]",
+        "  trapezoid --> parallelogram[\\Parallelogram/]",
+        "  metadata@{ shape: rect, label: Metadata Node }"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model).toMatchObject({
+      type: "flowchart",
+      elements: [
+        { id: "start", kind: "node", label: "Start" },
+        { id: "decision", kind: "node", label: "Decision" },
+        { id: "cache", kind: "node", label: "Cache" },
+        { id: "worker", kind: "node", label: "Worker" },
+        { id: "stadium", kind: "node", label: "Stadium" },
+        { id: "subroutine", kind: "node", label: "Subroutine" },
+        { id: "hexagon", kind: "node", label: "Hexagon" },
+        { id: "trapezoid", kind: "node", label: "Trapezoid" },
+        { id: "parallelogram", kind: "node", label: "Parallelogram" },
+        { id: "metadata", kind: "node", label: "Metadata Node" }
+      ]
+    });
+    expect(model.renderSource).toContain("metadata@{ shape: rect, label: Metadata Node }");
+  });
+
+  it("extracts bare flowchart link endpoints with id fallback labels", () => {
+    const model = createDiagramModel(
+      ["flowchart LR", "  source --> target", "  target -- Approved --> archive"].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "source", kind: "node", label: "source" },
+      { id: "target", kind: "node", label: "target" },
+      { id: "archive", kind: "node", label: "archive" }
+    ]);
+  });
+
+  it("ignores flowchart metadata nodes that do not provide labels", () => {
+    const model = createDiagramModel(
+      [
+        "flowchart LR",
+        "  unlabeled@{ shape: rect }",
+        '  empty@{ shape: rect, label: "" }',
+        "  -- detached --> orphan"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([{ id: "orphan", kind: "node", label: "orphan" }]);
+  });
+
+  it("keeps first flowchart order and updates duplicate explicit labels", () => {
+    const model = createDiagramModel(
+      ["flowchart LR", "  source --> target", "  target[Latest Target] --> done[Done]"].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "source", kind: "node", label: "source" },
+      { id: "target", kind: "node", label: "Latest Target" },
+      { id: "done", kind: "node", label: "Done" }
+    ]);
+  });
+
+  it("creates generated overview and node focus steps", () => {
+    expect(
+      createGeneratedSteps([{ id: "api_gateway", kind: "node", label: "API Gateway" }], "Payment Flow")
+    ).toEqual([
+      {
+        focus: [],
+        index: 1,
+        text: "Overview of Payment Flow."
+      },
+      {
+        focus: [{ id: "api_gateway", kind: "node", label: "API Gateway" }],
+        index: 2,
+        text: "Focus on API Gateway."
+      }
+    ]);
+  });
+
+  it("ignores flowchart non-node statements", () => {
+    const model = createDiagramModel(
+      [
+        "flowchart LR",
+        "  start[Start] --> finish[Finish]",
+        "  class start primary",
+        "  classDef primary fill:#fff",
+        "  style finish stroke:#333",
+        "  linkStyle 0 stroke:#333",
+        "  click start call callback()",
+        "  subgraph cluster",
+        "  direction TB",
+        "  end"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "start", kind: "node", label: "Start" },
+      { id: "finish", kind: "node", label: "Finish" }
+    ]);
   });
 
   it("extracts sequence participants and strips tagged message ids from render source", () => {

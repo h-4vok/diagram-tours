@@ -12,6 +12,8 @@
 }
 
 .diagram-shell--canvas {
+  --floating-panel-height: 15.5rem;
+
   background:
     radial-gradient(circle at 50% 14%, color-mix(in srgb, var(--color-bg-glow) 32%, transparent), transparent 28%),
     linear-gradient(180deg, color-mix(in srgb, var(--color-bg-top) 18%, transparent), transparent 24%),
@@ -45,6 +47,7 @@
   box-shadow: var(--shadow-overlay, var(--shadow-soft));
   display: grid;
   gap: 0;
+  height: var(--floating-panel-height);
   overflow: hidden;
   padding: 0.5rem;
   width: 15.5rem;
