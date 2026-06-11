@@ -5,7 +5,7 @@
 It can load:
 
 - Mermaid diagram files such as `payment-flow.mmd` or `release-pipeline.mermaid`
-- Mermaid flowcharts and Mermaid sequence diagrams
+- Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams
 - Markdown files with fenced `mermaid` blocks, including AI-generated docs
 - optional matching `*.tour.yaml` files
 - version 1 tour content with `version`, `title`, `diagram`, and `steps` when you want authored enrichment
@@ -130,7 +130,9 @@ Raw diagrams work immediately. If a diagram has no authored tour yet, `diagram-t
 - an overview step for the whole diagram
 - one step per addressable Mermaid diagram element in source order
 
-For flowcharts, that means one step per Mermaid node. For sequence diagrams, that means one step per explicit participant plus one step per explicitly tagged message.
+For flowcharts, that means one step per Mermaid node. For sequence diagrams, that means one step per explicit participant plus one step per explicitly tagged message. For Sankey diagrams, that means one step per Sankey node in source order.
+
+Sankey diagrams use `sankey-beta` with CSV-like rows. In authored tours, Sankey `focus` values and `{{text references}}` use raw visible node labels such as `Gateway` or `Fraud Review`. If the same visible label appears more than once, the first source-order match wins.
 
 Add a `*.tour.yaml` file only when you want richer titles, custom step text, curated focus groups, and label interpolation.
 
@@ -230,7 +232,7 @@ Other available commands:
 - `bun run smoke`
 - `bun run prepush`
 
-The shipped example library lives directly under `examples/` as a minimal canonical set with `checkout-payment-flow`, `sequence-order-sequence`, and `payments-platform-overview`.
+The shipped example library lives directly under `examples/` as a minimal canonical set with `checkout-payment-flow`, `sequence-order-sequence`, `payments-platform-overview`, and `sankey-ops-review` for an interview-to-offer Sankey walkthrough.
 
 ## Repository Packages
 

@@ -8,7 +8,7 @@ It also supports Markdown files that contain fenced ```mermaid blocks. This is e
 
 ## Start with Stable Mermaid IDs
 
-Every diagram element that may appear in `focus` or `{{references}}` needs a stable, addressable Mermaid ID.
+Every diagram element that may appear in `focus` or `{{references}}` needs a stable, addressable Mermaid reference.
 
 Use readable, stable IDs:
 
@@ -141,7 +141,7 @@ examples/
 
 The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
 
-For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message.
+For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message. For Sankey diagrams, that is one step per node in source order.
 
 Markdown-backed diagrams are also valid:
 
@@ -273,5 +273,25 @@ bun run dev
 Use the repository examples as references:
 
 - `checkout-payment-flow` for a small authored flowchart
+- `sankey-ops-review` for a small authored Sankey
 - `sequence-order-sequence` for an authored Mermaid sequence diagram
 - `payments-platform-overview` for a large authored demo that stresses minimap, zoom, and pan
+For Sankey diagrams, use common Mermaid `sankey-beta` CSV rows. Authored references use raw visible node labels, not generated IDs:
+
+```mermaid
+sankey-beta
+Checkout,Gateway,120
+Gateway,Fraud Review,20
+Gateway,Settlement,100
+```
+
+```yaml
+steps:
+  - focus:
+      - Gateway
+      - Fraud Review
+    text: >
+      {{Gateway}} may send traffic through {{Fraud Review}}.
+```
+
+If a visible Sankey label appears more than once, the first source-order match wins.

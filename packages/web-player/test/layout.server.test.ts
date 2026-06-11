@@ -29,6 +29,7 @@ describe("+layout.server", () => {
       "checkout-payment-flow",
       "flowchart-addressability",
       "payments-platform-overview",
+      "sankey-ops-review",
       "sequence-order-sequence"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
@@ -46,6 +47,7 @@ describe("+layout.server", () => {
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",
+      "Interview Offers Pipeline",
       "Order Sequence"
     ]);
     expect(result.collection.skipped).toEqual([]);

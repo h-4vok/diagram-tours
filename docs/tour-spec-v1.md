@@ -83,7 +83,7 @@ If a Markdown file contains multiple Mermaid blocks, the path must include a fra
 diagram: ./country-checklist.md#details
 ```
 
-The referenced diagram must contain addressable Mermaid element IDs.
+The referenced diagram must contain addressable Mermaid references.
 
 For flowcharts, that means node IDs that start with a letter and then use only letters, digits, or underscores:
 
@@ -263,7 +263,7 @@ When a workspace contains invalid authored tours, the player may still load vali
 
 ## Mermaid Requirements
 
-Version 1 supports Mermaid flowcharts and Mermaid sequence diagrams.
+Version 1 supports Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams.
 
 Flowchart node IDs must match `[A-Za-z][A-Za-z0-9_]*`.
 
@@ -338,6 +338,7 @@ Supported:
 
 - Mermaid flowcharts
 - Mermaid sequence diagrams with addressable participants and tagged messages
+- Common Mermaid Sankey diagrams with addressable node labels
 - YAML tour files
 - sequential tours
 - element highlighting or other player-defined focus rendering
@@ -353,6 +354,7 @@ Not supported:
 - player-specific viewport instructions in the tour file
 - Mermaid notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs
 - flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
+- Stable authored Sankey link references
 
 ## Future Directions
 
@@ -370,3 +372,17 @@ These are intentionally excluded from version 1.
 ## Philosophy
 
 Version 1 aims to feel like writing an explanation, not configuring a UI runtime.
+Sankey diagrams support addressable nodes by raw visible label:
+
+```mermaid
+sankey-beta
+Checkout,Gateway,120
+Gateway,Fraud Review,20
+Gateway,Settlement,100
+```
+
+- `Gateway`
+- `Fraud Review`
+- `Settlement`
+
+If the same visible Sankey label appears more than once, the first source-order match wins.
