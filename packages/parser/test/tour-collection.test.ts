@@ -81,6 +81,24 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(entry.tour.diagram.source).not.toContain("[request_sent]");
   });
 
+  it("builds a one-tour collection from the flowchart addressability example", async () => {
+    const collection = await loadResolvedTourCollection(
+      resolve(EXAMPLES_ROOT, "./flowchart-addressability.tour.yaml")
+    );
+
+    expect(collection.entries).toHaveLength(1);
+    expect(collection.entries[0]).toMatchObject({
+      slug: "flowchart-addressability",
+      sourcePath: "flowchart-addressability.tour.yaml",
+      title: "Flowchart Addressability"
+    });
+    expect(collection.entries[0]?.tour.steps.map((step) => step.text)).toEqual([
+      "Inbound Intake feeds the branching Decision that controls the rest of the flow.\n",
+      "This path shows common flowchart shapes, including bare endpoints like archive and metadata-shaped nodes like Done.\n",
+      "The flowchart stays fully navigable in the browser while the diagram source keeps its original Mermaid annotations.\n"
+    ]);
+  });
+
   it("discovers matching .tour.yaml files from a directory target", async () => {
     const collection = await loadResolvedTourCollection(DISCOVERY_FIXTURE_ROOT);
 
@@ -322,6 +340,7 @@ describe("@diagram-tour/parser tour collection", () => {
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
       "checkout-payment-flow",
+      "flowchart-addressability",
       "payments-platform-overview",
       "sequence-order-sequence",
     ]);

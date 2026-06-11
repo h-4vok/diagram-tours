@@ -63,6 +63,23 @@ describe("mermaid diagram helpers", () => {
     expect(source).toContain("class metadata diagram_tour_node_metadata;");
   });
 
+  it("keeps flowchart click annotations in the rendered Mermaid source", () => {
+    const source = createRenderableDiagramSource({
+      elements: [{ id: "decision", kind: "node", label: "Decision" }],
+      path: "./flowchart-addressability.mmd",
+      source: [
+        "flowchart LR",
+        "  decision{Decision}",
+        '  click decision "https://example.com/decision" "Decision rule details"'
+      ].join("\n"),
+      type: "flowchart"
+    });
+
+    expect(source).toContain(
+      'click decision "https://example.com/decision" "Decision rule details"'
+    );
+  });
+
   it("keeps sequence-diagram source unchanged", () => {
     const source = createRenderableDiagramSource({
       elements: [

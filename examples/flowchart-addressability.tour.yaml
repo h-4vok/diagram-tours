@@ -1,0 +1,25 @@
+version: 1
+title: Flowchart Addressability
+diagram: ./flowchart-addressability.mmd
+
+steps:
+  - focus:
+      - intake
+      - decision
+    text: >
+      {{intake}} feeds the branching {{decision}} that controls the rest of the flow.
+
+  - focus:
+      - archive
+      - manual_review
+      - queue
+      - worker
+      - done
+    text: >
+      This path shows common flowchart shapes, including bare endpoints like {{archive}}
+      and metadata-shaped nodes like {{done}}.
+
+  - focus: []
+    text: >
+      The flowchart stays fully navigable in the browser while the diagram source keeps
+      its original Mermaid annotations.

@@ -5,6 +5,7 @@ The public example library is intentionally minimal and canonical.
 Visible public set:
 
 - `checkout-payment-flow.*` for a small authored flowchart
+- `flowchart-addressability.*` for a flowchart example with common shapes, bare endpoints, and a tooltip annotation
 - `sequence-order-sequence.*` for a small authored sequence diagram
 - `payments-platform-overview.*` for a large authored interactive demo
 
