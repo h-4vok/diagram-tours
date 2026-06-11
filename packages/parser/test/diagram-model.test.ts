@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createDiagramModel, createGeneratedSteps, resolveLoadedTour } from "../src/diagram-model.js";
+import {
+  createDiagramModel,
+  createElementIndex,
+  createGeneratedSteps,
+  resolveLoadedTour
+} from "../src/diagram-model.js";
 import { createTourContext } from "../src/tour-context.js";
 import { restoreParserTestState } from "./parser-test-support.js";
 
@@ -189,6 +194,85 @@ describe("@diagram-tour/parser diagram model", () => {
     expect(model.renderSource).not.toContain("[request_sent]");
   });
 
+  it("detects sankey diagrams and extracts unique nodes in first-seen source order", () => {
+    const model = createDiagramModel(
+      [
+        "sankey-beta",
+        "Checkout,Gateway,120",
+        "Gateway,Fraud Review,20",
+        "Gateway,Settlement,100",
+        "Fraud Review,Settlement,15",
+        "Settlement,Bank,115"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model).toMatchObject({
+      type: "sankey",
+      elements: [
+        { id: "Checkout", kind: "node", label: "Checkout" },
+        { id: "Gateway", kind: "node", label: "Gateway" },
+        { id: "Fraud Review", kind: "node", label: "Fraud Review" },
+        { id: "Settlement", kind: "node", label: "Settlement" },
+        { id: "Bank", kind: "node", label: "Bank" }
+      ]
+    });
+  });
+
+  it("parses common sankey csv details including decimals, quotes, commas, comments, and blank lines", () => {
+    const model = createDiagramModel(
+      [
+        "sankey-beta",
+        "%% source,target,value",
+        "\"North, America\",Gateway,120.5",
+        "",
+        "Gateway,\"Quoted \"\"Review\"\"\",20.25",
+        "Gateway,Settlement,100"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "North, America", kind: "node", label: "North, America" },
+      { id: "Gateway", kind: "node", label: "Gateway" },
+      { id: 'Quoted "Review"', kind: "node", label: 'Quoted "Review"' },
+      { id: "Settlement", kind: "node", label: "Settlement" }
+    ]);
+  });
+
+  it("ignores malformed or non-standard sankey rows that do not produce a valid common-case triple", () => {
+    const model = createDiagramModel(
+      [
+        "sankey-beta",
+        "Checkout,Gateway,not-a-number",
+        "\"Unclosed,Gateway,20",
+        "Too,Many,Columns,10",
+        ",Gateway,20",
+        "Checkout,Gateway,120"
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "Checkout", kind: "node", label: "Checkout" },
+      { id: "Gateway", kind: "node", label: "Gateway" }
+    ]);
+  });
+
+  it("creates sankey generated steps as overview plus one step per unique node", () => {
+    const model = createDiagramModel(
+      ["sankey-beta", "Gateway,Settlement,100", "Gateway,Bank,20"].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(createGeneratedSteps(model.elements, "Sankey Example").map((step) => step.text)).toEqual([
+      "Overview of Sankey Example.",
+      "Focus on Gateway.",
+      "Focus on Settlement.",
+      "Focus on Bank."
+    ]);
+  });
+
   it("fails on duplicate sequence ids", () => {
     expect(() =>
       createDiagramModel(
@@ -225,5 +309,40 @@ describe("@diagram-tour/parser diagram model", () => {
         text: "Focus on API Gateway."
       }
     ]);
+  });
+
+  it("resolves sankey authored references by visible label and picks first duplicate match", () => {
+    const resolved = resolveLoadedTour({
+      context: createTourContext("/tmp/tour.tour.yaml"),
+      diagramPath: "./diagram.mmd",
+      diagramSource: ["sankey-beta", "Gateway,Settlement,100", "Gateway,Bank,20"].join("\n"),
+      rawTour: {
+        version: 1,
+        title: "Valid Tour",
+        diagram: "./diagram.mmd",
+        steps: [
+          {
+            focus: ["Gateway"],
+            text: "Focus on {{Gateway}}."
+          }
+        ]
+      }
+    });
+
+    expect(resolved.steps).toEqual([
+      {
+        focus: [{ id: "Gateway", kind: "node", label: "Gateway" }],
+        index: 1,
+        text: "Focus on Gateway."
+      }
+    ]);
+  });
+
+  it("indexes sankey labels when authored labels differ from internal ids", () => {
+    const element = { id: "gateway__internal", kind: "node" as const, label: "Gateway" };
+    const index = createElementIndex([element], "sankey");
+
+    expect(index.get("gateway__internal")).toEqual(element);
+    expect(index.get("Gateway")).toEqual(element);
   });
 });

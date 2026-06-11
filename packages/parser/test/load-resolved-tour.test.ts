@@ -320,6 +320,123 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
   });
 
+  it("loads a valid sankey tour with visible-label references", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "sankey-beta",
+        "Checkout,Gateway,120",
+        "Gateway,Fraud Review,20",
+        "Gateway,Settlement,100",
+        "Fraud Review,Settlement,15",
+        "Settlement,Bank,115"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Sankey Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Gateway",
+        "      - Fraud Review",
+        "    text: >",
+        "      {{Gateway}} can route work through {{Fraud Review}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      title: "Sankey Tour",
+      diagram: {
+        type: "sankey",
+        source: [
+          "sankey-beta",
+          "Checkout,Gateway,120",
+          "Gateway,Fraud Review,20",
+          "Gateway,Settlement,100",
+          "Fraud Review,Settlement,15",
+          "Settlement,Bank,115"
+        ].join("\n")
+      },
+      steps: [
+        {
+          focus: [
+            { id: "Gateway", kind: "node", label: "Gateway" },
+            { id: "Fraud Review", kind: "node", label: "Fraud Review" }
+          ],
+          text: "Gateway can route work through Fraud Review.\n"
+        }
+      ]
+    });
+  });
+
+  it("resolves duplicate sankey labels to first source-order match", async () => {
+    const tourPath = await createTempTour({
+      mermaid: ["sankey-beta", "Gateway,Settlement,100", "Gateway,Bank,20"].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Sankey Duplicates",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Gateway",
+        "    text: >",
+        "      {{Gateway}} is first."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      steps: [
+        {
+          focus: [{ id: "Gateway", kind: "node", label: "Gateway" }],
+          text: "Gateway is first.\n"
+        }
+      ]
+    });
+  });
+
+  it("fails when a sankey focus reference uses an unknown node label", async () => {
+    const tourPath = await createTempTour({
+      mermaid: ["sankey-beta", "Checkout,Gateway,120"].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Broken Sankey Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Missing Label",
+        "    text: >",
+        "      Overview."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node label "Missing Label"`
+    );
+  });
+
+  it("fails when a sankey text reference uses an unknown node label", async () => {
+    const tourPath = await createTempTour({
+      mermaid: ["sankey-beta", "Checkout,Gateway,120"].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Broken Sankey Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Checkout",
+        "    text: >",
+        "      {{Missing Label}} is not valid."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).rejects.toThrow(
+      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node label "Missing Label"`
+    );
+  });
+
   it("uses the participant id as the label when a sequence participant has no alias", async () => {
     const tourPath = await createTempTour({
       mermaid: ["sequenceDiagram", "  participant api", "  api->>api: [self_check] Self check"].join(

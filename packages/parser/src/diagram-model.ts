@@ -8,6 +8,7 @@ import type {
 
 import type { DiagramModel } from "./parser-contracts.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
+import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
 import {
   createStepFieldMessage,
@@ -16,17 +17,20 @@ import {
   type TourContext
 } from "./tour-context.js";
 
-const NODE_REFERENCE_PATTERN = /{{\s*([A-Za-z][A-Za-z0-9_]*)\s*}}/g;
+const NODE_REFERENCE_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
 const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
+const SANKEY_DIAGRAM_PATTERN = /^\s*sankey-beta\b/mu;
 
 type ElementIndex = Map<string, DiagramElement>;
 
 export function createDiagramModel(source: string, context: TourContext): DiagramModel {
   const type = detectDiagramType(source);
 
-  return type === "sequence"
-    ? createSequenceDiagramModel(source, context)
-    : createFlowchartDiagramModel(source);
+  if (type === "sequence") {
+    return createSequenceDiagramModel(source, context);
+  }
+
+  return type === "sankey" ? createSankeyDiagramModel(source) : createFlowchartDiagramModel(source);
 }
 
 export function resolveLoadedTour(input: {
@@ -36,7 +40,7 @@ export function resolveLoadedTour(input: {
   rawTour: DiagramTour;
 }): ResolvedDiagramTour {
   const diagramModel = createDiagramModel(input.diagramSource, input.context);
-  const elementIndex = createElementIndex(diagramModel.elements);
+  const elementIndex = createElementIndex(diagramModel.elements, diagramModel.type);
 
   return {
     sourceKind: "authored",
@@ -81,8 +85,23 @@ export function createResolvedDiagram(
   };
 }
 
-export function createElementIndex(elements: DiagramElement[]): Map<string, DiagramElement> {
-  return new Map(elements.map((element) => [element.id, element]));
+export function createElementIndex(
+  elements: DiagramElement[],
+  diagramType: DiagramType
+): Map<string, DiagramElement> {
+  const index = new Map(elements.map((element) => [element.id, element]));
+
+  if (diagramType !== "sankey") {
+    return index;
+  }
+
+  elements.forEach((element) => {
+    if (!index.has(element.label)) {
+      index.set(element.label, element);
+    }
+  });
+
+  return index;
 }
 
 export function createUnknownElementMessage(input: {
@@ -104,7 +123,11 @@ export function readTextReferenceIds(text: string): string[] {
 }
 
 function detectDiagramType(source: string): DiagramType {
-  return SEQUENCE_DIAGRAM_PATTERN.test(source) ? "sequence" : "flowchart";
+  if (SEQUENCE_DIAGRAM_PATTERN.test(source)) {
+    return "sequence";
+  }
+
+  return SANKEY_DIAGRAM_PATTERN.test(source) ? "sankey" : "flowchart";
 }
 
 function resolveLoadedTourSteps(
@@ -197,5 +220,9 @@ function resolveElement(input: {
 }
 
 function readUnknownElementTarget(diagramType: DiagramType): string {
-  return diagramType === "sequence" ? "participant or message id" : "node id";
+  if (diagramType === "sequence") {
+    return "participant or message id";
+  }
+
+  return diagramType === "sankey" ? "node label" : "node id";
 }

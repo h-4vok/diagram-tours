@@ -94,6 +94,20 @@ describe("mermaid diagram helpers", () => {
     expect(source).toBe("sequenceDiagram\n  participant user as User\n  user->>user: Send request");
   });
 
+  it("keeps sankey source unchanged", () => {
+    const source = createRenderableDiagramSource({
+      elements: [
+        { id: "Checkout", kind: "node", label: "Checkout" },
+        { id: "Gateway", kind: "node", label: "Gateway" }
+      ],
+      path: "./sankey.mmd",
+      source: "sankey-beta\nCheckout,Gateway,120",
+      type: "sankey"
+    });
+
+    expect(source).toBe("sankey-beta\nCheckout,Gateway,120");
+  });
+
   it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
     const container = document.createElement("div");
     document.documentElement.style.setProperty("--bg-base", "#101820");
@@ -137,6 +151,44 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "",
       width: "1440"
     });
+  });
+
+  it("annotates sankey nodes and labels in source order", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="nodes"><g class="node"><rect></rect></g><g class="node"><rect></rect></g></g>',
+        '<g class="node-labels"><text>Checkout</text><text>Gateway</text></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "Checkout", kind: "node", label: "Checkout" },
+          { id: "Gateway", kind: "node", label: "Gateway" }
+        ],
+        path: "./sankey.mmd",
+        source: "sankey-beta\nCheckout,Gateway,120",
+        type: "sankey"
+      }
+    });
+
+    expect(container.querySelector('.nodes .node[data-diagram-element-id="Checkout"]')).not.toBeNull();
+    expect(container.querySelector('.node-labels text[data-diagram-element-id="Gateway"]')).not.toBeNull();
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sankey: {
+          height: 860,
+          useMaxWidth: false,
+          width: 1560
+        }
+      })
+    );
   });
 
   it("falls back to Mermaid theme defaults when CSS tokens are missing", async () => {

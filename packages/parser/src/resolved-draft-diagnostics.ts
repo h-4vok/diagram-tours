@@ -17,7 +17,7 @@ export function validateResolvedTourDraft(input: {
   source: string;
 }): TourDiagnostic[] {
   const collector = createTourValidationCollector();
-  const elementIndex = createElementIndex(input.diagramModel.elements);
+  const elementIndex = createElementIndex(input.diagramModel.elements, input.diagramModel.type);
   const lineCounter = createSourceLineCounter(input.source);
 
   input.draft.steps.forEach((step, index) =>

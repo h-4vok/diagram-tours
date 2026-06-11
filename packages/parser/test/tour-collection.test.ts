@@ -81,6 +81,40 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(entry.tour.diagram.source).not.toContain("[request_sent]");
   });
 
+  it("builds generated fallback steps from a raw sankey diagram file target with unique nodes", async () => {
+    const sankeyRoot = await createTempDiagramDirectory({
+      "diagrams/ops-sankey.mmd": [
+        "sankey-beta",
+        "Checkout,Gateway,120",
+        "Gateway,Fraud Review,20",
+        "Gateway,Settlement,100",
+        "Fraud Review,Settlement,15",
+        "Settlement,Bank,115"
+      ].join("\n")
+    });
+
+    const collection = await loadResolvedTourCollection(resolve(sankeyRoot, "./diagrams/ops-sankey.mmd"));
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(collection.entries).toHaveLength(1);
+    expect(entry.tour.diagram.type).toBe("sankey");
+    expect(entry.tour.diagram.elements.map((element) => element.id)).toEqual([
+      "Checkout",
+      "Gateway",
+      "Fraud Review",
+      "Settlement",
+      "Bank"
+    ]);
+    expect(entry.tour.steps.map((step) => step.text)).toEqual([
+      "Overview of Ops Sankey.",
+      "Focus on Checkout.",
+      "Focus on Gateway.",
+      "Focus on Fraud Review.",
+      "Focus on Settlement.",
+      "Focus on Bank."
+    ]);
+  });
+
   it("builds a one-tour collection from the flowchart addressability example", async () => {
     const collection = await loadResolvedTourCollection(
       resolve(EXAMPLES_ROOT, "./flowchart-addressability.tour.yaml")
@@ -342,6 +376,7 @@ describe("@diagram-tour/parser tour collection", () => {
       "checkout-payment-flow",
       "flowchart-addressability",
       "payments-platform-overview",
+      "sankey-ops-review",
       "sequence-order-sequence",
     ]);
   });

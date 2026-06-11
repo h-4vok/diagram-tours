@@ -11,7 +11,7 @@ export interface DiagramTour {
   steps: TourStep[];
 }
 
-export type DiagramType = "flowchart" | "sequence";
+export type DiagramType = "flowchart" | "sequence" | "sankey";
 
 export type DiagramElementKind = "node" | "participant" | "message";
 
