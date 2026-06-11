@@ -27,6 +27,7 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
       "checkout-payment-flow",
+      "flowchart-addressability",
       "payments-platform-overview",
       "sequence-order-sequence"
     ]);
@@ -43,8 +44,9 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
       "Payment Flow",
+      "Flowchart Addressability",
       "Payments Platform Overview",
-      "Order Sequence",
+      "Order Sequence"
     ]);
     expect(result.collection.skipped).toEqual([]);
     expect(result.sourceTarget.kind).toBe("directory");

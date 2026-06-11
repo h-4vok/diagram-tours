@@ -62,6 +62,32 @@ describe("@diagram-tour/parser diagram model", () => {
     expect(model.renderSource).toContain("metadata@{ shape: rect, label: Metadata Node }");
   });
 
+  it("extracts flowchart nodes from a full addressability sample with clickable annotations", () => {
+    const model = createDiagramModel(
+      [
+        "flowchart LR",
+        "  intake[Inbound Intake] --> decision{Decision}",
+        "  decision -- Approved --> archive",
+        "  decision -- Review --> manual_review[/Manual Review\\]",
+        "  manual_review --> queue[(Review Queue)]",
+        "  queue --> worker((Worker))",
+        '  worker --> done@{ shape: rect, label: "Done" }',
+        '  click decision "https://example.com/decision" "Decision rule details"'
+      ].join("\n"),
+      createTourContext("/tmp/diagram.mmd")
+    );
+
+    expect(model.elements).toEqual([
+      { id: "intake", kind: "node", label: "Inbound Intake" },
+      { id: "decision", kind: "node", label: "Decision" },
+      { id: "archive", kind: "node", label: "archive" },
+      { id: "manual_review", kind: "node", label: "Manual Review" },
+      { id: "queue", kind: "node", label: "Review Queue" },
+      { id: "worker", kind: "node", label: "Worker" },
+      { id: "done", kind: "node", label: "Done" }
+    ]);
+  });
+
   it("extracts bare flowchart link endpoints with id fallback labels", () => {
     const model = createDiagramModel(
       ["flowchart LR", "  source --> target", "  target -- Approved --> archive"].join("\n"),
