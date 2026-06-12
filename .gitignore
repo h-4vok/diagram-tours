@@ -12,3 +12,5 @@ packages/web-player/.vercel/
 packages/web-player/test-results/
 .env
 .aider*
+graphify-out/cost.json
+graphify-out/cache/
