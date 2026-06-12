@@ -59,6 +59,13 @@
   --color-node-hover-fill-strong: #93c5fd;
   --color-node-hover-stroke: #3b82f6;
   --color-node-hover-text: #0b1220;
+  --color-sankey-label-text: #0f172a;
+  --color-sankey-label-outline: rgb(255 255 255 / 96%);
+  --color-sankey-label-size: 13.5px;
+  --color-sankey-label-stroke-width: 5px;
+  --color-sankey-link-opacity: 0.68;
+  --color-sankey-link-contrast: 1;
+  --color-sankey-link-saturation: 1.02;
   --color-connector-context-opacity: 0.92;
   --color-connector-context-surface: rgb(255 255 255 / 78%);
   --color-overlay-backdrop: rgb(250 250 250 / 72%);

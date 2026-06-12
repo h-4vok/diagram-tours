@@ -7,6 +7,10 @@ Load first:
 ## Workflow
 - Task shape: bounded capability; user-visible, contract-visible, validation-visible, or delivery-unblocking infra.
 - Flow: contract -> test -> code -> refactor -> closeout-validate -> operator validation.
+- Code-related work only: if a task changes code, tests, contract-visible docs, behavior-visible docs, startup flow, validation flow, or smoke-visible behavior, the implementing thread must raise a separate reviewer subagent/thread before final closeout.
+- Non-code work only: requirement definition and technical planning do not require reviewer invocation by themselves, unless that thread also changes code-related artifacts.
+- Reviewer loop: reviewer must inspect source-of-truth inputs directly, including issue or acceptance criteria, current diff or touched files, `AGENTS.md`, and relevant docs. Do not hand-copy review context into the reviewer thread.
+- Findings loop: if reviewer reports material findings, the implementing thread must fix them or justify them, then rerun reviewer before `closeout-validate`.
 - Prefer behavior tests, small pure functions, guard clauses, explicit data.
 - Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
 - Reuse examples/fixtures before new patterns.
@@ -38,6 +42,7 @@ Load first:
 
 ## Validation
 - Before done: run `closeout-validate` on the touched files and report the exact checks run.
+- Separate reviewer does not replace `closeout-validate`. Review first, then targeted validation, then operator validation.
 - Lint: modified JS/TS/Svelte/CSS files only.
 - Tests: affected Vitest files only. No full suite.
 - Smoke: touched smoke spec only. No full smoke.
@@ -77,3 +82,4 @@ Load first:
 
 - `product-manager`: `/.agents/skills/product-manager/SKILL.md` for requirement discovery/refinement. Interview the user, work through GitHub Issues directly, and finish by labeling the issue `pm-done`.
 - `tech-lead`: `/.agents/skills/tech-lead/SKILL.md` for technical planning after product scope is clear.
+- `reviewer`: `/.agents/skills/reviewer/SKILL.md` for normal code-related change review. Use after implementation when code-related artifacts changed; it is not required for pure PM or Tech Lead work unless that thread also changes code-related artifacts.

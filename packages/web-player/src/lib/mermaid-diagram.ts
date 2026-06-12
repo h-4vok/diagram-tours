@@ -57,6 +57,7 @@ export async function renderMermaidDiagram(input: {
   const mermaid = await loadMermaid();
 
   mermaid.default.initialize({
+    ...readMermaidDiagramConfig(input.diagram),
     startOnLoad: false,
     theme: "base",
     themeVariables: readMermaidThemeVariables(input.container)
@@ -98,7 +99,7 @@ export function applyFocusState(input: {
 }
 
 export function createRenderableDiagramSource(diagram: ResolvedDiagram): string {
-  if (diagram.type === "sequence") {
+  if (diagram.type !== "flowchart") {
     return diagram.source;
   }
 
@@ -111,6 +112,20 @@ export function createRenderableDiagramSource(diagram: ResolvedDiagram): string 
 
 export function getMermaidErrorMessage(): string {
   return MERMAID_ERROR_MESSAGE;
+}
+
+function readMermaidDiagramConfig(diagram: ResolvedDiagram): Record<string, unknown> {
+  if (diagram.type !== "sankey") {
+    return {};
+  }
+
+  return {
+    sankey: {
+      height: 860,
+      useMaxWidth: false,
+      width: 1560
+    }
+  };
 }
 
 async function loadMermaid(): Promise<MermaidModule> {
@@ -205,6 +220,12 @@ function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagr
     return;
   }
 
+  if (diagram.type === "sankey") {
+    annotateSankeyElements(container, diagram.elements);
+
+    return;
+  }
+
   annotateFlowchartElements(container, diagram.elements);
 }
 
@@ -218,6 +239,25 @@ function annotateFlowchartElements(container: HTMLElement, elements: DiagramElem
 
     setDiagramElementDataset(renderedElement, element);
   });
+}
+
+function annotateSankeyElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedNodes = Array.from(container.querySelectorAll<RenderedDiagramElement>(".nodes .node"));
+  const renderedLabels = Array.from(container.querySelectorAll<RenderedDiagramElement>(".node-labels text"));
+
+  elements.forEach((element, index) => {
+    annotateSankeyRenderedElement(renderedNodes[index], element);
+    annotateSankeyRenderedElement(renderedLabels[index], element);
+  });
+}
+
+function annotateSankeyRenderedElement(
+  renderedElement: RenderedDiagramElement | undefined,
+  element: DiagramElement
+): void {
+  if (renderedElement !== undefined) {
+    setDiagramElementDataset(renderedElement, element);
+  }
 }
 
 function annotateFlowchartConnectors(container: HTMLElement, diagram: ResolvedDiagram): void {

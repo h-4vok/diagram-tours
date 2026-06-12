@@ -47,6 +47,31 @@
   transition: opacity 400ms ease;
 }
 
+.diagram .links .link {
+  mix-blend-mode: normal !important;
+}
+
+.diagram .links .link path {
+  filter:
+    saturate(var(--color-sankey-link-saturation, 1))
+    contrast(var(--color-sankey-link-contrast, 1));
+  stroke-opacity: var(--color-sankey-link-opacity, 0.72);
+}
+
+.diagram .node-labels text {
+  font-size: var(--color-sankey-label-size, 14px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+  stroke-width: var(--color-sankey-label-stroke-width, 4px);
+}
+
+.diagram .node-labels text:not([data-focus-state="focused"]) {
+  fill: var(--color-sankey-label-text);
+  stroke: var(--color-sankey-label-outline);
+}
+
 .diagram .edgeLabel rect,
 .diagram .labelBkg {
   backdrop-filter: blur(2px);
@@ -203,6 +228,10 @@
   opacity: 0.35 !important;
 }
 
+.diagram .node-labels [data-focus-state="dimmed"] {
+  opacity: 0.48 !important;
+}
+
 [data-focus-state="focused"] {
   opacity: 1;
 }
@@ -243,11 +272,15 @@
 }
 
 [data-focus-state="focused"]:is(text, foreignObject, tspan),
-[data-focus-state="focused"] text,
 [data-focus-state="focused"] foreignObject,
 [data-focus-state="focused"] tspan {
   fill: var(--color-node-focus-text);
   opacity: 1;
+}
+
+.diagram .node-labels [data-focus-state="focused"] {
+  fill: var(--color-node-focus-text);
+  stroke: color-mix(in srgb, var(--accent-primary) 16%, var(--color-sankey-label-outline));
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="message"]:is(text, tspan),

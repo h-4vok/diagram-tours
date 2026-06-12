@@ -352,6 +352,51 @@ describe("@diagram-tour/parser markdown discovery", () => {
     });
   });
 
+  it("loads an authored tour that selects a markdown sankey block by fragment", async () => {
+    const tourPath = await createTempTour({
+      diagramPath: "diagram.md",
+      mermaid: [
+        "# Overview",
+        "",
+        "```mermaid",
+        "flowchart TD",
+        "  start[Start] --> finish[Finish]",
+        "```",
+        "",
+        "# Sankey",
+        "",
+        "```mermaid",
+        "sankey-beta",
+        "Checkout,Gateway,120",
+        "Gateway,Fraud Review,20",
+        "```"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Markdown Sankey Tour",
+        "diagram: ./diagram.md#sankey",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Gateway",
+        "    text: >",
+        "      Focus on {{Gateway}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        path: "./diagram.md#sankey",
+        type: "sankey"
+      },
+      steps: [
+        {
+          text: "Focus on Gateway.\n"
+        }
+      ]
+    });
+  });
+
   it("fails when a markdown fragment does not exist", async () => {
     const tourPath = await createTempTour({
       diagramPath: "diagram.md",
