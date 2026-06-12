@@ -1,14 +1,17 @@
 # Principles
 
-This folder contains the repository's engineering north star for clean code and refactoring work.
+This folder is reference, not always-load context.
 
-Start here:
+Core:
 
 - [Engineering Principles](01-engineering-principles.md)
+
+Review-specific:
+
 - [Engineering Review Rubric](08-engineering-review-rubric.md)
 - [Architecture Reviewer Workflow](09-architecture-reviewer-workflow.md)
 
-Supporting material:
+Supporting examples:
 
 - [Mixed Responsibilities](02-mixed-responsibilities.md)
 - [Layer Leakage](03-layer-leakage.md)
@@ -20,7 +23,3 @@ Supporting material:
 Background reference:
 
 - [Clean Code Refactoring Reference](../clean-code-refactoring.md)
-
-The main principles document stays short on purpose.
-
-The supporting files exist to ground those principles with worked examples and review-oriented guidance.

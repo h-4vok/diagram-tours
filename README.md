@@ -170,67 +170,12 @@ sequenceDiagram
 
 That makes both `focus: [submit_order]` and `{{submit_order}}` resolve to `Submit order`.
 
-## For Contributors
+## Contributors
 
-Repository development still uses the Bun workspace monorepo:
+Use [AGENTS.md](AGENTS.md) as the default implementation policy.
 
-```bash
-bun install
-bun run dev
-bun run dev:open
-bun run dev:interactive
-```
-
-- `bun run dev` starts the local player without opening the browser automatically.
-- `bun run dev:open` starts the same local player and opens the browser for you.
-- `bun run dev:interactive` starts the console flow for choosing the preview target interactively.
-
-Contributor guidance lives here:
-
-- [AGENTS.md](AGENTS.md)
-
-Backlog and planning now live in GitHub Issues. Use issue numbers as the canonical work-item identifiers instead of repo-local `BT-*` codes.
-
-Operational docs:
-
-- [Runtime Loading](docs/runtime-loading.md)
-- [Authoring Guide](docs/authoring-guide.md)
-- [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
-- [Engineering Principles](docs/principles/01-engineering-principles.md)
-- [Engineering Review Rubric](docs/principles/08-engineering-review-rubric.md)
-- [Architecture Reviewer Workflow](docs/principles/09-architecture-reviewer-workflow.md)
-- [Principles Examples](docs/principles/README.md)
-- [Coverage Dashboard](docs/testing/coverage.md)
-- [Smoke Tests](docs/testing/smoke-tests.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [Tour Specification v1](docs/tour-spec-v1.md)
-- [Vision Log](VISION_LOG.md)
-
-## Testing And Coverage
-
-Agent default:
-
-- targeted local checks on touched files/packages via `closeout-validate`
-- operator runs exhaustive/full validation via `repo-validate`
-
-Operator quick path:
-
-```bash
-bun run allchecks:ai
-```
-
-`allchecks:ai` is the human-facing alias for the full validation pass (`prepush`) with normal logs.
-
-`prepush` now runs labeled `lint`, `typecheck`, and `test` checks in parallel first, then runs `smoke` only after that stage passes.
-
-Other available commands:
-
-- `bun run lint`
-- `bun run typecheck`
-- `bun run test`
-- `bun run prepush:checks`
-- `bun run smoke`
-- `bun run prepush`
+- [Contributor Workflow](docs/contributor-workflow.md)
+- [Principles Index](docs/principles/README.md)
 
 The shipped example library lives directly under `examples/` as a minimal canonical set with `checkout-payment-flow`, `sequence-order-sequence`, `payments-platform-overview`, and `sankey-ops-review` for an interview-to-offer Sankey walkthrough.
 

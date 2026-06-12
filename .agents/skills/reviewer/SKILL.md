@@ -5,15 +5,11 @@ description: Review current code-related change set against repo rules and work-
 
 # Reviewer
 
-Use this skill for normal review of a code-related work item.
-
-This skill is advisory.
-
-It does not implement fixes, rewrite files, or replace `closeout-validate`.
+Use this skill for normal review of a code-related work item. Advisory only. No fixes. Does not replace `closeout-validate`.
 
 ## When to use
 
-- Default use: current work item changed code-related artifacts.
+- Use when current work item changed code-related artifacts.
 - Code-related artifacts include code, tests, contract-visible docs, behavior-visible docs, startup flow, validation flow, or smoke-visible behavior.
 - Do not use for pure requirement-definition or technical-planning work with no code-related file changes.
 
@@ -24,13 +20,13 @@ It does not implement fixes, rewrite files, or replace `closeout-validate`.
 - `AGENTS.md`
 - relevant docs for changed behavior or contracts
 
-Read those directly. Do not rely on human-copied review summaries when repo truth is available.
+Read those directly. Do not rely on human-copied summaries when repo truth is available.
 
 ## Scope rules
 
-- Default scope is changed files for current work item.
-- Keep review centered on current task unless caller asks for wider scope.
-- Do not turn normal review into repo-wide audit.
+- Default scope: changed files for current work item.
+- Stay centered on current task unless caller asks for wider scope.
+- Do not turn it into repo-wide audit.
 
 ## Review priorities
 
@@ -42,15 +38,14 @@ Read those directly. Do not rely on human-copied review summaries when repo trut
 - validation gaps
 - architecture or boundary violations when relevant
 
-For structural or refactor-heavy changes, you may also apply `architecture-reviewer` lens, but this skill remains normal code review first.
+For structural or refactor-heavy changes, you may also apply `architecture-reviewer` lens, but this stays normal code review first.
 
 ## What not to do
 
 - do not implement fixes
 - do not prescribe large redesigns unless needed to explain risk
-- do not replace `closeout-validate`
 - do not perform repo-wide audit unless explicitly requested
-- do not duplicate full repo policy when one direct reference is enough
+- do not duplicate full repo policy when one reference is enough
 
 ## Output contract
 
@@ -82,7 +77,7 @@ Write exactly one of:
 
 ## Output style
 
-- plain Markdown, not JSON
-- concise and review-oriented
-- findings first, verdict last
+- plain Markdown
+- findings first
+- verdict last
 - English only
