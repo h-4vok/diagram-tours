@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectCameraPanelToContainControls, expectDiagramVisible } from "./smoke-test-helpers";
 
 test("desktop minimap stays visible and tracks the focused step", async ({ page }) => {
-  await page.goto("/checkout-payment-flow");
+  await page.goto("/flowchart/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("camera-control-cluster")).toBeVisible();
   await expect(page.getByTestId("camera-control-panel")).toBeVisible();
@@ -14,7 +14,7 @@ test("desktop minimap stays visible and tracks the focused step", async ({ page 
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(1);
 
   await page.getByTestId("next-button").click();
-  await expect(page).toHaveURL(/\/checkout-payment-flow\?step=2$/);
+  await expect(page).toHaveURL(/\/flowchart\/checkout-payment-flow\?step=2$/);
   await page.getByTestId("next-button").click();
   await expect(page.getByTestId("step-text-container")).toContainText("merchant-side transaction state");
   await expect(page.getByTestId("minimap-focus-marker")).toHaveCount(2);

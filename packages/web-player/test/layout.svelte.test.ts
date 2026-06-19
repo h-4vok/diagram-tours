@@ -216,11 +216,11 @@ describe("+layout.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
-    const refundOption = within(
-      screen.getAllByTestId("browse-recent-row").find((element) => element.dataset.tourSlug === "payments-platform-overview")!
-    ).getByRole("option");
+    const refundOption = screen
+      .getAllByRole("option")
+      .find((element) => element.textContent?.includes("Payments Platform Overview"));
 
-    expect(refundOption.getAttribute("aria-selected")).toBe("true");
+    expect(refundOption?.getAttribute("aria-selected")).toBe("true");
 
     await fireEvent.keyDown(window, { key: "ArrowDown" });
     await fireEvent.keyDown(window, { key: "Enter" });
@@ -316,7 +316,7 @@ describe("+layout.svelte", () => {
         sourceTarget: {
           kind: "file" as const,
           label: "checkout-payment-flow.tour.yaml",
-          path: "/repo/examples/checkout-payment-flow.tour.yaml"
+          path: "/repo/examples/flowchart/checkout-payment-flow.tour.yaml"
         }
       }
     });

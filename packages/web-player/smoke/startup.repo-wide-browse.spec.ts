@@ -9,7 +9,7 @@ test("repo-wide startup exposes repo-only tours in browse", async ({ page }) => 
   });
 
   try {
-    await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
+    await openBrowse(page, `${server.baseUrl}/examples/flowchart/checkout-payment-flow`);
 
     await expect(page.getByTestId("preview-target-notice")).toHaveCount(0);
     await expect(server.output).toContain(server.baseUrl);

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectDiagramVisible } from "./smoke-test-helpers";
 
 test("selected steps keep a focused-node contract while the default dark mode remains usable", async ({ page }) => {
-  await page.goto("/checkout-payment-flow");
+  await page.goto("/flowchart/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
 

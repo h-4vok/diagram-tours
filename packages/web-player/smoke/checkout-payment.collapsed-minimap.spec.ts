@@ -5,7 +5,7 @@ test("collapsed minimap hides the full panel and exposes a restore action", asyn
   await page.addInitScript(() => {
     window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
   });
-  await page.goto("/checkout-payment-flow");
+  await page.goto("/flowchart/checkout-payment-flow");
   await expectDiagramVisible(page);
 
   await expect(page.getByTestId("camera-control-panel")).toHaveCount(0);

@@ -192,13 +192,13 @@ describe("runCli", () => {
 
   it("dispatches init through the init command module", async () => {
     const { runCli } = await import("../src/lib/cli.js");
-    const exitCode = await runCli(["init", "./examples/checkout/payment-flow.mmd"]);
+    const exitCode = await runCli(["init", "./examples/flowchart/checkout-payment-flow.mmd"]);
 
     expect(exitCode).toBe(0);
     expect(runInitCommandMock).toHaveBeenCalledWith(
       {
         overwrite: false,
-        target: "./examples/checkout/payment-flow.mmd"
+        target: "./examples/flowchart/checkout-payment-flow.mmd"
       },
       expect.objectContaining({
         question: expect.any(Function),

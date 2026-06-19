@@ -1,14 +1,14 @@
 # diagram-tours
 
-`diagram-tours` lets you open Mermaid diagrams from any local repository and view them in a browser, with optional `*.tour.yaml` files to enrich the walkthrough.
+`diagram-tours` lets you open supported Mermaid diagrams from any local repository and view them in a browser, with optional `*.tour.yaml` files to enrich the walkthrough.
 
-It can load:
+It currently supports Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams. You can load them from:
 
-- Mermaid diagram files such as `payment-flow.mmd` or `release-pipeline.mermaid`
-- Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams
+- [Flowchart examples](examples/flowchart/) with `.mmd` or `.tour.yaml` pairs
+- [Sequence examples](examples/sequence/)
+- [Sankey examples](examples/sankey/)
 - Markdown files with fenced `mermaid` blocks, including AI-generated docs
-- optional matching `*.tour.yaml` files
-- version 1 tour content with `version`, `title`, `diagram`, and `steps` when you want authored enrichment
+- optional matching `*.tour.yaml` files for authored enrichment
 
 ## Install Globally
 
@@ -43,20 +43,22 @@ diagram-tours ./docs/architecture
 Open a single tour file directly:
 
 ```bash
-diagram-tours ./examples/checkout-payment-flow.tour.yaml
+diagram-tours ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 Open a single Mermaid diagram directly:
 
 ```bash
-diagram-tours ./examples/checkout-payment-flow.mmd
+diagram-tours ./examples/flowchart/checkout-payment-flow.mmd
 ```
 
 Open a Markdown file that contains Mermaid fences directly:
 
 ```bash
-diagram-tours ./docs/architecture/country-implementation-checklist.md
+diagram-tours --open ./docs/interview-offers-pipeline.md
 ```
+
+For direct targets, pass `--open` or open the printed localhost URL manually. Direct mode does not launch the browser by default.
 
 The server prefers `http://127.0.0.1:7733` and automatically falls back to another free localhost port when needed.
 
@@ -72,7 +74,7 @@ The wizard also asks whether to open the browser and lets you override the host 
 
 ## Direct Path Flow
 
-When you pass a directory, Mermaid file, or `*.tour.yaml` path directly:
+When you pass a directory, Mermaid file, Markdown file with fenced Mermaid, or `*.tour.yaml` path directly:
 
 - the wizard is skipped
 - the target is validated immediately
@@ -81,12 +83,12 @@ When you pass a directory, Mermaid file, or `*.tour.yaml` path directly:
 
 ## Validate Tours
 
-Use `diagram-tours validate` to check one or more tour targets without starting the browser:
+Use `diagram-tours validate` to check one authored tour target or one directory tree without starting the browser:
 
 ```bash
 diagram-tours validate
 diagram-tours validate ./examples
-diagram-tours validate ./examples/checkout-payment-flow.tour.yaml ./docs
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 - no args means `.`.
@@ -111,12 +113,13 @@ The published CLI also includes authoring-oriented commands:
 
 ```bash
 diagram-tours setup
-diagram-tours init ./examples/checkout/payment-flow.mmd
-diagram-tours init ./docs/architecture/checklist.md#details
-diagram-tours init ./examples/checkout/payment-flow.tour.yaml
+diagram-tours init ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours init ./docs/interview-offers-pipeline.md
+diagram-tours init ./fixtures/markdown/checklist.md#details
+diagram-tours init ./examples/flowchart/new-flow.tour.yaml
 diagram-tours validate
-diagram-tours validate ./examples/checkout
-diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+diagram-tours validate ./examples
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 - `diagram-tours setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition that points back to that file. Run it with no flags for the interactive flow, or use `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite` directly.
@@ -145,7 +148,7 @@ Version 1 tour files look like this:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./checkout-payment-flow.mmd
+diagram: ./flowchart/checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -177,7 +180,7 @@ Use [AGENTS.md](AGENTS.md) as the default implementation policy.
 - [Contributor Workflow](docs/contributor-workflow.md)
 - [Principles Index](docs/principles/README.md)
 
-The shipped example library lives directly under `examples/` as a minimal canonical set with `checkout-payment-flow`, `sequence-order-sequence`, `payments-platform-overview`, and `sankey-ops-review` for an interview-to-offer Sankey walkthrough.
+The shipped example library is grouped by diagram type under `examples/`: [flowchart](examples/flowchart/), [sequence](examples/sequence/), and [sankey](examples/sankey/). Inside those folders, `checkout-payment-flow` is a small authored flowchart, `flowchart-addressability` covers addressable flowchart shapes and bare endpoints, `sequence-order-sequence` is a small authored sequence diagram, `payments-platform-overview` is a large authored demo, and `sankey-ops-review` is an interview-to-offer Sankey walkthrough.
 
 ## Repository Packages
 

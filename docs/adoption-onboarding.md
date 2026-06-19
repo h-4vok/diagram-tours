@@ -1,87 +1,143 @@
-# Adoption And Onboarding Notes
+# Adoption Onboarding
 
-This note captures current product ideas for helping both people and AI assistants discover, author, and adopt `diagram-tours`.
+Use this guide when you want a team or repository to start getting value from `diagram-tours` quickly, before you invest in a larger authoring workflow.
 
-It is intentionally lightweight. The goal is to preserve the direction so future backlog work can turn it into concrete product and documentation changes.
+## What You Can Start With
 
-## Problem Framing
+`diagram-tours` does not require authored tours on day one.
 
-Early users will often have one of these states:
+You can adopt it from any of these existing inputs:
 
-- Mermaid diagrams but no `*.tour.yaml` files
-- Markdown files where AI already embedded Mermaid blocks
-- no idea that `diagram-tours` exists or what file shape it expects
+- a directory that contains supported diagram or tour files
+- a single authored `*.tour.yaml` file
+- a single Mermaid diagram such as `.mmd` or `.mermaid`
+- a single Markdown file with one or more fenced `mermaid` blocks
 
-AI assistants have a similar discovery problem:
+If you only have raw diagrams, the player still opens them and generates a fallback walkthrough automatically.
 
-- they do not know the repository supports `diagram-tours`
-- they do not know where diagrams should live
-- they do not know how to create a valid authored tour without a local example
+## Fastest Path To First Value
 
-## Onboarding For People
+If your repository already has Mermaid diagrams or Markdown files with Mermaid fences, start by previewing them directly.
 
-Near-term ideas:
+Wizard flow:
 
-- keep the README strongly end-user-first
-- document the three valid inputs clearly:
-  - directory
-  - standalone Mermaid file
-  - Markdown file with fenced Mermaid blocks
-- make fallback tours feel useful immediately so a user gets value before authoring YAML
-- provide one minimal copy-pasteable `*.tour.yaml` example near the top of the docs
+```bash
+diagram-tours
+```
 
-Current shipped helpers:
+Direct preview of one authored tour:
 
-- `diagram-tours setup` to install `.diagram-tours/instructions.md` and optionally a Codex subagent definition
-- `diagram-tours init <diagram.mmd>` to scaffold a sibling starter `*.tour.yaml`
-- `diagram-tours validate [target]` to check one authored tour file or a directory tree
+```bash
+diagram-tours ./examples/flowchart/checkout-payment-flow.tour.yaml
+```
 
-Potential product improvements beyond the current commands:
+Direct preview of one Mermaid diagram:
 
-- friendlier empty-state guidance when a directory has diagrams but no authored tours yet
-- richer AI/export helpers beyond the current setup/init/validate surface
+```bash
+diagram-tours ./examples/flowchart/checkout-payment-flow.mmd
+```
 
-## Onboarding For AI Assistants
+Direct preview of one Markdown file with Mermaid:
 
-The strongest pattern is to make repository support legible through small, repeated conventions.
+```bash
+diagram-tours --open ./docs/interview-offers-pipeline.md
+```
 
-Recommended repository conventions:
+Directory preview:
+
+```bash
+diagram-tours ./examples
+```
+
+Use direct single-file preview when you want a focused authoring session. Use directory mode when you want discovery across a repository or documentation area.
+
+For direct targets, pass `--open` or open the printed localhost URL manually. Direct mode validates the target and prints the URL, but it does not launch the browser by default.
+
+## What The Runtime Loads
+
+The current published CLI and runtime support these startup targets:
+
+- directory targets containing authored tours, raw Mermaid diagrams, or both
+- a single `*.tour.yaml` file for authored preview
+- a single `.mmd`, `.mermaid`, or `.md` file for generated fallback preview
+
+Important behavior:
+
+- no positional target starts the wizard
+- direct targets skip the wizard
+- direct targets do not open the browser unless you pass `--open`
+- the wizard can open the current directory, another directory, or one diagram or `*.tour.yaml` file
+- if a Markdown file contains multiple Mermaid blocks, single-file preview returns one generated entry per block
+
+## Recommended Team Adoption Path
+
+1. Start by previewing the diagrams you already have.
+2. Keep raw Mermaid files useful on their own so fallback tours are still readable.
+3. Add authored `*.tour.yaml` files only for diagrams that need curated explanation.
+4. Keep tour files next to their diagram source with matching stems.
+5. Add repository-local guidance so people and AI tools follow the same conventions.
+
+Good sibling naming:
+
+```text
+payment-flow.mmd
+payment-flow.tour.yaml
+```
+
+This keeps preview, authoring, and repo browsing predictable.
+
+## When To Add Authored Tours
+
+Stay with raw diagrams when the fallback walkthrough is enough.
+
+Add a `*.tour.yaml` file when you need:
+
+- better tour titles
+- curated step ordering
+- custom step text
+- focused explanations for specific nodes or messages
+- label interpolation such as `{{api_gateway}}`
+
+Markdown-backed tours are valid too. If one Markdown file has multiple Mermaid blocks, an authored tour should target the intended block with a fragment such as:
+
+```yaml
+diagram: ./checklist.md#details
+```
+
+## Authoring Helpers
+
+Use the shipped CLI helpers when you want a repeatable repository setup:
+
+```bash
+diagram-tours setup
+diagram-tours init ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours init ./fixtures/markdown/checklist.md#details
+diagram-tours init ./examples/flowchart/new-flow.tour.yaml
+diagram-tours validate
+diagram-tours validate ./examples
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
+```
+
+Current behavior:
+
+- `setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition
+- `init <target>` can scaffold from `.mmd`, `.mermaid`, `.md`, or a new `*.tour.yaml` path
+- `validate [target]` validates authored `*.tour.yaml` files only; it does not validate raw diagrams
+- `init ./examples/flowchart/new-flow.tour.yaml` is a create-new example: it creates that authored tour file and a sibling starter `.mmd` diagram
+
+## Onboarding AI Assistants
+
+The most useful adoption work for AI is usually repository clarity, not custom automation.
+
+Recommended conventions:
 
 - keep tours next to diagrams
-- group related examples into topical folders so the repo browser stays readable
-- use predictable sibling names inside each topical folder:
-  - `payment-flow.mmd`
-  - `payment-flow.tour.yaml`
-- add a small repository marker file such as `.diagram-tours/instructions.md`
+- use matching stems for diagram and tour files
+- commit `.diagram-tours/instructions.md`
 - mention `diagram-tours` support in the main README
+- keep one or two small examples that model the preferred tour style
 
-Useful AI-facing guidance to standardize:
-
-- where diagrams live
-- where tours should be written
-- how to preview them locally
-- how many steps a good starter tour should have
-- how node IDs should be referenced in authored text
-
-## Candidate AI Helper Artifacts
-
-Potential repository artifacts:
-
-- `.diagram-tours/instructions.md`
-- `.diagram-tours/manifest.json`
-- a short "For AI assistants" section in `README.md`
-- a tiny authored example that models the preferred style
-
-Potential CLI helpers:
-
-- `diagram-tours setup`
-- `diagram-tours init`
-- `diagram-tours validate`
-- future helpers such as `diagram-tours export-template <diagram>`
-
-## Candidate AI Prompt Shape
-
-One practical baseline prompt:
+Practical baseline prompt:
 
 ```text
 This repository uses diagram-tours.
@@ -89,11 +145,19 @@ When you find a Mermaid `.mmd`, `.mermaid`, or Markdown file with fenced `mermai
 create a sibling `*.tour.yaml` that explains the diagram in 4-8 steps.
 Use existing Mermaid node IDs in `focus` and `{{node_id}}` references.
 Preview with `diagram-tours <path>`.
+Validate with `diagram-tours validate <path>`.
 ```
 
-## Suggested Delivery Order
+## Suggested Rollout
 
-1. Add an adoption/onboarding section to the README.
-2. Introduce a small repository convention for AI-readable instructions.
-3. Keep improving the README and repo conventions around the shipped `setup`, `init`, and `validate` commands.
-4. Add richer AI/export helpers only when the simpler flow stops being enough.
+1. Announce that raw Mermaid and Markdown diagrams can already be previewed.
+2. Add `diagram-tours setup` output to repositories that want consistent authoring guidance.
+3. Introduce authored tours only for the diagrams that need explanation, review, or demos.
+4. Standardize validation with `diagram-tours validate` before handoff.
+
+## Related Docs
+
+- [README](../README.md)
+- [Runtime Loading](./runtime-loading.md)
+- [Authoring Guide](./authoring-guide.md)
+- [Tour Specification v1](./tour-spec-v1.md)

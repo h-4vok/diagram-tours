@@ -4,7 +4,7 @@ import { startDevServer } from "./dev-server";
 
 test("interactive startup skips the prompt when a target is explicit", async ({ page }) => {
   const server = await startDevServer({
-    args: ["./examples/payments-platform-overview.tour.yaml"],
+    args: ["./examples/flowchart/payments-platform-overview.tour.yaml"],
     port: 4180
   });
 

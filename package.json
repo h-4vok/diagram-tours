@@ -30,7 +30,7 @@
     "version:beta": "node ./scripts/changeset-version.mjs beta",
     "version:release": "node ./scripts/changeset-version.mjs release",
     "prepush": "bun run prepush:checks && bun run smoke",
-    "allchecks:ai": "bun run prepush",
+    "allchecks": "bun run prepush",
     "prepare": "husky"
   },
   "devDependencies": {

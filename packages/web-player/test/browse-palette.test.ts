@@ -11,21 +11,21 @@ import {
 const entries = [
   createEntry({
     slug: "checkout-payment-flow",
-    sourcePath: "examples/checkout-payment-flow.tour.yaml",
+    sourcePath: "examples/flowchart/checkout-payment-flow.tour.yaml",
     stepCount: 4,
     title: "Payment Flow",
     type: "flowchart"
   }),
   createEntry({
     slug: "payments-platform-overview",
-    sourcePath: "examples/payments-platform-overview.tour.yaml",
+    sourcePath: "examples/flowchart/payments-platform-overview.tour.yaml",
     stepCount: 6,
     title: "Payments Platform Overview",
     type: "flowchart"
   }),
   createEntry({
     slug: "sequence-order-sequence",
-    sourcePath: "examples/sequence-order-sequence.tour.yaml",
+    sourcePath: "examples/sequence/sequence-order-sequence.tour.yaml",
     stepCount: 3,
     title: "Order Sequence",
     type: "sequence"
@@ -48,7 +48,7 @@ describe("browse-palette", () => {
           {
             diagramType: "flowchart",
             slug: "payments-platform-overview",
-            sourcePath: "examples/payments-platform-overview.tour.yaml",
+            sourcePath: "examples/flowchart/payments-platform-overview.tour.yaml",
             stepCount: 6,
             title: "Payments Platform Overview"
           }
@@ -61,7 +61,7 @@ describe("browse-palette", () => {
           {
             diagramType: "flowchart",
             slug: "checkout-payment-flow",
-            sourcePath: "examples/checkout-payment-flow.tour.yaml",
+            sourcePath: "examples/flowchart/checkout-payment-flow.tour.yaml",
             stepCount: 4,
             title: "Payment Flow"
           }
@@ -74,7 +74,7 @@ describe("browse-palette", () => {
           {
             diagramType: "sequence",
             slug: "sequence-order-sequence",
-            sourcePath: "examples/sequence-order-sequence.tour.yaml",
+            sourcePath: "examples/sequence/sequence-order-sequence.tour.yaml",
             stepCount: 3,
             title: "Order Sequence"
           }
@@ -99,7 +99,7 @@ describe("browse-palette", () => {
           {
             diagramType: "flowchart",
             slug: "payments-platform-overview",
-            sourcePath: "examples/payments-platform-overview.tour.yaml",
+            sourcePath: "examples/flowchart/payments-platform-overview.tour.yaml",
             stepCount: 6,
             title: "Payments Platform Overview"
           }
