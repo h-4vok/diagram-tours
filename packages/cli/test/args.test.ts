@@ -34,7 +34,7 @@ describe("parseCliArgs", () => {
   });
 
   it("reads a single tour file target", () => {
-    expect(parseCliArgs(["./examples/checkout/payment-flow.tour.yaml"])).toEqual({
+    expect(parseCliArgs(["./examples/flowchart/checkout-payment-flow.tour.yaml"])).toEqual({
       command: "startup",
       options: {
         browser: "never",
@@ -42,8 +42,8 @@ describe("parseCliArgs", () => {
         host: "127.0.0.1",
         mode: "direct",
         port: null,
-        target: "./examples/checkout/payment-flow.tour.yaml",
-        targets: ["./examples/checkout/payment-flow.tour.yaml"]
+        target: "./examples/flowchart/checkout-payment-flow.tour.yaml",
+        targets: ["./examples/flowchart/checkout-payment-flow.tour.yaml"]
       }
     });
   });
@@ -179,11 +179,11 @@ describe("parseCliArgs", () => {
   });
 
   it("parses init with overwrite and a diagram target", () => {
-    expect(parseCliArgs(["init", "--overwrite", "./examples/checkout/payment-flow.mmd"])).toEqual({
+    expect(parseCliArgs(["init", "--overwrite", "./examples/flowchart/checkout-payment-flow.mmd"])).toEqual({
       command: "init",
       options: {
         overwrite: true,
-        target: "./examples/checkout/payment-flow.mmd"
+        target: "./examples/flowchart/checkout-payment-flow.mmd"
       }
     });
   });
@@ -199,11 +199,11 @@ describe("parseCliArgs", () => {
   });
 
   it("parses init with an empty-tour target", () => {
-    expect(parseCliArgs(["init", "./examples/checkout/payment-flow.tour.yaml"])).toEqual({
+    expect(parseCliArgs(["init", "./examples/flowchart/checkout-payment-flow.tour.yaml"])).toEqual({
       command: "init",
       options: {
         overwrite: false,
-        target: "./examples/checkout/payment-flow.tour.yaml"
+        target: "./examples/flowchart/checkout-payment-flow.tour.yaml"
       }
     });
   });

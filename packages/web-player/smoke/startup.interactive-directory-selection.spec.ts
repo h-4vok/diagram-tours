@@ -9,7 +9,7 @@ test("interactive directory selection matches examples-only startup", async ({ p
   });
 
   try {
-    await openBrowse(page, `${server.baseUrl}/payments-platform-overview`);
+    await openBrowse(page, `${server.baseUrl}/flowchart/payments-platform-overview`);
 
     await expect(page.getByTestId("preview-target-notice")).toHaveCount(0);
     await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();

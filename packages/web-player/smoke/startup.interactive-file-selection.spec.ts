@@ -5,7 +5,7 @@ import { startDevServer } from "./dev-server";
 test("interactive file selection matches single-file startup", async ({ page }) => {
   const server = await startDevServer({
     port: 4179,
-    promptInputs: ["3", "./examples/checkout-payment-flow.tour.yaml", "n", "", ""]
+    promptInputs: ["3", "./examples/flowchart/checkout-payment-flow.tour.yaml", "n", "", ""]
   });
 
   try {

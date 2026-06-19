@@ -26,7 +26,7 @@ Example:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./checkout-payment-flow.mmd
+diagram: ./flowchart/checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -67,20 +67,20 @@ Must be a non-empty string.
 Required.
 
 ```yaml
-diagram: ./checkout-payment-flow.mmd
+diagram: ./flowchart/checkout-payment-flow.mmd
 ```
 
 Must be a non-empty string path to a Mermaid diagram source.
 
 Supported authored targets include:
 
-- standalone Mermaid files such as `./checkout-payment-flow.mmd`
-- Markdown files with fenced Mermaid blocks such as `./country-checklist.md`
+- standalone Mermaid files such as `./flowchart/checkout-payment-flow.mmd`
+- Markdown files with fenced Mermaid blocks such as `./checklist.md`
 
 If a Markdown file contains multiple Mermaid blocks, the path must include a fragment that selects one block:
 
 ```yaml
-diagram: ./country-checklist.md#details
+diagram: ./checklist.md#details
 ```
 
 The referenced diagram must contain addressable Mermaid references.
@@ -242,15 +242,15 @@ The current parser includes contextual information such as the tour source path 
 Example:
 
 ```text
-Tour "examples/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
+Tour "examples/flowchart/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
 ```
 
 The published CLI exposes that validation through:
 
 ```bash
 diagram-tours validate
-diagram-tours validate ./examples/checkout
-diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+diagram-tours validate ./examples
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 Validation is authored-tour focused:

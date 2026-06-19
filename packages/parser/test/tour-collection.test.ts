@@ -31,7 +31,7 @@ describe("@diagram-tour/parser tour collection", () => {
 
   it("builds a one-tour collection from a single diagram file target", async () => {
     const collection = await loadResolvedTourCollection(
-      resolve(EXAMPLES_ROOT, "./checkout-payment-flow.mmd")
+      resolve(EXAMPLES_ROOT, "./flowchart/checkout-payment-flow.mmd")
     );
 
     expect(collection.entries).toHaveLength(1);
@@ -117,7 +117,7 @@ describe("@diagram-tour/parser tour collection", () => {
 
   it("builds a one-tour collection from the flowchart addressability example", async () => {
     const collection = await loadResolvedTourCollection(
-      resolve(EXAMPLES_ROOT, "./flowchart-addressability.tour.yaml")
+      resolve(EXAMPLES_ROOT, "./flowchart/flowchart-addressability.tour.yaml")
     );
 
     expect(collection.entries).toHaveLength(1);
@@ -345,7 +345,7 @@ describe("@diagram-tour/parser tour collection", () => {
   });
 
   it("returns no authored tours for a non-tour single-file target", async () => {
-    const result = await validateDiscoveredTours(resolve(EXAMPLES_ROOT, "./checkout-payment-flow.mmd"));
+    const result = await validateDiscoveredTours(resolve(EXAMPLES_ROOT, "./flowchart/checkout-payment-flow.mmd"));
 
     expect(result).toEqual({
       invalid: [],
@@ -373,11 +373,11 @@ describe("@diagram-tour/parser tour collection", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout-payment-flow",
-      "flowchart-addressability",
-      "payments-platform-overview",
-      "sankey-ops-review",
-      "sequence-order-sequence",
+      "flowchart/checkout-payment-flow",
+      "flowchart/flowchart-addressability",
+      "flowchart/payments-platform-overview",
+      "sankey/sankey-ops-review",
+      "sequence/sequence-order-sequence",
     ]);
   });
 });

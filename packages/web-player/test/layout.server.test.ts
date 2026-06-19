@@ -26,11 +26,11 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout-payment-flow",
-      "flowchart-addressability",
-      "payments-platform-overview",
-      "sankey-ops-review",
-      "sequence-order-sequence"
+      "flowchart/checkout-payment-flow",
+      "flowchart/flowchart-addressability",
+      "flowchart/payments-platform-overview",
+      "sankey/sankey-ops-review",
+      "sequence/sequence-order-sequence"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
     expect(result.sourceTarget).toEqual({
@@ -55,19 +55,19 @@ describe("+layout.server", () => {
   });
 
   it("loads the payments platform example as the large interactive tour", async () => {
-    const entry = await loadExampleEntry("payments-platform-overview");
+    const entry = await loadExampleEntry("flowchart/payments-platform-overview");
 
     expectPaymentsPlatformExample(entry);
   });
 
   it("loads the authored sequence example with participant and message focus", async () => {
-    const entry = await loadExampleEntry("sequence-order-sequence");
+    const entry = await loadExampleEntry("sequence/sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.tour.yaml");
+    const target = resolve(process.cwd(), "../../examples/flowchart/checkout-payment-flow.tour.yaml");
     process.env.DIAGRAM_TOUR_SOURCE_TARGET = target;
 
     const result = (await load({} as never)) as {
@@ -85,7 +85,7 @@ describe("+layout.server", () => {
   });
 
   it("loads a generated fallback collection from a diagram file target", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.mmd");
+    const target = resolve(process.cwd(), "../../examples/flowchart/checkout-payment-flow.mmd");
     const result = await loadForTarget(target);
 
     expectGeneratedDiagramPreview(result, target);

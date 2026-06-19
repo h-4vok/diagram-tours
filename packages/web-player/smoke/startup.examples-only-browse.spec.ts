@@ -9,7 +9,7 @@ test("explicit examples directory keeps browse scoped to shipped examples", asyn
   });
 
   try {
-    await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
+    await openBrowse(page, `${server.baseUrl}/flowchart/checkout-payment-flow`);
 
     await expect(page.getByTestId("preview-target-notice")).toHaveCount(0);
     await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();

@@ -5,7 +5,7 @@ import { startDevServer } from "./dev-server";
 
 test("authored sankey tour stays usable end to end", async ({ page }) => {
   const server = await startDevServer({
-    args: ["./examples/sankey-ops-review.tour.yaml"],
+    args: ["./examples/sankey/sankey-ops-review.tour.yaml"],
     port: 4197
   });
 

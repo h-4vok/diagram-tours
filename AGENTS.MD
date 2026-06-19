@@ -57,7 +57,7 @@ Load on demand:
 - Fix failures immediately.
 - Final message: list targeted checks passed.
 - Exhaustive checks: operator-run via `repo-validate`.
-- Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush`.
+- Full commands: `allchecks`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush`.
 - Validation requests: run exact requested command; for exhaustive or narrow requests, send failing summary or failing file/assertion/stack only when the user asks for fail-only output.
 - Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
 - Do not use `repo-validate` as the normal closeout path for a single change.

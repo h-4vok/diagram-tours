@@ -38,16 +38,35 @@ The CLI is responsible for browser policy, host/port selection, and launching th
 The published CLI also includes authoring commands that do not start the runtime:
 
 - `diagram-tours setup`
-- `diagram-tours init <diagram.mmd>`
+- `diagram-tours init <target>`
 - `diagram-tours validate [target]`
 
 Behavior:
 
 - `setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition
-- `init` creates a sibling starter `*.tour.yaml` for a standalone `.mmd` or `.mermaid` source
+- `init` accepts one target and derives scaffold mode from that target shape
 - `validate` checks one authored `*.tour.yaml` file or all authored tours under a directory recursively
 
-`setup` runs interactively by default but also supports direct flags such as `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite`. `init` supports `--overwrite` for replacing an existing scaffolded file.
+Supported `init` target shapes today:
+
+- existing `.mmd` or `.mermaid` file: create sibling `*.tour.yaml` scaffold from generated fallback entry
+- existing `.md` file with one Mermaid fenced block: create sibling `*.tour.yaml` that references that Markdown diagram
+- existing `.md#fragment` target: create sibling `*-fragment.tour.yaml` for matching Mermaid block
+- existing `.md` file with multiple Mermaid fenced blocks and no fragment: prompt the operator to choose one block, then create one sibling `*.tour.yaml`
+- direct `*.tour.yaml` target path, even when file does not exist yet: create that authored tour file plus sibling starter `.mmd` diagram with same stem
+
+`setup` runs interactively by default but also supports direct flags such as `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite`. `init` supports `--overwrite` for replacing existing scaffold files and only allows `#fragment` on Markdown targets.
+
+Examples:
+
+```bash
+diagram-tours init ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours init ./docs/interview-offers-pipeline.md
+diagram-tours init ./fixtures/markdown/checklist.md#details
+diagram-tours init ./examples/flowchart/new-flow.tour.yaml
+```
+
+When operators preview a direct target, they must either pass `--open` or open the printed localhost URL manually. Direct targets do not launch the browser by default.
 
 These commands are CLI-side authoring helpers. They do not change the runtime source of truth, which remains `DIAGRAM_TOUR_SOURCE_TARGET` for startup and browser preview.
 
@@ -82,9 +101,15 @@ When the source target is a file, the parser:
 
 1. loads exactly that tour or diagram source
 2. resolves its Mermaid diagram
-3. returns a collection containing a single entry
+3. returns a collection containing the authored tour, the generated diagram fallback, or one generated entry per Mermaid block for Markdown targets
 
-For Markdown files with multiple Mermaid fenced blocks, single-file preview returns one generated entry per block.
+Single-file behavior by shape:
+
+- `*.tour.yaml`: load exactly that authored tour entry
+- `.mmd` or `.mermaid`: load one generated fallback entry for that diagram
+- `.md`: load one generated fallback entry per Mermaid fenced block in that Markdown file
+
+For Markdown files with multiple Mermaid fenced blocks, single-file preview still returns one generated entry per block.
 
 This mode is useful while authoring a specific tour or previewing one diagram because it removes unrelated content from the UI.
 
@@ -94,10 +119,10 @@ Each discovered entry receives a slug derived from its relative source path.
 
 Examples:
 
-- `examples/checkout-payment-flow.tour.yaml` -> `checkout-payment-flow`
-- `examples/checkout-payment-flow.mmd` -> `checkout-payment-flow`
+- `examples/flowchart/checkout-payment-flow.tour.yaml` -> `flowchart/checkout-payment-flow`
+- `examples/flowchart/checkout-payment-flow.mmd` -> `flowchart/checkout-payment-flow`
 - `fixtures/markdown/checklist.md#details` -> `fixtures/markdown/checklist/details`
-- `examples/payments-platform-overview.tour.yaml` -> `payments-platform-overview`
+- `examples/flowchart/payments-platform-overview.tour.yaml` -> `flowchart/payments-platform-overview`
 - `examples/nested/demo.tour.yaml` -> `nested/demo`
 
 If the filename stem matches the containing directory name, the directory path becomes the slug.

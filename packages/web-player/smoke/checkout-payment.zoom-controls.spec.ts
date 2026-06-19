@@ -6,7 +6,7 @@ import {
 } from "./smoke-test-helpers";
 
 test("zoom controls resize the active diagram and return cleanly", async ({ page }) => {
-  await page.goto("/checkout-payment-flow");
+  await page.goto("/flowchart/checkout-payment-flow");
   await expectDiagramVisible(page);
   await expectCameraPanelToContainControls(page);
   await expect(page.getByTestId("zoom-out-button")).toBeVisible();

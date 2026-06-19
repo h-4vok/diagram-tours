@@ -9,7 +9,7 @@ test("interactive open-all matches repo-wide startup", async ({ page }) => {
   });
 
   try {
-    await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
+    await openBrowse(page, `${server.baseUrl}/examples/flowchart/checkout-payment-flow`);
 
     await expectBrowseSearchMatch(page, "alpha", "Alpha Tour");
     await expectBrowseSearchMatch(page, "beta", "Beta Tour");
