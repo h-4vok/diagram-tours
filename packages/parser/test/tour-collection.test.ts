@@ -6,6 +6,7 @@ import { loadResolvedTourCollection, validateDiscoveredTours } from "../src/inde
 import {
   DISCOVERY_FIXTURE_ROOT,
   EXAMPLES_ROOT,
+  CLASS_DIAGRAM_FIXTURE_TOUR_PATH,
   FIXTURE_TOUR_PATH,
   INVALID_ONLY_FIXTURE_ROOT,
   createTempDiagramDirectory,
@@ -130,6 +131,64 @@ describe("@diagram-tour/parser tour collection", () => {
       "Inbound Intake feeds the branching Decision that controls the rest of the flow.\n",
       "This path shows common flowchart shapes, including bare endpoints like archive and metadata-shaped nodes like Done.\n",
       "The flowchart stays fully navigable in the browser while the diagram source keeps its original Mermaid annotations.\n"
+    ]);
+  });
+
+  it("builds generated fallback steps from a raw class diagram file target", async () => {
+    const classRoot = await createTempDiagramDirectory({
+      "models/animal-hierarchy.mmd": [
+        "classDiagram",
+        "  class Animal {",
+        "    +String name",
+        "    +void speak()",
+        "  }",
+        "  class Duck {",
+        "    +void quack()",
+        "  }",
+        "  Animal <|-- Duck"
+      ].join("\n")
+    });
+
+    const collection = await loadResolvedTourCollection(resolve(classRoot, "./models/animal-hierarchy.mmd"));
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(entry.tour.diagram.type).toBe("classDiagram");
+    expect(entry.tour.diagram.elements.map((element) => element.id)).toEqual([
+      "Animal",
+      "Animal.name",
+      "Animal.speak",
+      "Duck",
+      "Duck.quack"
+    ]);
+    expect(entry.tour.steps.map((step) => step.text)).toEqual([
+      "Overview of Animal Hierarchy.",
+      "Focus on Animal.",
+      "Focus on +String name.",
+      "Focus on +void speak().",
+      "Focus on Duck.",
+      "Focus on +void quack()."
+    ]);
+  });
+
+  it("loads the real class diagram fixture pair from the web-player fixtures", async () => {
+    const collection = await loadResolvedTourCollection(
+      CLASS_DIAGRAM_FIXTURE_TOUR_PATH
+    );
+
+    expect(collection.entries).toHaveLength(1);
+    expect(collection.entries[0]).toMatchObject({
+      slug: "class-diagram",
+      title: "Class Tour",
+      tour: {
+        diagram: {
+          type: "classDiagram"
+        },
+        sourceKind: "authored"
+      }
+    });
+    expect(collection.entries[0]?.tour.steps[0]?.focus.map((element) => element.id)).toEqual([
+      "Animal",
+      "Animal.name"
     ]);
   });
 
@@ -373,6 +432,7 @@ describe("@diagram-tour/parser tour collection", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "class-diagram/dom-injection-api",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",

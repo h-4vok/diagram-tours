@@ -4,6 +4,7 @@ The public example library is intentionally minimal and canonical.
 
 Visible public set:
 
+- `class-diagram/dom-injection-api.*` for a class diagram example that mixes extension injection, scraping, API transport, inheritance, composition, statics, and unsafe fields
 - `flowchart/checkout-payment-flow.*` for a small authored flowchart
 - `flowchart/flowchart-addressability.*` for a flowchart example with common shapes, bare endpoints, and a tooltip annotation
 - `flowchart/payments-platform-overview.*` for a large authored interactive demo

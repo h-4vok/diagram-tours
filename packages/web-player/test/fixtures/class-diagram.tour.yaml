@@ -1,0 +1,10 @@
+version: 1
+title: Class Tour
+diagram: ./class-diagram.mmd
+
+steps:
+  - focus:
+      - Animal
+      - Animal.name
+    text: >
+      {{Animal}} exposes {{Animal.name}}.

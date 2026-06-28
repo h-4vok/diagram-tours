@@ -24,6 +24,8 @@ Load on demand:
 
 ## Communication
 - Use the `caveman` skill by default for all Codex responses in this repo.
+- Use the `ponytail` skill by default when writing or changing code in this repo.
+- Use `graphify` first for codebase questions, architecture lookups, and file-relationship questions when the local graph exists or can be queried.
 - Stay in Caveman mode unless the user explicitly asks for normal mode or the message needs clearer phrasing for safety, irreversible actions, or multi-step instructions.
 
 ## Boundaries
