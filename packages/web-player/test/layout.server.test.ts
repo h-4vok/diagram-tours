@@ -26,6 +26,7 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
+      "class-diagram/dom-injection-api",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
@@ -44,6 +45,7 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
+      "Browser Extension Data Pipeline",
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",

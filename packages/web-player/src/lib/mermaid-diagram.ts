@@ -30,6 +30,15 @@ type SvgPointLike = { x: number; y: number };
 const MESSAGE_MARKER_ATTRIBUTES = ["marker-start", "marker-mid", "marker-end"] as const;
 const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
+const DIAGRAM_ANNOTATORS = {
+  classDiagram: annotateClassElements,
+  flowchart: annotateFlowchartElements,
+  sankey: annotateSankeyElements,
+  sequence: annotateSequenceElements
+} satisfies Record<
+  ResolvedDiagram["type"],
+  (container: HTMLElement, elements: DiagramElement[]) => void
+>;
 const MERMAID_THEME_DEFAULTS = {
   background: "#0e1116",
   fontFamily: MERMAID_FONT_STACK,
@@ -214,25 +223,7 @@ async function renderDiagramSource(input: {
 }
 
 function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagram): void {
-  if (diagram.type === "classDiagram") {
-    annotateClassElements(container, diagram.elements);
-
-    return;
-  }
-
-  if (diagram.type === "sequence") {
-    annotateSequenceElements(container, diagram.elements);
-
-    return;
-  }
-
-  if (diagram.type === "sankey") {
-    annotateSankeyElements(container, diagram.elements);
-
-    return;
-  }
-
-  annotateFlowchartElements(container, diagram.elements);
+  DIAGRAM_ANNOTATORS[diagram.type](container, diagram.elements);
 }
 
 function annotateFlowchartElements(container: HTMLElement, elements: DiagramElement[]): void {

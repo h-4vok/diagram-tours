@@ -22,21 +22,24 @@ const NODE_REFERENCE_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
 const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
 const CLASS_DIAGRAM_PATTERN = /^\s*classDiagram\b/mu;
 const SANKEY_DIAGRAM_PATTERN = /^\s*sankey-beta\b/mu;
+const DIAGRAM_MODEL_FACTORIES = {
+  classDiagram: createClassDiagramDiagramModel,
+  flowchart: createFlowchartDiagramModelAdapter,
+  sankey: createSankeyDiagramModelAdapter,
+  sequence: createSequenceDiagramModel
+} satisfies Record<DiagramType, (source: string, context: TourContext) => DiagramModel>;
+const DIAGRAM_TYPE_PATTERNS = [
+  [CLASS_DIAGRAM_PATTERN, "classDiagram"],
+  [SEQUENCE_DIAGRAM_PATTERN, "sequence"],
+  [SANKEY_DIAGRAM_PATTERN, "sankey"]
+] as const;
 
 type ElementIndex = Map<string, DiagramElement>;
 
 export function createDiagramModel(source: string, context: TourContext): DiagramModel {
   const type = detectDiagramType(source);
 
-  if (type === "classDiagram") {
-    return createClassDiagramModel(source, context);
-  }
-
-  if (type === "sequence") {
-    return createSequenceDiagramModel(source, context);
-  }
-
-  return type === "sankey" ? createSankeyDiagramModel(source) : createFlowchartDiagramModel(source);
+  return DIAGRAM_MODEL_FACTORIES[type](source, context);
 }
 
 export function resolveLoadedTour(input: {
@@ -129,15 +132,19 @@ export function readTextReferenceIds(text: string): string[] {
 }
 
 function detectDiagramType(source: string): DiagramType {
-  if (CLASS_DIAGRAM_PATTERN.test(source)) {
-    return "classDiagram";
-  }
+  return DIAGRAM_TYPE_PATTERNS.find(([pattern]) => pattern.test(source))?.[1] ?? "flowchart";
+}
 
-  if (SEQUENCE_DIAGRAM_PATTERN.test(source)) {
-    return "sequence";
-  }
+function createClassDiagramDiagramModel(source: string, context: TourContext): DiagramModel {
+  return createClassDiagramModel(source, context);
+}
 
-  return SANKEY_DIAGRAM_PATTERN.test(source) ? "sankey" : "flowchart";
+function createFlowchartDiagramModelAdapter(source: string): DiagramModel {
+  return createFlowchartDiagramModel(source);
+}
+
+function createSankeyDiagramModelAdapter(source: string): DiagramModel {
+  return createSankeyDiagramModel(source);
 }
 
 function resolveLoadedTourSteps(

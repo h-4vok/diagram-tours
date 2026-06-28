@@ -203,6 +203,41 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
   });
 
+  it("deduplicates repeated class and member declarations in class diagrams", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "classDiagram",
+        "  class Animal {",
+        "    +String name",
+        "  }",
+        "  class Animal {",
+        "    +String name",
+        "  }"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Duplicate Class Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Animal",
+        "    text: >",
+        "      {{Animal}} remains unique."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        elements: [
+          { id: "Animal", kind: "node", label: "Animal" },
+          { id: "Animal.name", kind: "node", label: "+String name" }
+        ],
+        type: "classDiagram"
+      }
+    });
+  });
+
   it("fails when the tour version is unsupported", async () => {
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
