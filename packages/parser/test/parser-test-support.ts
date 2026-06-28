@@ -17,6 +17,10 @@ export const FIXTURE_TOUR_PATH = resolve(
 export const DISCOVERY_FIXTURE_ROOT = resolve(TEST_DIR, "./fixtures/discovery");
 export const INVALID_ONLY_FIXTURE_ROOT = resolve(TEST_DIR, "./fixtures/invalid-only");
 export const EXAMPLES_ROOT = resolve(TEST_DIR, "../../../examples");
+export const CLASS_DIAGRAM_FIXTURE_TOUR_PATH = resolve(
+  TEST_DIR,
+  "../../web-player/test/fixtures/class-diagram.tour.yaml"
+);
 
 export function restoreParserTestState(): void {
   vi.restoreAllMocks();

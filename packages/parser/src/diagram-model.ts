@@ -7,6 +7,7 @@ import type {
 } from "@diagram-tour/core";
 
 import type { DiagramModel } from "./parser-contracts.js";
+import { createClassDiagramModel } from "./class-diagram-model.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
 import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
@@ -19,12 +20,17 @@ import {
 
 const NODE_REFERENCE_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
 const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
+const CLASS_DIAGRAM_PATTERN = /^\s*classDiagram\b/mu;
 const SANKEY_DIAGRAM_PATTERN = /^\s*sankey-beta\b/mu;
 
 type ElementIndex = Map<string, DiagramElement>;
 
 export function createDiagramModel(source: string, context: TourContext): DiagramModel {
   const type = detectDiagramType(source);
+
+  if (type === "classDiagram") {
+    return createClassDiagramModel(source, context);
+  }
 
   if (type === "sequence") {
     return createSequenceDiagramModel(source, context);
@@ -123,6 +129,10 @@ export function readTextReferenceIds(text: string): string[] {
 }
 
 function detectDiagramType(source: string): DiagramType {
+  if (CLASS_DIAGRAM_PATTERN.test(source)) {
+    return "classDiagram";
+  }
+
   if (SEQUENCE_DIAGRAM_PATTERN.test(source)) {
     return "sequence";
   }

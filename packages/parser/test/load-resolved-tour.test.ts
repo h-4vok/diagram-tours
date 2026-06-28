@@ -153,6 +153,56 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
   });
 
+  it("loads a valid class diagram tour with class and member references", async () => {
+    const tourPath = await createTempTour({
+      mermaid: [
+        "classDiagram",
+        "  class Animal {",
+        "    +String name",
+        "    +void speak()",
+        "  }",
+        "  class Duck {",
+        "    +void quack()",
+        "  }",
+        "  Animal <|-- Duck"
+      ].join("\n"),
+      yaml: [
+        "version: 1",
+        "title: Class Tour",
+        "diagram: ./diagram.mmd",
+        "",
+        "steps:",
+        "  - focus:",
+        "      - Animal",
+        "      - Animal.name",
+        "    text: >",
+        "      {{Animal}} exposes {{Animal.name}}."
+      ].join("\n")
+    });
+
+    await expect(loadResolvedTour(tourPath)).resolves.toMatchObject({
+      diagram: {
+        elements: [
+          { id: "Animal", kind: "node", label: "Animal" },
+          { id: "Animal.name", kind: "node", label: "+String name" },
+          { id: "Animal.speak", kind: "node", label: "+void speak()" },
+          { id: "Duck", kind: "node", label: "Duck" },
+          { id: "Duck.quack", kind: "node", label: "+void quack()" }
+        ],
+        type: "classDiagram"
+      },
+      steps: [
+        {
+          focus: [
+            { id: "Animal", kind: "node", label: "Animal" },
+            { id: "Animal.name", kind: "node", label: "+String name" }
+          ],
+          text: "Animal exposes +String name.\n"
+        }
+      ]
+    });
+  });
+
   it("fails when the tour version is unsupported", async () => {
     const tourPath = await createTempTour({
       mermaid: "flowchart LR\n  api_gateway[API Gateway]",
