@@ -246,10 +246,10 @@ A practical local loop is:
 For the published product flow, use the global CLI:
 
 ```bash
-diagram-tours ./examples/flowchart/checkout-payment-flow.tour.yaml
-diagram-tours ./examples/flowchart/checkout-payment-flow.mmd
-diagram-tours --open ./docs/interview-offers-pipeline.md
-diagram-tours ./examples
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.tour.yaml
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours serve --open ./docs/interview-offers-pipeline.md
+diagram-tours serve ./examples
 diagram-tours
 diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 diagram-tours validate ./examples

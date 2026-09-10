@@ -221,7 +221,7 @@ function createAgentDefinitionContent(): string {
     "Prefer these commands:",
     "- `diagram-tours init <diagram.mmd>` for starter authored tours",
     "- `diagram-tours validate [target]` before handoff",
-    "- `diagram-tours <target>` to preview runtime behavior",
+    "- `diagram-tours serve [target]` to preview runtime behavior",
     '"""'
   ].join("\n");
 }
@@ -297,7 +297,7 @@ const INSTRUCTIONS_CONTENT = [
   "",
   "- Create a starter tour with `diagram-tours init <diagram.mmd>`.",
   "- Validate one file or a directory tree with `diagram-tours validate [target]`.",
-  "- Preview a diagram or authored tour with `diagram-tours <target>`.",
+  "- Preview a diagram or authored tour with `diagram-tours serve [target]`.",
   "",
   "## Writing Style",
   "",

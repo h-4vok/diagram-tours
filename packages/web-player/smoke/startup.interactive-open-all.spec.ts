@@ -4,8 +4,8 @@ import { startDevServer } from "./dev-server";
 
 test("interactive open-all matches repo-wide startup", async ({ page }) => {
   const server = await startDevServer({
+    args: ["."],
     port: 4177,
-    promptInputs: ["1", "n", "", ""]
   });
 
   try {
