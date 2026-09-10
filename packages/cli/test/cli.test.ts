@@ -129,7 +129,7 @@ describe("runCli", () => {
     }) as never;
 
     const { runCli } = await import("../src/lib/cli.js");
-    const exitCode = await runCli(["./examples"], opener);
+    const exitCode = await runCli(["serve", "./examples"], opener);
 
     expect(exitCode).toBe(0);
     expect(validateTargetPathMock).toHaveBeenCalledWith("./examples");
@@ -160,6 +160,11 @@ describe("runCli", () => {
   });
 
   it("dispatches setup through the setup command module", async () => {
+    runSetupCommandMock.mockImplementation(async (_options, io) => {
+      io.write("setup");
+      await io.question("question");
+      return 0;
+    });
     const { runCli } = await import("../src/lib/cli.js");
     const exitCode = await runCli(["setup", "--agent"]);
 
@@ -287,57 +292,23 @@ describe("runCli", () => {
     validateTargetPathMock.mockReturnValue("C:/repo/docs/checklist.md");
 
     const { runCli } = await import("../src/lib/cli.js");
-    const exitCode = await runCli(["./docs/checklist.md"], opener);
+    const exitCode = await runCli(["serve", "./docs/checklist.md"], opener);
 
     expect(exitCode).toBe(0);
     expect(validateTargetPathMock).toHaveBeenCalledWith("./docs/checklist.md");
     expect(loadResolvedTourCollectionMock).toHaveBeenCalledWith("C:/repo/docs/checklist.md");
   });
 
-  it("uses wizard answers and opens the browser when requested", async () => {
+  it("serves current directory without wizard", async () => {
     const opener = { open: vi.fn().mockResolvedValue(undefined) };
 
-    runWizardMock.mockImplementation(async (io) => {
-      io.write("wizard output");
-      await io.question("Question?");
-
-      return {
-        browser: "always",
-        host: "0.0.0.0",
-        port: 9000,
-        target: "C:/repo/examples"
-      };
-    });
-    resolveServerBindingMock.mockResolvedValue({ host: "0.0.0.0", port: 9000 });
-    startWebServerMock.mockResolvedValue({
-      child: createChild(),
-      url: "http://0.0.0.0:9000"
-    });
-
     const { runCli } = await import("../src/lib/cli.js");
-    await runCli([], opener);
+    await runCli(["serve"], opener);
 
-    expect(runWizardMock).toHaveBeenCalledOnce();
-    expect(validateTargetPathMock).not.toHaveBeenCalled();
+    expect(runWizardMock).not.toHaveBeenCalled();
+    expect(validateTargetPathMock).toHaveBeenCalledWith(".");
     expect(loadResolvedTourCollectionMock).toHaveBeenCalledWith("C:/repo/examples");
-    expect(opener.open).toHaveBeenCalledWith("http://0.0.0.0:9000");
-    expect(questionMock).toHaveBeenCalledWith("Question?");
-    expect(closeMock).toHaveBeenCalledOnce();
-  });
-
-  it("exits cleanly when the wizard is interrupted", async () => {
-    const opener = { open: vi.fn() };
-
-    runWizardMock.mockRejectedValue(new Error("readline was closed"));
-
-    const { runCli } = await import("../src/lib/cli.js");
-    const exitCode = await runCli([], opener);
-
-    expect(exitCode).toBe(130);
-    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
-    expect(startWebServerMock).not.toHaveBeenCalled();
     expect(opener.open).not.toHaveBeenCalled();
-    expect(closeMock).toHaveBeenCalledOnce();
   });
 
   it("treats an undefined child exit code as success", async () => {
@@ -349,7 +320,7 @@ describe("runCli", () => {
     });
 
     const { runCli } = await import("../src/lib/cli.js");
-    const exitCode = await runCli(["./examples"], opener);
+    const exitCode = await runCli(["serve", "./examples"], opener);
 
     expect(exitCode).toBe(0);
   });
@@ -370,7 +341,7 @@ describe("runCli", () => {
 
     const { runCli } = await import("../src/lib/cli.js");
 
-    await expect(runCli(["./examples"], { open: vi.fn() })).rejects.toThrow("boom");
+    await expect(runCli(["serve", "./examples"], { open: vi.fn() })).rejects.toThrow("boom");
   });
 
   it("fails before starting the server when preflight loading fails", async () => {
@@ -379,18 +350,39 @@ describe("runCli", () => {
     );
     const { runCli } = await import("../src/lib/cli.js");
 
-    await expect(runCli(["./examples"], { open: vi.fn() })).rejects.toThrow(
+    await expect(runCli(["serve", "./examples"], { open: vi.fn() })).rejects.toThrow(
       "No valid tours or diagrams were discovered in source target"
     );
     expect(startWebServerMock).not.toHaveBeenCalled();
   });
 
-  it("rethrows unexpected wizard failures", async () => {
-    runWizardMock.mockRejectedValue(new Error("wizard boom"));
+  it("prints help without starting the server when no command is provided", async () => {
+    const writes: string[] = [];
+    process.stdout.write = vi.fn((text: string) => { writes.push(text); return true; }) as never;
+    const { runCli } = await import("../src/lib/cli.js");
+    await expect(runCli([], { open: vi.fn() })).resolves.toBe(0);
+    expect(writes.join("")).toContain("serve [target]");
+    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
+    expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
+  it("opens browser when serve requests it", async () => {
+    const opener = { open: vi.fn().mockResolvedValue(undefined) };
+    const { runCli } = await import("../src/lib/cli.js");
+    await runCli(["serve", "./examples", "--open"], opener);
+    expect(opener.open).toHaveBeenCalledWith("http://127.0.0.1:7733");
+  });
+
+  it("prints main and contextual help without startup work", async () => {
+    const writes: string[] = [];
+    process.stdout.write = vi.fn((text: string) => { writes.push(text); return true; }) as never;
     const { runCli } = await import("../src/lib/cli.js");
 
-    await expect(runCli([], { open: vi.fn() })).rejects.toThrow("wizard boom");
-    expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
+    await expect(runCli(["help"])).resolves.toBe(0);
+    expect(writes.join("")).toContain("setup");
+    writes.length = 0;
+    await expect(runCli(["help", "serve"])).resolves.toBe(0);
+    expect(writes.join("")).toContain("--host");
     expect(startWebServerMock).not.toHaveBeenCalled();
   });
 });

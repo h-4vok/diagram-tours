@@ -8,23 +8,30 @@ import type {
 } from "./types.js";
 
 const DEFAULT_HOST = "127.0.0.1";
+const HELP_COMMAND = "help";
+const SERVE_COMMAND = "serve";
 const INIT_COMMAND = "init";
 const SETUP_COMMAND = "setup";
 const VALIDATE_COMMAND = "validate";
-const SUBCOMMANDS = new Set([INIT_COMMAND, SETUP_COMMAND, VALIDATE_COMMAND]);
 
+// eslint-disable-next-line complexity
 export function parseCliArgs(input: string[]): ParsedCliArgs {
-  const command = readCommand(input);
-
-  if (command !== null) {
-    return parseSubcommandArgs(command, input.slice(1));
+  const first = input[0] ?? HELP_COMMAND;
+  switch (first) {
+    case HELP_COMMAND:
+    case "?": return parseHelpArgs(input.slice(1));
+    case "--version":
+    case "-v": return { command: "version" };
+    case SERVE_COMMAND:
+    case INIT_COMMAND:
+    case SETUP_COMMAND:
+    case VALIDATE_COMMAND: return parseSubcommandArgs(first, input.slice(1));
+    default: throw new Error(`Unknown command or target "${first}". Use "diagram-tours serve ${first}" or "diagram-tours help".`);
   }
-
-  return parseStartupArgs(input);
 }
 
 type ParsedStartupOrVersionArgs =
-  | Extract<ParsedCliArgs, { command: "startup" }>
+  | Extract<ParsedCliArgs, { command: "serve" }>
   | Extract<ParsedCliArgs, { command: "version" }>;
 
 function parseStartupArgs(input: string[]): ParsedStartupOrVersionArgs {
@@ -49,7 +56,7 @@ function readStartupCommand(state: ReturnType<typeof createInitialState>): Parse
   return state.mode === "version"
     ? { command: "version" }
     : {
-        command: "startup",
+        command: "serve",
         options: finalizeState(state)
       };
 }
@@ -58,44 +65,52 @@ function createInitialState() {
   return {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
-    mode: "wizard" as ParsedStartupArgs["mode"] | "version",
-    hasLaunchFlags: false,
+    mode: "direct" as ParsedStartupArgs["mode"] | "version",
     port: null as number | null,
     target: null as string | null,
     targets: [] as string[]
   };
 }
 
-function readCommand(input: string[]): "init" | "setup" | "validate" | null {
-  const firstValue = input[0];
-
-  return typeof firstValue === "string" && SUBCOMMANDS.has(firstValue)
-    ? (firstValue as "init" | "setup" | "validate")
-    : null;
+// eslint-disable-next-line complexity
+function parseSubcommandArgs(
+  command: "serve" | "init" | "setup" | "validate",
+  input: string[]
+): ParsedCliArgs {
+  switch (command) {
+    case SERVE_COMMAND: return parseServeCommand(input);
+    case SETUP_COMMAND: return { command, options: parseSetupArgs(input) };
+    case VALIDATE_COMMAND: return { command, options: parseValidateArgs(input) };
+    case INIT_COMMAND: return { command, options: parseInitArgs(input) };
+  }
 }
 
-function parseSubcommandArgs(
-  command: "init" | "setup" | "validate",
-  input: string[]
-): Extract<ParsedCliArgs, { command: "init" | "setup" | "validate" }> {
-  if (command === SETUP_COMMAND) {
-    return {
-      command,
-      options: parseSetupArgs(input)
-    };
+// eslint-disable-next-line complexity
+function parseServeCommand(input: string[]): ParsedCliArgs {
+  if (input[0] === "--help" && input.length === 1) {
+    return { command: "help", topic: "serve" };
   }
+  const parsed = parseStartupArgs(input);
+  return parsed.command === "version" ? parsed : { command: "serve", options: parseServeArgs(parsed.options) };
+}
 
-  if (command === VALIDATE_COMMAND) {
-    return {
-      command,
-      options: parseValidateArgs(input)
-    };
+// eslint-disable-next-line complexity
+function parseHelpArgs(input: string[]): Extract<ParsedCliArgs, { command: "help" }> {
+  switch (input.length) {
+    case 0: return { command: "help", topic: null };
+    case 1:
+      if (input[0] === SERVE_COMMAND) {
+        return { command: "help", topic: "serve" };
+      }
+      break;
+    default: break;
   }
+  throw new Error('Expected help to receive no arguments or "serve".');
+}
 
-  return {
-    command,
-    options: parseInitArgs(input)
-  };
+function parseServeArgs(options: Extract<ParsedCliArgs, { command: "serve" }>['options']): Extract<ParsedCliArgs, { command: "serve" }>['options'] {
+  const target = options.target ?? ".";
+  return { ...options, browser: options.browser === "prompt" ? "never" : options.browser, mode: "direct", hasExplicitTarget: true, target, targets: [target] };
 }
 
 function readFlag(
@@ -150,7 +165,6 @@ function assignBrowserPreference(
   state: ReturnType<typeof createInitialState>,
   browser: Exclude<BrowserPreference, "prompt">
 ): void {
-  state.hasLaunchFlags = true;
 
   if (state.browser !== "prompt" && state.browser !== browser) {
     throw new Error("Choose either --open or --no-open.");
@@ -178,7 +192,7 @@ function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState
     browser: readBrowserPreference(state.browser, hasExplicitTarget),
     hasExplicitTarget,
     host: state.host,
-    mode: readMode(hasExplicitTarget),
+    mode: readMode(),
     port: state.port,
     target: state.target,
     targets: state.target === null ? [] : [state.target]
@@ -193,8 +207,8 @@ function readBrowserPreference(browser: BrowserPreference, hasExplicitTarget: bo
   return browser;
 }
 
-function readMode(hasExplicitTarget: boolean): ParsedStartupArgs["mode"] {
-  return hasExplicitTarget ? "direct" : "wizard";
+function readMode(): ParsedStartupArgs["mode"] {
+  return "direct";
 }
 
 function parseSetupArgs(input: string[]): ParsedSetupArgs {
@@ -359,22 +373,18 @@ const FLAG_HANDLERS: Partial<Record<
   ) => number
 >> = {
   "--host"(input, index, state) {
-    state.hasLaunchFlags = true;
     state.host = readFlagValue("--host", input[index + 1]);
     return index + 1;
   },
   "--port"(input, index, state) {
-    state.hasLaunchFlags = true;
     state.port = readPort(readFlagValue("--port", input[index + 1]));
     return index + 1;
   },
   "--open"(_input, index, state) {
-    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "always");
     return index;
   },
   "--no-open"(_input, index, state) {
-    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "never");
     return index;
   },

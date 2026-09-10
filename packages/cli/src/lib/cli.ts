@@ -15,15 +15,13 @@ import { validateTargetPath } from "./target.js";
 import type { ParsedCliArgs, ParsedStartupArgs, PromptIo, ResolvedLaunchOptions } from "./types.js";
 import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
-import { runWizard } from "./wizard.js";
+import { writeHelp } from "./help.js";
 
-type LaunchResult = { code: number; kind: "exit" } | { kind: "launch"; launch: ResolvedLaunchOptions };
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
   const parsed = parseCliArgs(args);
 
   return await dispatchParsedArgs(parsed, opener);
 }
-
 async function dispatchParsedArgs(
   parsed: ParsedCliArgs,
   opener: BrowserOpener
@@ -33,23 +31,31 @@ async function dispatchParsedArgs(
     opener
   );
 }
-
 type CommandHandlerMap = {
+  help(parsed: Extract<ParsedCliArgs, { command: "help" }>, opener: BrowserOpener): Promise<number>;
   init(parsed: Extract<ParsedCliArgs, { command: "init" }>, opener: BrowserOpener): Promise<number>;
   setup(parsed: Extract<ParsedCliArgs, { command: "setup" }>, opener: BrowserOpener): Promise<number>;
-  startup(parsed: Extract<ParsedCliArgs, { command: "startup" }>, opener: BrowserOpener): Promise<number>;
+  serve(parsed: Extract<ParsedCliArgs, { command: "serve" }>, opener: BrowserOpener): Promise<number>;
   validate(parsed: Extract<ParsedCliArgs, { command: "validate" }>, opener: BrowserOpener): Promise<number>;
   version(parsed: Extract<ParsedCliArgs, { command: "version" }>, opener: BrowserOpener): Promise<number>;
 };
 
 const DISPATCHERS = {
+  help: handleHelpCommand,
   init: handleInitCommand,
   setup: handleSetupCommand,
-  startup: handleStartupCommand,
+  serve: handleServeCommand,
   validate: handleValidateCommand,
   version: handleVersionCommand
 } satisfies CommandHandlerMap;
 
+async function handleHelpCommand(
+  parsed: Extract<ParsedCliArgs, { command: "help" }>,
+  _opener: BrowserOpener
+): Promise<number> {
+  writeHelp(parsed.topic);
+  return 0;
+}
 async function handleInitCommand(
   parsed: Extract<ParsedCliArgs, { command: "init" }>,
   _opener: BrowserOpener
@@ -64,11 +70,11 @@ async function handleSetupCommand(
   return await withPromptIo((io) => runSetupCommand(parsed.options, io));
 }
 
-async function handleStartupCommand(
-  parsed: Extract<ParsedCliArgs, { command: "startup" }>,
+async function handleServeCommand(
+  parsed: Extract<ParsedCliArgs, { command: "serve" }>,
   opener: BrowserOpener
 ): Promise<number> {
-  return await runStartupCommand(parsed.options, opener);
+  return await runServeCommand(parsed.options, opener);
 }
 
 async function handleValidateCommand(
@@ -86,14 +92,8 @@ async function handleVersionCommand(
   return 0;
 }
 
-async function runStartupCommand(parsed: ParsedStartupArgs, opener: BrowserOpener): Promise<number> {
-  const launchResult = parsed.mode === "wizard" ? await readWizardLaunch(parsed) : readDirectLaunch(parsed);
-
-  if (launchResult.kind === "exit") {
-    return launchResult.code;
-  }
-
-  return await runLaunch(parsed.mode, launchResult.launch, opener);
+async function runServeCommand(parsed: ParsedStartupArgs, opener: BrowserOpener): Promise<number> {
+  return await runLaunch(parsed.mode, readDirectLaunch(parsed), opener);
 }
 
 async function runLaunch(
@@ -130,26 +130,12 @@ async function withPromptIo<T>(action: (io: PromptIo) => Promise<T>): Promise<T>
   }
 }
 
-async function readWizardLaunch(parsed: ParsedStartupArgs): Promise<LaunchResult> {
-  try {
-    return {
-      kind: "launch",
-      launch: await withPromptIo((io) => runWizard(io, parsed))
-    };
-  } catch (error) {
-    return handleWizardLaunchError(error);
-  }
-}
-
-function readDirectLaunch(parsed: ParsedStartupArgs): LaunchResult {
+function readDirectLaunch(parsed: ParsedStartupArgs): ResolvedLaunchOptions {
   return {
-    kind: "launch",
-    launch: {
-      browser: parsed.browser as ResolvedLaunchOptions["browser"],
-      host: parsed.host,
-      port: parsed.port,
-      target: validateTargetPath(parsed.target as string)
-    }
+    browser: parsed.browser as ResolvedLaunchOptions["browser"],
+    host: parsed.host,
+    port: parsed.port,
+    target: validateTargetPath(parsed.target as string)
   };
 }
 
@@ -195,14 +181,3 @@ async function openBrowserIfNeeded(
   await opener.open(options.url);
 }
 
-function isWizardCancellationError(error: unknown): boolean {
-  return error instanceof Error && error.message === "readline was closed";
-}
-
-function handleWizardLaunchError(error: unknown): LaunchResult {
-  if (isWizardCancellationError(error)) {
-    return { code: 130, kind: "exit" };
-  }
-
-  throw error;
-}

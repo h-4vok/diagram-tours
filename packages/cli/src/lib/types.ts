@@ -33,9 +33,10 @@ export interface PromptIo {
 }
 
 export type ParsedCliArgs =
+  | { command: "help"; topic: "serve" | null }
   | { command: "init"; options: ParsedInitArgs }
   | { command: "setup"; options: ParsedSetupArgs }
-  | { command: "startup"; options: ParsedStartupArgs }
+  | { command: "serve"; options: ParsedStartupArgs }
   | { command: "validate"; options: ParsedValidateArgs }
   | { command: "version" };
 

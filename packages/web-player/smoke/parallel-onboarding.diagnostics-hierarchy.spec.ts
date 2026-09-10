@@ -6,8 +6,8 @@ test("issues popover presents a readable diagnostics hierarchy", async ({ page }
   const docsSlug = "docs/authoring-guide/start-with-stable-mermaid-ids";
 
   const server = await startDevServer({
+    args: ["."],
     port: 4181,
-    promptInputs: ["1", "n", "", ""]
   });
 
   try {

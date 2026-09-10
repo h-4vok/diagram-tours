@@ -19,34 +19,30 @@ If you only have raw diagrams, the player still opens them and generates a fallb
 
 If your repository already has Mermaid diagrams or Markdown files with Mermaid fences, start by previewing them directly.
 
-Wizard flow:
-
-```bash
-diagram-tours
-```
+Discover commands with `diagram-tours help` or `diagram-tours ?`.
 
 Direct preview of one authored tour:
 
 ```bash
-diagram-tours ./examples/flowchart/checkout-payment-flow.tour.yaml
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 Direct preview of one Mermaid diagram:
 
 ```bash
-diagram-tours ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.mmd
 ```
 
 Direct preview of one Markdown file with Mermaid:
 
 ```bash
-diagram-tours --open ./docs/interview-offers-pipeline.md
+diagram-tours serve --open ./docs/interview-offers-pipeline.md
 ```
 
 Directory preview:
 
 ```bash
-diagram-tours ./examples
+diagram-tours serve ./examples
 ```
 
 Use direct single-file preview when you want a focused authoring session. Use directory mode when you want discovery across a repository or documentation area.
@@ -63,10 +59,8 @@ The current published CLI and runtime support these startup targets:
 
 Important behavior:
 
-- no positional target starts the wizard
-- direct targets skip the wizard
-- direct targets do not open the browser unless you pass `--open`
-- the wizard can open the current directory, another directory, or one diagram or `*.tour.yaml` file
+- `diagram-tours serve` uses the current directory when no target is provided
+- `serve` does not open the browser unless you pass `--open`
 - if a Markdown file contains multiple Mermaid blocks, single-file preview returns one generated entry per block
 
 ## Recommended Team Adoption Path
@@ -144,7 +138,7 @@ This repository uses diagram-tours.
 When you find a Mermaid `.mmd`, `.mermaid`, or Markdown file with fenced `mermaid` blocks,
 create a sibling `*.tour.yaml` that explains the diagram in 4-8 steps.
 Use existing Mermaid node IDs in `focus` and `{{node_id}}` references.
-Preview with `diagram-tours <path>`.
+Preview with `diagram-tours serve <path>`.
 Validate with `diagram-tours validate <path>`.
 ```
 

@@ -76,6 +76,7 @@ export async function expectDevServerToFail(options: StartDevServerOptions): Pro
 function readCommandArgs(options: StartDevServerOptions): string[] {
   return [
     "packages/cli/dist/bin/diagram-tours.js",
+    "serve",
     ...(options.args ?? []),
     "--host",
     "127.0.0.1",

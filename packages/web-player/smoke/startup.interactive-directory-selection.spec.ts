@@ -4,8 +4,8 @@ import { startDevServer } from "./dev-server";
 
 test("interactive directory selection matches examples-only startup", async ({ page }) => {
   const server = await startDevServer({
+    args: ["./examples"],
     port: 4178,
-    promptInputs: ["2", "./examples", "n", "", ""]
   });
 
   try {

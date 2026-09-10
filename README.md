@@ -26,10 +26,10 @@ Fastest path to first value: point `diagram-tours` at any Mermaid file, Markdown
 
 If discovery finds invalid authored tours, the valid tours still load and the player surfaces the skipped authored files through the `Issues` panel with actionable diagnostics, including line and column when available.
 
-Start in the current directory with the interactive wizard:
+Discover commands and usage:
 
 ```bash
-diagram-tours
+diagram-tours help
 ```
 
 The current directory must already contain at least one supported input such as `.mmd`, `.mermaid`, `.md` with fenced Mermaid, or `*.tour.yaml`. If nothing valid is found, startup fails with a clear error instead of opening an empty browser session.
@@ -37,46 +37,43 @@ The current directory must already contain at least one supported input such as 
 Open a directory directly:
 
 ```bash
-diagram-tours ./docs/architecture
+diagram-tours serve ./docs/architecture
 ```
 
 Open a single tour file directly:
 
 ```bash
-diagram-tours ./examples/flowchart/checkout-payment-flow.tour.yaml
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 Open a single Mermaid diagram directly:
 
 ```bash
-diagram-tours ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.mmd
 ```
 
 Open a Markdown file that contains Mermaid fences directly:
 
 ```bash
-diagram-tours --open ./docs/interview-offers-pipeline.md
+diagram-tours serve --open ./docs/interview-offers-pipeline.md
 ```
 
 For direct targets, pass `--open` or open the printed localhost URL manually. Direct mode does not launch the browser by default.
 
 The server prefers `http://127.0.0.1:7733` and automatically falls back to another free localhost port when needed.
 
-## Wizard Flow
+## CLI Help
 
-Running `diagram-tours` with no arguments starts a console wizard that can:
+Run `diagram-tours`, `diagram-tours help`, or `diagram-tours ?` to see available commands. Use `diagram-tours help serve` for serving options.
 
-1. open the current directory
-2. open another directory
-3. open a single diagram or `*.tour.yaml` file
+## Serve Flow
 
-The wizard also asks whether to open the browser and lets you override the host or port.
+Running `diagram-tours serve` with no target serves the current directory.
 
-## Direct Path Flow
+## Serve Flow
 
-When you pass a directory, Mermaid file, Markdown file with fenced Mermaid, or `*.tour.yaml` path directly:
+When you pass a directory, Mermaid file, Markdown file with fenced Mermaid, or `*.tour.yaml` path to `serve`:
 
-- the wizard is skipped
 - the target is validated immediately
 - the local URL is printed
 - the browser does not open unless you ask for it with `--open`
@@ -99,7 +96,7 @@ diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ## Key Flags
 
 ```text
-diagram-tours [target?] [--host <value>] [--port <value>] [--open|--no-open]
+diagram-tours serve [target?] [--host <value>] [--port <value>] [--open|--no-open]
 ```
 
 - `--host <value>` sets the bind host
