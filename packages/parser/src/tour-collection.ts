@@ -16,23 +16,52 @@ import { createSlug, shouldIgnoreGeneratedDiscoveryError } from "./tour-file-nam
 import { createTourContext, invariant, normalizePath } from "./tour-context.js";
 
 export async function loadResolvedTourCollection(
-  sourceTarget: string
+  sourceTarget: string,
+  options: { allowEmpty?: boolean } = {}
 ): Promise<ResolvedDiagramTourCollection> {
   const absoluteTarget = resolve(sourceTarget);
   const targetStats = await stat(absoluteTarget);
 
   if (targetStats.isFile()) {
-    return createSingleEntryCollection(absoluteTarget);
+    return loadTargetFile(absoluteTarget, options.allowEmpty === true);
   }
 
   const collection = await readDiscoveredTourCollection(absoluteTarget);
-
-  invariant(
-    collection.entries.length > 0,
-    `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(absoluteTarget)}".`
-  );
+  assertCollectionHasEntries(collection, options.allowEmpty === true, absoluteTarget);
 
   return collection;
+}
+
+async function loadTargetFile(
+  absolutePath: string,
+  allowEmpty: boolean
+): Promise<ResolvedDiagramTourCollection> {
+  return allowEmpty ? readSingleEntryCollection(absolutePath) : createSingleEntryCollection(absolutePath);
+}
+
+function assertCollectionHasEntries(
+  collection: ResolvedDiagramTourCollection,
+  allowEmpty: boolean,
+  absoluteTarget: string
+): void {
+  if (allowEmpty || collection.entries.length > 0) {
+    return;
+  }
+
+  invariant(false, `${NO_VALID_TOURS_MESSAGE} in source target "${normalizePath(absoluteTarget)}".`);
+}
+
+async function readSingleEntryCollection(
+  absolutePath: string
+): Promise<ResolvedDiagramTourCollection> {
+  try {
+    return await createSingleEntryCollection(absolutePath);
+  } catch (error) {
+    return {
+      entries: [],
+      skipped: [createSkippedTourEntry(absolutePath, dirname(absolutePath), error)]
+    };
+  }
 }
 
 export async function readDiscoveredTourCollection(

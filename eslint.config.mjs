@@ -50,6 +50,7 @@ export default defineConfig([
       "**/playwright-report/**",
       "**/.svelte-kit/**",
       "**/build/**",
+      "**/build-static/**",
       "**/node_modules/**",
       "bun.lock"
     ]

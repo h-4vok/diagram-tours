@@ -282,11 +282,21 @@
   }
 
   async function navigateToStep(stepIndex: number): Promise<void> {
+    if (isStaticRuntime()) {
+      window.location.hash = `/${selectedSlug}?step=${stepIndex}`;
+      return;
+    }
+
     await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
       invalidateAll: false,
       keepFocus: true,
       noScroll: true
     });
+  }
+
+  function isStaticRuntime(): boolean {
+    return import.meta.env.PUBLIC_DIAGRAM_TOUR_STATIC === "true" ||
+      "__DIAGRAM_TOUR_DATA__" in window;
   }
 
   function waitForDiagramLayout(): Promise<void> {

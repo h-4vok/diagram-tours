@@ -7,6 +7,7 @@ coverage/
 .turbo/
 .svelte-kit/
 packages/web-player/build/
+packages/web-player/build-static/
 packages/web-player/.vercel/
 *.tsbuildinfo
 packages/web-player/test-results/

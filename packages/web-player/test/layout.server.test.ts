@@ -9,16 +9,19 @@ import { load } from "../src/routes/+layout.server";
 import type { SourceTargetInfo } from "../src/lib/source-target";
 
 const ORIGINAL_TARGET = process.env.DIAGRAM_TOUR_SOURCE_TARGET;
+const ORIGINAL_STATIC_OUT = process.env.DIAGRAM_TOUR_STATIC_OUT;
+const ORIGINAL_STATIC_DATA = process.env.DIAGRAM_TOUR_STATIC_DATA;
 const EXAMPLES_ROOT = resolve(process.cwd(), "../../examples");
 
 afterEach(() => {
   if (ORIGINAL_TARGET === undefined) {
     delete process.env.DIAGRAM_TOUR_SOURCE_TARGET;
-
-    return;
+  } else {
+    process.env.DIAGRAM_TOUR_SOURCE_TARGET = ORIGINAL_TARGET;
   }
 
-  process.env.DIAGRAM_TOUR_SOURCE_TARGET = ORIGINAL_TARGET;
+  restoreEnvironment("DIAGRAM_TOUR_STATIC_OUT", ORIGINAL_STATIC_OUT);
+  restoreEnvironment("DIAGRAM_TOUR_STATIC_DATA", ORIGINAL_STATIC_DATA);
 });
 
 describe("+layout.server", () => {
@@ -165,7 +168,38 @@ describe("+layout.server", () => {
       "flowchart TD\n  detail[Detail] --> done[Done]"
     );
   });
+
+  it("loads the static payload during static player generation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "diagram-tour-static-layout-"));
+    const payloadPath = join(directory, "tours-data.json");
+
+    await writeFile(payloadPath, JSON.stringify({ version: 1, collection: resolvedCollection() }));
+    process.env.DIAGRAM_TOUR_STATIC_OUT = directory;
+    process.env.DIAGRAM_TOUR_STATIC_DATA = payloadPath;
+    process.env.DIAGRAM_TOUR_SOURCE_TARGET = EXAMPLES_ROOT;
+
+    const result = await load({} as never) as {
+      collection: ResolvedDiagramTourCollection;
+      sourceTarget: SourceTargetInfo;
+    };
+
+    expect(result.collection.entries).toEqual([]);
+    expect(result.sourceTarget.kind).toBe("directory");
+  });
 });
+
+function restoreEnvironment(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+function resolvedCollection(): ResolvedDiagramTourCollection {
+  return { entries: [], skipped: [] };
+}
 
 async function loadExamplesCollection(): Promise<{
   collection: ResolvedDiagramTourCollection;

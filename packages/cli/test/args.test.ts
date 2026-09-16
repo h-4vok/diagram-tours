@@ -3,6 +3,44 @@ import { describe, expect, it } from "vitest";
 import { parseCliArgs } from "../src/lib/args.js";
 
 describe("parseCliArgs", () => {
+  it("parses static build options", () => {
+    expect(parseCliArgs(["build", "./examples", "--out", "site", "--overwrite", "--open"])).toEqual({
+      command: "build",
+      options: { browser: "always", continueOnError: false, logLevel: "normal", out: "site", overwrite: true, target: "./examples" }
+    });
+  });
+
+  it("defaults static build target and output", () => {
+    expect(parseCliArgs(["build"])).toEqual({
+      command: "build",
+      options: { browser: "never", continueOnError: false, logLevel: "normal", out: "dist", overwrite: false, target: "." }
+    });
+  });
+
+  it("supports build help and rejects unsafe argument combinations", () => {
+    expect(parseCliArgs(["build", "--help"])).toEqual({ command: "help", topic: "build" });
+    expect(() => parseCliArgs(["build", "--open", "--no-open"])).toThrow("Choose either");
+    expect(() => parseCliArgs(["build", "--out"])).toThrow("Expected a value");
+    expect(() => parseCliArgs(["build", "--wat"])).toThrow("Unknown flag");
+    expect(() => parseCliArgs(["build", "one", "two"])).toThrow("Only one target");
+  });
+
+  it("parses validation and logging controls", () => {
+    expect(parseCliArgs(["build", "--continue", "--verbose"])).toEqual({
+      command: "build",
+      options: {
+        browser: "never",
+        continueOnError: true,
+        logLevel: "verbose",
+        out: "dist",
+        overwrite: false,
+        target: "."
+      }
+    });
+    expect(parseCliArgs(["build", "--continue-on-error", "--quiet"]).command).toBe("build");
+    expect(() => parseCliArgs(["build", "--quiet", "--verbose"])).toThrow("Choose either");
+  });
+
   it("shows help when no command is provided", () => {
     expect(parseCliArgs([])).toEqual({
       command: "help", topic: null

@@ -27,14 +27,24 @@ export interface ParsedInitArgs {
   target: string;
 }
 
+export interface ParsedBuildArgs {
+  browser: Exclude<BrowserPreference, "prompt">;
+  continueOnError: boolean;
+  logLevel: "normal" | "quiet" | "verbose";
+  out: string;
+  overwrite: boolean;
+  target: string;
+}
+
 export interface PromptIo {
   question(prompt: string): Promise<string>;
   write(text: string): void;
 }
 
 export type ParsedCliArgs =
-  | { command: "help"; topic: "serve" | null }
+  | { command: "help"; topic: "serve" | "build" | null }
   | { command: "init"; options: ParsedInitArgs }
+  | { command: "build"; options: ParsedBuildArgs }
   | { command: "setup"; options: ParsedSetupArgs }
   | { command: "serve"; options: ParsedStartupArgs }
   | { command: "validate"; options: ParsedValidateArgs }

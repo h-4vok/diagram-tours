@@ -2,7 +2,8 @@ import { error } from "@sveltejs/kit";
 import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ params, parent, url }) => {
-  const { collection } = await parent();
+  const data = await parent();
+  const { collection } = data;
   const selectedSlug = params.tourSlug;
   const entry = collection.entries.find(
     (item: (typeof collection.entries)[number]) => item.slug === selectedSlug

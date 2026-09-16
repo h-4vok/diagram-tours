@@ -93,6 +93,15 @@ diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 - output stays short and actionable.
 - one issue per line.
 
+Build a static site for the complete collection:
+
+```text
+diagram-tours build ./examples --out dist --open
+npx serve dist
+```
+
+`build` defaults to `dist`, refuses to replace an existing directory, and accepts `--overwrite`. It fails on invalid tours by default; use `--continue` to emit the valid collection anyway. Use `--quiet` for CI logs or `--verbose` for per-diagnostic output. The generated site includes `tours-data.json`, bundles its browser runtime inline so `--open` works directly from `file://`, and can be deployed to any static host.
+
 ## Key Flags
 
 ```text

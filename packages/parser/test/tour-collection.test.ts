@@ -260,6 +260,17 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(collection.entries.map((entry) => entry.slug)).toEqual(["payments/refund"]);
   });
 
+  it("ignores dependency directories while discovering a directory", async () => {
+    const discoveryRoot = await createTempDiagramDirectory({
+      "valid.mmd": "flowchart LR\n  start[Start] --> finish[Finish]",
+      "node_modules/mermaid/README.md": "```mermaid\nflowchart LR\n  dependency --> docs\n```"
+    });
+
+    const collection = await loadResolvedTourCollection(discoveryRoot);
+
+    expect(collection.entries.map((entry) => entry.slug)).toEqual(["valid"]);
+  });
+
   it("shows authored tours and generated fallback tours together while hiding duplicates", async () => {
     const mixedRoot = await createTempDiagramDirectory({
       "payment-flow/payment-flow.mmd": "flowchart LR\n  api_gateway[API Gateway]",
@@ -418,6 +429,20 @@ describe("@diagram-tour/parser tour collection", () => {
     await expect(loadResolvedTourCollection(invalidFilePath)).rejects.toThrow(
       `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node id "missing_node"`
     );
+  });
+
+  it("can preserve an invalid single-file target for build continuation", async () => {
+    const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
+    const collection = await loadResolvedTourCollection(invalidFilePath, { allowEmpty: true });
+
+    expect(collection.entries).toEqual([]);
+    expect(collection.skipped).toHaveLength(1);
+  });
+
+  it("can preserve an empty discovery result for build continuation", async () => {
+    const emptyRoot = await createTempDiagramDirectory({});
+
+    await expect(loadResolvedTourCollection(emptyRoot, { allowEmpty: true })).resolves.toEqual({ entries: [], skipped: [] });
   });
 
   it("fails when discovery finds no valid tours or diagrams", async () => {
