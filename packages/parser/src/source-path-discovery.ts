@@ -8,6 +8,8 @@ import {
   type SourcePaths
 } from "./parser-contracts.js";
 
+const IGNORED_DIRECTORY_NAMES = new Set([".git", "node_modules"]);
+
 export async function collectSourcePaths(sourceRoot: string): Promise<SourcePaths> {
   const entries = await readdir(sourceRoot, { withFileTypes: true });
   const nestedPaths = await Promise.all(entries.map((entry) => collectNestedSourcePaths(sourceRoot, entry)));
@@ -16,7 +18,7 @@ export async function collectSourcePaths(sourceRoot: string): Promise<SourcePath
 }
 
 async function collectNestedSourcePaths(sourceRoot: string, entry: Dirent): Promise<SourcePaths> {
-  return entry.isDirectory()
+  return entry.isDirectory() && !IGNORED_DIRECTORY_NAMES.has(entry.name)
     ? collectSourcePaths(resolve(sourceRoot, entry.name))
     : collectSourceFilePath(sourceRoot, entry.name);
 }

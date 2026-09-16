@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/cli build",
+    "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/web-player build:static-template && bun run --cwd packages/cli build",
     "test:scripts": "vitest run --config ./scripts/vitest.config.ts --coverage",
     "test:unit": "bun run test:scripts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
     "coverage:dashboard": "bun ./scripts/build-coverage-dashboard.ts",

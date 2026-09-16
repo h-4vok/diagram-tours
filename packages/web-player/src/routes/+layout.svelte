@@ -204,13 +204,16 @@
     recentSlugs = readStoredRecentSlugs(window.localStorage);
     browseShortcutHint = isMacPlatform(window.navigator) ? "Cmd K" : "Ctrl K";
     setDocumentTheme(document, theme);
+    currentPathname = readCurrentPathname();
     previousPathname = currentPathname;
     isHydrated = true;
     rememberActiveSlug(activeSlug);
     window.addEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
+    window.addEventListener("hashchange", handleHashChange);
 
     return () => {
       window.removeEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   });
 
@@ -237,11 +240,22 @@
   }
 
   async function navigateToBrowseSlug(slug: string): Promise<void> {
+    if (isStaticRuntime()) {
+      closeBrowse();
+      window.location.hash = `/${slug}`;
+      currentPathname = `/${slug}`;
+      return;
+    }
+
     const nextPathname = resolve(`/${slug}`);
 
     closeBrowse();
     currentPathname = nextPathname;
     await goto(resolve(`/${slug}`));
+  }
+
+  function handleHashChange(): void {
+    currentPathname = readCurrentPathname();
   }
 
   function setActiveBrowseSlug(slug: string): void {
@@ -336,6 +350,20 @@
 
   function readStepCountLabel(stepCount: number): string {
     return `${stepCount} step${stepCount === 1 ? "" : "s"}`;
+  }
+
+  function readCurrentPathname(): string {
+    return isStaticRuntime() ? readHashPath(window.location.hash) : page.url.pathname;
+  }
+
+  function readHashPath(hash: string): string {
+    const path = hash.slice(1).split("?", 1)[0] ?? "";
+    return path.length === 0 ? "/" : path;
+  }
+
+  function isStaticRuntime(): boolean {
+    return import.meta.env.PUBLIC_DIAGRAM_TOUR_STATIC === "true" ||
+      "__DIAGRAM_TOUR_DATA__" in window;
   }
 
   function rememberActiveSlug(slug: string | null): void {

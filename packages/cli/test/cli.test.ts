@@ -11,6 +11,7 @@ const loadResolvedTourCollectionMock = vi.fn();
 const runSetupCommandMock = vi.fn();
 const runValidateCommandMock = vi.fn();
 const runInitCommandMock = vi.fn();
+const runBuildCommandMock = vi.fn();
 const questionMock = vi.fn();
 const closeMock = vi.fn();
 
@@ -67,6 +68,10 @@ vi.mock("../src/lib/init.js", () => {
   };
 });
 
+vi.mock("../src/lib/build.js", () => ({
+  runBuildCommand: runBuildCommandMock
+}));
+
 vi.mock("@diagram-tour/parser", () => {
   return {
     loadResolvedTourCollection: loadResolvedTourCollectionMock,
@@ -115,6 +120,7 @@ describe("runCli", () => {
     runSetupCommandMock.mockReset();
     runValidateCommandMock.mockReset();
     runInitCommandMock.mockReset();
+    runBuildCommandMock.mockReset();
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
   });
@@ -364,6 +370,27 @@ describe("runCli", () => {
     expect(writes.join("")).toContain("serve [target]");
     expect(loadResolvedTourCollectionMock).not.toHaveBeenCalled();
     expect(startWebServerMock).not.toHaveBeenCalled();
+  });
+
+  it("prints build help", async () => {
+    const writes: string[] = [];
+    process.stdout.write = vi.fn((text: string) => { writes.push(text); return true; }) as never;
+    const { runCli } = await import("../src/lib/cli.js");
+
+    await expect(runCli(["help", "build"])).resolves.toBe(0);
+    expect(writes.join("")).toContain("diagram-tours build");
+  });
+
+  it("dispatches build through the build command module", async () => {
+    runBuildCommandMock.mockResolvedValue(0);
+    const opener = { open: vi.fn() };
+    const { runCli } = await import("../src/lib/cli.js");
+    const exitCode = await runCli(["build", "./examples", "--out", "site"], opener);
+
+    expect(exitCode).toBe(0);
+    expect(runBuildCommandMock).toHaveBeenCalledWith(
+      { browser: "never", continueOnError: false, logLevel: "normal", out: "site", overwrite: false, target: "./examples" }, opener
+    );
   });
 
   it("opens browser when serve requests it", async () => {

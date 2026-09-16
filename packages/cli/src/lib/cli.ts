@@ -16,6 +16,7 @@ import type { ParsedCliArgs, ParsedStartupArgs, PromptIo, ResolvedLaunchOptions 
 import { runValidateCommand } from "./validate.js";
 import { readCliVersion } from "./version.js";
 import { writeHelp } from "./help.js";
+import { runBuildCommand } from "./build.js";
 
 export async function runCli(args: string[], opener: BrowserOpener = defaultBrowserOpener): Promise<number> {
   const parsed = parseCliArgs(args);
@@ -34,6 +35,7 @@ async function dispatchParsedArgs(
 type CommandHandlerMap = {
   help(parsed: Extract<ParsedCliArgs, { command: "help" }>, opener: BrowserOpener): Promise<number>;
   init(parsed: Extract<ParsedCliArgs, { command: "init" }>, opener: BrowserOpener): Promise<number>;
+  build(parsed: Extract<ParsedCliArgs, { command: "build" }>, opener: BrowserOpener): Promise<number>;
   setup(parsed: Extract<ParsedCliArgs, { command: "setup" }>, opener: BrowserOpener): Promise<number>;
   serve(parsed: Extract<ParsedCliArgs, { command: "serve" }>, opener: BrowserOpener): Promise<number>;
   validate(parsed: Extract<ParsedCliArgs, { command: "validate" }>, opener: BrowserOpener): Promise<number>;
@@ -43,6 +45,7 @@ type CommandHandlerMap = {
 const DISPATCHERS = {
   help: handleHelpCommand,
   init: handleInitCommand,
+  build: handleBuildCommand,
   setup: handleSetupCommand,
   serve: handleServeCommand,
   validate: handleValidateCommand,
@@ -55,6 +58,12 @@ async function handleHelpCommand(
 ): Promise<number> {
   writeHelp(parsed.topic);
   return 0;
+}
+
+async function handleBuildCommand(
+  parsed: Extract<ParsedCliArgs, { command: "build" }>, opener: BrowserOpener
+): Promise<number> {
+  return await runBuildCommand(parsed.options, opener);
 }
 async function handleInitCommand(
   parsed: Extract<ParsedCliArgs, { command: "init" }>,

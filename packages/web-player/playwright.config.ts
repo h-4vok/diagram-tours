@@ -14,6 +14,7 @@ const examplesTarget = fileURLToPath(new URL("../../examples", import.meta.url))
 
 export default defineConfig({
   testDir: "./smoke",
+  testIgnore: "**/static-build.file-host.spec.ts",
   fullyParallel: true,
   workers: 4,
   use: {

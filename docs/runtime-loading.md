@@ -6,6 +6,10 @@ This document explains the runtime contract for the published `diagram-tours` CL
 
 The packaged web player reads diagrams and tours from `DIAGRAM_TOUR_SOURCE_TARGET`.
 
+`diagram-tours build [target]` resolves the same collection and emits a static player plus versioned `tours-data.json` into `dist` (or `--out <path>`). Static output has no Node server dependency. Its browser runtime is bundled inline, so `--open` opens the generated `index.html` directly from `file://` without module CORS failures. Use `npx serve dist` only when you want to verify or deploy through HTTP.
+
+Builds fail when the resolved collection contains skipped invalid tours. Pass `--continue` (or `--continue-on-error`) to publish valid entries while keeping skipped diagnostics in the payload. `--quiet` suppresses validation warnings; `--verbose` prints each skipped diagnostic.
+
 That target may be:
 
 - a directory containing Mermaid diagrams, `*.tour.yaml` files, or both
@@ -91,7 +95,7 @@ When the source target is a directory, the parser:
 4. extracts Mermaid fenced blocks from Markdown files when needed and generates fallback tours for untoured diagrams
 5. returns a collection of valid entries plus a list of skipped invalid authored tours
 
-If no valid tours or diagrams are discovered, loading fails before the runtime starts.
+If no valid tours or diagrams are discovered, loading fails before the runtime starts. A build with `--continue` can preserve an empty collection so the static shell still exposes diagnostics.
 
 Directory mode is the default collection experience used by the web player.
 
@@ -155,7 +159,7 @@ That lets the docs shell remain usable while still surfacing authoring problems,
 
 The active tour is selected by slug.
 
-The active step is selected by the optional `?step=` query parameter.
+The active step is selected by the optional `?step=` query parameter in live mode. Static mode uses hash routing (`#/tour/slug?step=N`) so the same `index.html` works on generic static hosts without rewrite rules.
 
 Step behavior today:
 
