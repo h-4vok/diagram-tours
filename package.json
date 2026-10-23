@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Monorepo scaffold for guided tours over Mermaid diagrams.",
   "license": "MIT",
-  "packageManager": "bun@1.2.19",
+  "packageManager": "bun@1.4.4",
   "workspaces": [
     "packages/*"
   ],
