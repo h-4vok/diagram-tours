@@ -30,7 +30,7 @@ describe("source-target", () => {
   });
 
   it("describes single-file preview targets explicitly", () => {
-    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.tour.yaml");
+    const target = resolve(process.cwd(), "../../examples/flowchart/checkout-payment-flow.tour.yaml");
 
     expect(describeSourceTarget(target)).toEqual({
       kind: "file",

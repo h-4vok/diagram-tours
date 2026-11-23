@@ -1,26 +1,27 @@
 # Examples
 
-Shipped tours and diagrams live directly under `examples/`.
+The public example library is intentionally minimal and canonical.
 
-Naming:
+Visible public set:
 
-- domain-prefixed flat stems
-- matching `.mmd` and `.tour.yaml` pairs share the same stem
-- direct preview paths stay short: `./examples/checkout-payment-flow.tour.yaml`
+- `class-diagram/dom-injection-api.*` for a class diagram example that mixes extension injection, scraping, API transport, inheritance, composition, statics, and unsafe fields
+- `flowchart/checkout-payment-flow.*` for a small authored flowchart
+- `flowchart/flowchart-addressability.*` for a flowchart example with common shapes, bare endpoints, and a tooltip annotation
+- `flowchart/payments-platform-overview.*` for a large authored interactive demo
+- `sequence/sequence-order-sequence.*` for a small authored sequence diagram
+- `sankey/sankey-ops-review.*` for an authored Sankey that follows a candidate interview pipeline through offers
 
-Stress fixture:
-
-- `ops-huge-system.*` remains the oversized regression example for viewport, focus, deep-link, and long-text behavior
+Every public example keeps a matching `.mmd` and `.tour.yaml` pair.
 
 Focused preview:
 
 ```bash
-DIAGRAM_TOUR_SOURCE_TARGET=./examples/ops-huge-system.tour.yaml bun run dev
+DIAGRAM_TOUR_SOURCE_TARGET=./examples/flowchart/payments-platform-overview.tour.yaml bun run dev
 ```
 
 PowerShell:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/ops-huge-system.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/flowchart/payments-platform-overview.tour.yaml"
 bun run dev
 ```

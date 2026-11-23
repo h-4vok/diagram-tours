@@ -7,7 +7,7 @@ import {
   renderMermaidDiagram
 } from "../src/lib/mermaid-diagram";
 import { createFocusGroup } from "../src/lib/focus-group";
-import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
+import { resolvedClassTour, resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
 const { mermaidInitialize, mermaidRender } = vi.hoisted(() => ({
   mermaidInitialize: vi.fn(),
@@ -46,6 +46,40 @@ describe("mermaid diagram helpers", () => {
     );
   });
 
+  it("adds app-owned node classes for newly addressable flowchart IDs", () => {
+    const source = createRenderableDiagramSource({
+      elements: [
+        { id: "decision", kind: "node", label: "Decision" },
+        { id: "archive", kind: "node", label: "archive" },
+        { id: "metadata", kind: "node", label: "Metadata Node" }
+      ],
+      path: "./flowchart-addressability.mmd",
+      source: "flowchart LR\n  decision{Decision} --> archive\n  metadata@{ shape: rect, label: Metadata Node }",
+      type: "flowchart"
+    });
+
+    expect(source).toContain("class decision diagram_tour_node_decision;");
+    expect(source).toContain("class archive diagram_tour_node_archive;");
+    expect(source).toContain("class metadata diagram_tour_node_metadata;");
+  });
+
+  it("keeps flowchart click annotations in the rendered Mermaid source", () => {
+    const source = createRenderableDiagramSource({
+      elements: [{ id: "decision", kind: "node", label: "Decision" }],
+      path: "./flowchart-addressability.mmd",
+      source: [
+        "flowchart LR",
+        "  decision{Decision}",
+        '  click decision "https://example.com/decision" "Decision rule details"'
+      ].join("\n"),
+      type: "flowchart"
+    });
+
+    expect(source).toContain(
+      'click decision "https://example.com/decision" "Decision rule details"'
+    );
+  });
+
   it("keeps sequence-diagram source unchanged", () => {
     const source = createRenderableDiagramSource({
       elements: [
@@ -58,6 +92,26 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(source).toBe("sequenceDiagram\n  participant user as User\n  user->>user: Send request");
+  });
+
+  it("adds app-owned node classes to class diagram source", () => {
+    const source = createRenderableDiagramSource(resolvedClassTour.diagram);
+
+    expect(source).toBe(resolvedClassTour.diagram.source);
+  });
+
+  it("keeps sankey source unchanged", () => {
+    const source = createRenderableDiagramSource({
+      elements: [
+        { id: "Checkout", kind: "node", label: "Checkout" },
+        { id: "Gateway", kind: "node", label: "Gateway" }
+      ],
+      path: "./sankey.mmd",
+      source: "sankey-beta\nCheckout,Gateway,120",
+      type: "sankey"
+    });
+
+    expect(source).toBe("sankey-beta\nCheckout,Gateway,120");
   });
 
   it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
@@ -103,6 +157,134 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "",
       width: "1440"
     });
+  });
+
+  it("renders and tags class diagram nodes", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="classDiagram" width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="node default" id="classId-Animal-0">',
+        '<g class="label-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>Animal</p></span></div></foreignObject></g></g>',
+        '<g class="members-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>+String name</p></span></div></foreignObject></g></g>',
+        '<g class="methods-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>+void speak()</p></span></div></foreignObject></g></g>',
+        "</g>",
+        '<g class="node default" id="classId-Duck-1">',
+        '<g class="label-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>Duck</p></span></div></foreignObject></g></g>',
+        '<g class="methods-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>+void quack()</p></span></div></foreignObject></g></g>',
+        "</g>",
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: resolvedClassTour.diagram
+    });
+
+    expect(container.querySelector('[data-node-id="Animal"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="Animal.name"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-label="Animal"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="Duck"]')).not.toBeNull();
+  });
+
+  it("falls back to the class node element when Mermaid omits a label-group wrapper", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="classDiagram" width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="node default" id="classId-Animal-0">Animal</g>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [{ id: "Animal", kind: "node", label: "Animal" }],
+        path: "./class-diagram.mmd",
+        source: "classDiagram\n  class Animal",
+        type: "classDiagram"
+      }
+    });
+
+    expect(container.querySelector('[data-node-id="Animal"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-label="Animal"]')).not.toBeNull();
+  });
+
+  it("skips unmatched class nodes and member labels in class diagrams", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="classDiagram" width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="node default" id="classId-Ghost-0">',
+        '<g class="label-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>Ghost</p></span></div></foreignObject></g></g>',
+        "</g>",
+        '<g class="node default" id="classId-Animal-1">',
+        '<g class="label-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>Animal</p></span></div></foreignObject></g></g>',
+        '<g class="members-group text"><g class="label"><foreignObject><div><span class="nodeLabel markdown-node-label"><p>+String fur</p></span></div></foreignObject></g></g>',
+        "</g>",
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "Animal", kind: "node", label: "Animal" },
+          { id: "Animal.name", kind: "node", label: "+String name" }
+        ],
+        path: "./class-diagram.mmd",
+        source: "classDiagram\n  class Animal {\n    +String name\n  }",
+        type: "classDiagram"
+      }
+    });
+
+    expect(container.querySelector('[data-node-id="Ghost"]')).toBeNull();
+    expect(container.querySelector('[data-node-id="Animal.name"]')).toBeNull();
+    expect(container.querySelector('[data-node-id="Animal"]')).not.toBeNull();
+  });
+
+  it("annotates sankey nodes and labels in source order", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="nodes"><g class="node"><rect></rect></g><g class="node"><rect></rect></g></g>',
+        '<g class="node-labels"><text>Checkout</text><text>Gateway</text></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "Checkout", kind: "node", label: "Checkout" },
+          { id: "Gateway", kind: "node", label: "Gateway" }
+        ],
+        path: "./sankey.mmd",
+        source: "sankey-beta\nCheckout,Gateway,120",
+        type: "sankey"
+      }
+    });
+
+    expect(container.querySelector('.nodes .node[data-diagram-element-id="Checkout"]')).not.toBeNull();
+    expect(container.querySelector('.node-labels text[data-diagram-element-id="Gateway"]')).not.toBeNull();
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sankey: {
+          height: 860,
+          useMaxWidth: false,
+          width: 1560
+        }
+      })
+    );
   });
 
   it("falls back to Mermaid theme defaults when CSS tokens are missing", async () => {

@@ -68,8 +68,9 @@ function createSiblingTourPath(diagramPath: string): string {
 
 function createSiblingDiagramPath(tourPath: string): string {
   const parsedPath = parse(tourPath);
+  const stem = readEmptyScaffoldStem(tourPath);
 
-  return resolve(parsedPath.dir, `${parsedPath.name}.mmd`);
+  return resolve(parsedPath.dir, `${stem}.mmd`);
 }
 
 async function assertWritableFiles(files: WritableFile[], overwrite: boolean): Promise<void> {
@@ -194,7 +195,7 @@ function readDiagramReference(selection: MarkdownSelection, tourPath: string): s
 }
 
 function createEmptyTourYaml(tourPath: string, diagramPath: string): string {
-  const title = readTitleFromStem(parse(tourPath).name);
+  const title = readTitleFromStem(readEmptyScaffoldStem(tourPath));
 
   return [
     "version: 1",
@@ -228,6 +229,10 @@ function readTitleFromStem(stem: string): string {
     .filter((part) => part.length > 0)
     .map((part) => `${part[0]!.toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function readEmptyScaffoldStem(tourPath: string): string {
+  return parse(tourPath).base.slice(0, -".tour.yaml".length);
 }
 
 function readMarkdownTourPath(

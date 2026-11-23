@@ -3,24 +3,84 @@ import { describe, expect, it } from "vitest";
 import { parseCliArgs } from "../src/lib/args.js";
 
 describe("parseCliArgs", () => {
-  it("uses the wizard when no target is provided", () => {
-    expect(parseCliArgs([])).toEqual({
-      command: "startup",
-      options: {
-        browser: "prompt",
-        hasExplicitTarget: false,
-        host: "127.0.0.1",
-        mode: "wizard",
-        port: null,
-        target: null,
-        targets: []
-      }
+  it("parses static build options", () => {
+    expect(parseCliArgs(["build", "./examples", "--out", "site", "--overwrite", "--open"])).toEqual({
+      command: "build",
+      options: { browser: "always", continueOnError: false, logLevel: "normal", out: "site", overwrite: true, target: "./examples" }
     });
   });
 
+  it("defaults static build target and output", () => {
+    expect(parseCliArgs(["build"])).toEqual({
+      command: "build",
+      options: { browser: "never", continueOnError: false, logLevel: "normal", out: "dist", overwrite: false, target: "." }
+    });
+  });
+
+  it("supports build help and rejects unsafe argument combinations", () => {
+    expect(parseCliArgs(["build", "--help"])).toEqual({ command: "help", topic: "build" });
+    expect(() => parseCliArgs(["build", "--open", "--no-open"])).toThrow("Choose either");
+    expect(() => parseCliArgs(["build", "--out"])).toThrow("Expected a value");
+    expect(() => parseCliArgs(["build", "--wat"])).toThrow("Unknown flag");
+    expect(() => parseCliArgs(["build", "one", "two"])).toThrow("Only one target");
+  });
+
+  it("parses validation and logging controls", () => {
+    expect(parseCliArgs(["build", "--continue", "--verbose"])).toEqual({
+      command: "build",
+      options: {
+        browser: "never",
+        continueOnError: true,
+        logLevel: "verbose",
+        out: "dist",
+        overwrite: false,
+        target: "."
+      }
+    });
+    expect(parseCliArgs(["build", "--continue-on-error", "--quiet"]).command).toBe("build");
+    expect(() => parseCliArgs(["build", "--quiet", "--verbose"])).toThrow("Choose either");
+  });
+
+  it("shows help when no command is provided", () => {
+    expect(parseCliArgs([])).toEqual({
+      command: "help", topic: null
+    });
+  });
+
+  it.each(["help", "?"])("supports %s help alias", (command) => {
+    expect(parseCliArgs([command])).toEqual({ command: "help", topic: null });
+  });
+
+  it("parses contextual serve help", () => {
+    expect(parseCliArgs(["help", "serve"])).toEqual({ command: "help", topic: "serve" });
+    expect(parseCliArgs(["serve", "--help"])).toEqual({ command: "help", topic: "serve" });
+  });
+
+  it("rejects unsupported help topics", () => {
+    expect(() => parseCliArgs(["help", "init"])).toThrow("Expected help");
+    expect(() => parseCliArgs(["help", "serve", "extra"])).toThrow("Expected help");
+    expect(() => parseCliArgs(["serve", "--help", "extra"])).toThrow("Unknown flag");
+  });
+
+  it("supports serve version and rejects serve unknown flags", () => {
+    expect(parseCliArgs(["serve", "-v"])).toEqual({ command: "version" });
+    expect(() => parseCliArgs(["serve", "--wat"])).toThrow('Unknown flag "--wat".');
+  });
+
+  it("parses serve with an implicit current-directory target", () => {
+    expect(parseCliArgs(["serve"])).toEqual({
+      command: "serve",
+      options: { browser: "never", hasExplicitTarget: true, host: "127.0.0.1", mode: "direct", port: null, target: ".", targets: ["."] }
+    });
+  });
+
+  it("rejects an implicit target", () => {
+    expect(() => parseCliArgs(["./examples"])).toThrow('Use "diagram-tours serve ./examples"');
+  });
+
   it("reads a directory target and skips the wizard", () => {
-    expect(parseCliArgs(["./examples", "--host", "0.0.0.0"])).toEqual({
-      command: "startup",
+    expect(parseCliArgs(["serve", "./examples", "--host", "0.0.0.0"])).toEqual({
+      command: "serve",
       options: {
         browser: "never",
         hasExplicitTarget: true,
@@ -34,16 +94,16 @@ describe("parseCliArgs", () => {
   });
 
   it("reads a single tour file target", () => {
-    expect(parseCliArgs(["./examples/checkout/payment-flow.tour.yaml"])).toEqual({
-      command: "startup",
+    expect(parseCliArgs(["serve", "./examples/flowchart/checkout-payment-flow.tour.yaml"])).toEqual({
+      command: "serve",
       options: {
         browser: "never",
         hasExplicitTarget: true,
         host: "127.0.0.1",
         mode: "direct",
         port: null,
-        target: "./examples/checkout/payment-flow.tour.yaml",
-        targets: ["./examples/checkout/payment-flow.tour.yaml"]
+        target: "./examples/flowchart/checkout-payment-flow.tour.yaml",
+        targets: ["./examples/flowchart/checkout-payment-flow.tour.yaml"]
       }
     });
   });
@@ -58,16 +118,16 @@ describe("parseCliArgs", () => {
   });
 
   it("accepts an explicit port override", () => {
-    expect(parseCliArgs(["--port", "9000"])).toEqual({
-      command: "startup",
+    expect(parseCliArgs(["serve", "--port", "9000"])).toEqual({
+      command: "serve",
       options: {
-        browser: "prompt",
-        hasExplicitTarget: false,
+        browser: "never",
+        hasExplicitTarget: true,
         host: "127.0.0.1",
-        mode: "wizard",
+        mode: "direct",
         port: 9000,
-        target: null,
-        targets: []
+        target: ".",
+        targets: ["."]
       }
     });
   });
@@ -85,26 +145,26 @@ describe("parseCliArgs", () => {
   });
 
   it("lets version mode win over an explicit target in either order", () => {
-    expect(parseCliArgs(["--version", "./examples"])).toEqual({
+    expect(parseCliArgs(["serve", "--version", "./examples"])).toEqual({
       command: "version"
     });
-    expect(parseCliArgs(["./examples", "--version"])).toEqual({
+    expect(parseCliArgs(["serve", "./examples", "--version"])).toEqual({
       command: "version"
     });
   });
 
   it("lets version mode win over explicit browser-opening flags", () => {
-    expect(parseCliArgs(["--version", "--open"])).toEqual({
+    expect(parseCliArgs(["serve", "--version", "--open"])).toEqual({
       command: "version"
     });
-    expect(parseCliArgs(["--version", "--no-open"])).toEqual({
+    expect(parseCliArgs(["serve", "--version", "--no-open"])).toEqual({
       command: "version"
     });
   });
 
   it("accepts an explicit open policy", () => {
-    expect(parseCliArgs(["./examples", "--open"])).toEqual({
-      command: "startup",
+    expect(parseCliArgs(["serve", "./examples", "--open"])).toEqual({
+      command: "serve",
       options: {
         browser: "always",
         hasExplicitTarget: true,
@@ -118,8 +178,8 @@ describe("parseCliArgs", () => {
   });
 
   it("lets no-open override direct startup explicitly", () => {
-    expect(parseCliArgs(["./examples", "--no-open"])).toEqual({
-      command: "startup",
+    expect(parseCliArgs(["serve", "./examples", "--no-open"])).toEqual({
+      command: "serve",
       options: {
         browser: "never",
         hasExplicitTarget: true,
@@ -179,11 +239,11 @@ describe("parseCliArgs", () => {
   });
 
   it("parses init with overwrite and a diagram target", () => {
-    expect(parseCliArgs(["init", "--overwrite", "./examples/checkout/payment-flow.mmd"])).toEqual({
+    expect(parseCliArgs(["init", "--overwrite", "./examples/flowchart/checkout-payment-flow.mmd"])).toEqual({
       command: "init",
       options: {
         overwrite: true,
-        target: "./examples/checkout/payment-flow.mmd"
+        target: "./examples/flowchart/checkout-payment-flow.mmd"
       }
     });
   });
@@ -199,43 +259,43 @@ describe("parseCliArgs", () => {
   });
 
   it("parses init with an empty-tour target", () => {
-    expect(parseCliArgs(["init", "./examples/checkout/payment-flow.tour.yaml"])).toEqual({
+    expect(parseCliArgs(["init", "./examples/flowchart/checkout-payment-flow.tour.yaml"])).toEqual({
       command: "init",
       options: {
         overwrite: false,
-        target: "./examples/checkout/payment-flow.tour.yaml"
+        target: "./examples/flowchart/checkout-payment-flow.tour.yaml"
       }
     });
   });
 
   it("rejects invalid ports", () => {
-    expect(() => parseCliArgs(["--port", "wat"])).toThrow("Expected --port to be an integer.");
+    expect(() => parseCliArgs(["serve", "--port", "wat"])).toThrow("Expected --port to be an integer.");
   });
 
   it("rejects out-of-range ports", () => {
-    expect(() => parseCliArgs(["--port", "70000"])).toThrow(
+    expect(() => parseCliArgs(["serve", "--port", "70000"])).toThrow(
       "Expected --port to be between 1 and 65535."
     );
   });
 
   it("rejects a missing host value at end of input", () => {
-    expect(() => parseCliArgs(["--host"])).toThrow("Expected a value after --host.");
+    expect(() => parseCliArgs(["serve", "--host"])).toThrow("Expected a value after --host.");
   });
 
   it("rejects a missing host value when the next token is another flag", () => {
-    expect(() => parseCliArgs(["--host", "--open"])).toThrow("Expected a value after --host.");
+    expect(() => parseCliArgs(["serve", "--host", "--open"])).toThrow("Expected a value after --host.");
   });
 
   it("rejects a missing port value at end of input", () => {
-    expect(() => parseCliArgs(["--port"])).toThrow("Expected a value after --port.");
+    expect(() => parseCliArgs(["serve", "--port"])).toThrow("Expected a value after --port.");
   });
 
   it("rejects a missing port value when the next token is another flag", () => {
-    expect(() => parseCliArgs(["--port", "--open"])).toThrow("Expected a value after --port.");
+    expect(() => parseCliArgs(["serve", "--port", "--open"])).toThrow("Expected a value after --port.");
   });
 
   it("rejects conflicting browser flags", () => {
-    expect(() => parseCliArgs(["--open", "--no-open"])).toThrow(
+    expect(() => parseCliArgs(["serve", "--open", "--no-open"])).toThrow(
       "Choose either --open or --no-open."
     );
   });
@@ -247,9 +307,7 @@ describe("parseCliArgs", () => {
   });
 
   it("rejects more than one positional target", () => {
-    expect(() => parseCliArgs(["./examples", "./fixtures"])).toThrow(
-      "Only one target path may be provided."
-    );
+    expect(() => parseCliArgs(["serve", "./examples", "./fixtures"])).toThrow("Only one target path may be provided.");
   });
 
   it("rejects init without a target", () => {
@@ -257,9 +315,7 @@ describe("parseCliArgs", () => {
   });
 
   it("rejects multiple init targets", () => {
-    expect(() => parseCliArgs(["init", "./one.mmd", "./two.mmd"])).toThrow(
-      "Only one target path may be provided to init."
-    );
+    expect(() => parseCliArgs(["init", "./one.mmd", "./two.mmd"])).toThrow("Only one target path may be provided to init.");
   });
 
   it("rejects unknown init flags", () => {
@@ -314,6 +370,6 @@ describe("parseCliArgs", () => {
   });
 
   it("rejects unknown flags", () => {
-    expect(() => parseCliArgs(["--wat"])).toThrow('Unknown flag "--wat".');
+    expect(() => parseCliArgs(["--wat"])).toThrow('Unknown command or target "--wat".');
   });
 });

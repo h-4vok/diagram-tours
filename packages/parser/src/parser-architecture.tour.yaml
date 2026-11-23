@@ -1,0 +1,68 @@
+version: 1
+title: Parser Architecture
+diagram: ./parser-architecture.mmd
+
+steps:
+  - focus: []
+    text: >
+      The parser is organized around three outward capabilities: a thin {{facade}}
+      for public entrypoints, an authored-tour load path, and separate flows for
+      discovery and validation. This keeps package-level contracts stable while the
+      implementation stays decomposed into small modules.
+
+  - focus:
+      - facade
+      - contracts
+    text: >
+      {{facade}} is intentionally small. It re-exports the package contract and
+      routes callers into the specialized modules, while {{contracts}} holds the
+      shared parser-facing report and internal shape definitions that need to stay
+      consistent across those paths.
+
+  - focus:
+      - loader
+      - draft
+      - markdown
+      - context
+    text: >
+      {{loader}} owns the authored file path. It reads and parses YAML through
+      {{draft}}, loads Mermaid or Markdown-backed diagram sources through
+      {{markdown}}, and uses {{context}} to attach normalized paths, readable
+      diagnostics, and source-aware error locations.
+
+  - focus:
+      - model
+      - sequence
+      - resolved_diag
+    text: >
+      Once the authored draft is loaded, {{model}} turns Mermaid source into a
+      diagram model and resolves focus and text references against real diagram
+      elements. {{sequence}} is the sequence-specific specialist, and
+      {{resolved_diag}} performs the semantic checks that must pass before a
+      resolved authored tour can be returned.
+
+  - focus:
+      - collection
+      - discovery
+      - generated
+      - naming
+      - skipped
+    text: >
+      Directory and file discovery stays in {{collection}}. It uses {{discovery}}
+      to walk source targets, reuses {{loader}} for authored tours, asks
+      {{generated}} for fallback tours when raw diagrams have no authored sibling,
+      relies on {{naming}} for stable slugs and generated titles, and records
+      recoverable authored failures through {{skipped}} instead of collapsing the
+      whole load.
+
+  - focus:
+      - validation
+      - collection
+      - discovery
+      - skipped
+      - contracts
+    text: >
+      {{validation}} is the reporting layer. It normalizes incoming targets,
+      reuses {{collection}} and {{discovery}} to inspect what is actually present,
+      converts failures into {{skipped}} entries, and produces the contract-shaped
+      reports defined in {{contracts}} without changing the parser's public API.

@@ -1,14 +1,8 @@
 # Smoke Tests
 
-This is the short map for the browser smoke suite.
-
 The code lives in `packages/web-player/smoke/`.
 
-## Commands
-
-- `bun run smoke`: build the packaged runtime and run the full browser suite
-- `bun run prepush:checks`: run labeled `lint`, `typecheck`, and `test` checks in parallel
-- `bun run prepush`: run `bun run prepush:checks`, then `bun run smoke` if that first stage passes
+Smoke files should stay narrow and diagnostic. Escalate to the full suite only when one file is not enough to explain runtime risk.
 
 ## Rules
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
@@ -25,6 +25,11 @@
     countDiagnosticIssues,
     createDiagnosticDisplayGroups
   } from "$lib/diagnostics";
+  import {
+    readActiveInteractionContext,
+    type ActiveInteractionContext,
+    ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE
+  } from "$lib/interaction-context";
   import type { SourceTargetInfo } from "$lib/source-target";
   import {
     DEFAULT_THEME,
@@ -69,9 +74,15 @@
   let diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
   let isHydrated = false;
   let breadcrumbs = ["diagram-tours", "collection"];
+  let currentPathname: string = page.url.pathname;
+  let activeInteractionContext: ActiveInteractionContext = "diagram";
+
+  afterNavigate((navigation) => {
+    currentPathname = navigation.to?.url.pathname ?? window.location.pathname;
+  });
 
   $: {
-    activeSlug = readActiveSlug(page.url.pathname);
+    activeSlug = readActiveSlug(currentPathname);
     activeEntry = readActiveEntry(data.collection.entries, activeSlug);
     diagnosticGroups = createDiagnosticDisplayGroups(data.collection.skipped);
     diagnosticIssueCount = countDiagnosticIssues(diagnosticGroups);
@@ -88,6 +99,10 @@
       items: browseItems
     });
     breadcrumbs = readBreadcrumbs(activeEntry);
+    activeInteractionContext = readActiveInteractionContext({
+      isBrowseOpen,
+      isDiagnosticsOpen
+    });
   }
 
   function handleThemeToggle(): void {
@@ -106,7 +121,7 @@
 
     closeDiagnostics();
     browseOpenedAt = Date.now();
-    browseOpenedForPath = page.url.pathname;
+    browseOpenedForPath = currentPathname;
     isBrowseOpen = true;
     activeBrowseSlug = readInitialBrowsePaletteSlug({
       activeSlug: null,
@@ -189,19 +204,22 @@
     recentSlugs = readStoredRecentSlugs(window.localStorage);
     browseShortcutHint = isMacPlatform(window.navigator) ? "Cmd K" : "Ctrl K";
     setDocumentTheme(document, theme);
-    previousPathname = page.url.pathname;
+    currentPathname = readCurrentPathname();
+    previousPathname = currentPathname;
     isHydrated = true;
     rememberActiveSlug(activeSlug);
     window.addEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
+    window.addEventListener("hashchange", handleHashChange);
 
     return () => {
       window.removeEventListener("diagram-tour-toggle-browse", handleExternalBrowseToggle);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   });
 
-  $: if (page.url.pathname !== previousPathname) {
-    previousPathname = page.url.pathname;
-    if (browseOpenedForPath !== page.url.pathname) {
+  $: if (currentPathname !== previousPathname) {
+    previousPathname = currentPathname;
+    if (browseOpenedForPath !== currentPathname) {
       closeBrowse();
     }
     closeDiagnostics();
@@ -222,8 +240,22 @@
   }
 
   async function navigateToBrowseSlug(slug: string): Promise<void> {
+    if (isStaticRuntime()) {
+      closeBrowse();
+      window.location.hash = `/${slug}`;
+      currentPathname = `/${slug}`;
+      return;
+    }
+
+    const nextPathname = resolve(`/${slug}`);
+
     closeBrowse();
+    currentPathname = nextPathname;
     await goto(resolve(`/${slug}`));
+  }
+
+  function handleHashChange(): void {
+    currentPathname = readCurrentPathname();
   }
 
   function setActiveBrowseSlug(slug: string): void {
@@ -318,6 +350,20 @@
 
   function readStepCountLabel(stepCount: number): string {
     return `${stepCount} step${stepCount === 1 ? "" : "s"}`;
+  }
+
+  function readCurrentPathname(): string {
+    return isStaticRuntime() ? readHashPath(window.location.hash) : page.url.pathname;
+  }
+
+  function readHashPath(hash: string): string {
+    const path = hash.slice(1).split("?", 1)[0] ?? "";
+    return path.length === 0 ? "/" : path;
+  }
+
+  function isStaticRuntime(): boolean {
+    return import.meta.env.PUBLIC_DIAGRAM_TOUR_STATIC === "true" ||
+      "__DIAGRAM_TOUR_DATA__" in window;
   }
 
   function rememberActiveSlug(slug: string | null): void {
@@ -421,7 +467,13 @@
 
 <svelte:window on:keydown={handleWindowKeydown} on:resize={handleWindowResize} />
 
-<div class="theme-root" data-theme={theme} data-hydrated={isHydrated} data-testid="theme-root">
+<div
+  class="theme-root"
+  data-theme={theme}
+  data-hydrated={isHydrated}
+  data-testid="theme-root"
+  {...{ [ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE]: activeInteractionContext }}
+>
   <Toaster richColors position="bottom-right" />
 
   <div class="app-shell">

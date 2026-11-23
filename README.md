@@ -1,14 +1,14 @@
 # diagram-tours
 
-`diagram-tours` lets you open Mermaid diagrams from any local repository and view them in a browser, with optional `*.tour.yaml` files to enrich the walkthrough.
+`diagram-tours` lets you open supported Mermaid diagrams from any local repository and view them in a browser, with optional `*.tour.yaml` files to enrich the walkthrough.
 
-It can load:
+It currently supports Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams. You can load them from:
 
-- Mermaid diagram files such as `payment-flow.mmd` or `release-pipeline.mermaid`
-- Mermaid flowcharts and Mermaid sequence diagrams
+- [Flowchart examples](examples/flowchart/) with `.mmd` or `.tour.yaml` pairs
+- [Sequence examples](examples/sequence/)
+- [Sankey examples](examples/sankey/)
 - Markdown files with fenced `mermaid` blocks, including AI-generated docs
-- optional matching `*.tour.yaml` files
-- version 1 tour content with `version`, `title`, `diagram`, and `steps` when you want authored enrichment
+- optional matching `*.tour.yaml` files for authored enrichment
 
 ## Install Globally
 
@@ -26,10 +26,10 @@ Fastest path to first value: point `diagram-tours` at any Mermaid file, Markdown
 
 If discovery finds invalid authored tours, the valid tours still load and the player surfaces the skipped authored files through the `Issues` panel with actionable diagnostics, including line and column when available.
 
-Start in the current directory with the interactive wizard:
+Discover commands and usage:
 
 ```bash
-diagram-tours
+diagram-tours help
 ```
 
 The current directory must already contain at least one supported input such as `.mmd`, `.mermaid`, `.md` with fenced Mermaid, or `*.tour.yaml`. If nothing valid is found, startup fails with a clear error instead of opening an empty browser session.
@@ -37,56 +37,55 @@ The current directory must already contain at least one supported input such as 
 Open a directory directly:
 
 ```bash
-diagram-tours ./docs/architecture
+diagram-tours serve ./docs/architecture
 ```
 
 Open a single tour file directly:
 
 ```bash
-diagram-tours ./examples/checkout-payment-flow.tour.yaml
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 Open a single Mermaid diagram directly:
 
 ```bash
-diagram-tours ./examples/checkout-payment-flow.mmd
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.mmd
 ```
 
 Open a Markdown file that contains Mermaid fences directly:
 
 ```bash
-diagram-tours ./docs/architecture/country-implementation-checklist.md
+diagram-tours serve --open ./docs/interview-offers-pipeline.md
 ```
+
+For direct targets, pass `--open` or open the printed localhost URL manually. Direct mode does not launch the browser by default.
 
 The server prefers `http://127.0.0.1:7733` and automatically falls back to another free localhost port when needed.
 
-## Wizard Flow
+## CLI Help
 
-Running `diagram-tours` with no arguments starts a console wizard that can:
+Run `diagram-tours`, `diagram-tours help`, or `diagram-tours ?` to see available commands. Use `diagram-tours help serve` for serving options.
 
-1. open the current directory
-2. open another directory
-3. open a single diagram or `*.tour.yaml` file
+## Serve Flow
 
-The wizard also asks whether to open the browser and lets you override the host or port.
+Running `diagram-tours serve` with no target serves the current directory.
 
-## Direct Path Flow
+## Serve Flow
 
-When you pass a directory, Mermaid file, or `*.tour.yaml` path directly:
+When you pass a directory, Mermaid file, Markdown file with fenced Mermaid, or `*.tour.yaml` path to `serve`:
 
-- the wizard is skipped
 - the target is validated immediately
 - the local URL is printed
 - the browser does not open unless you ask for it with `--open`
 
 ## Validate Tours
 
-Use `diagram-tours validate` to check one or more tour targets without starting the browser:
+Use `diagram-tours validate` to check one authored tour target or one directory tree without starting the browser:
 
 ```bash
 diagram-tours validate
 diagram-tours validate ./examples
-diagram-tours validate ./examples/checkout-payment-flow.tour.yaml ./docs
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 - no args means `.`.
@@ -94,10 +93,19 @@ diagram-tours validate ./examples/checkout-payment-flow.tour.yaml ./docs
 - output stays short and actionable.
 - one issue per line.
 
+Build a static site for the complete collection:
+
+```text
+diagram-tours build ./examples --out dist --open
+npx serve dist
+```
+
+`build` defaults to `dist`, refuses to replace an existing directory, and accepts `--overwrite`. It fails on invalid tours by default; use `--continue` to emit the valid collection anyway. Use `--quiet` for CI logs or `--verbose` for per-diagnostic output. The generated site includes `tours-data.json`, bundles its browser runtime inline so `--open` works directly from `file://`, and can be deployed to any static host.
+
 ## Key Flags
 
 ```text
-diagram-tours [target?] [--host <value>] [--port <value>] [--open|--no-open]
+diagram-tours serve [target?] [--host <value>] [--port <value>] [--open|--no-open]
 ```
 
 - `--host <value>` sets the bind host
@@ -111,12 +119,13 @@ The published CLI also includes authoring-oriented commands:
 
 ```bash
 diagram-tours setup
-diagram-tours init ./examples/checkout/payment-flow.mmd
-diagram-tours init ./docs/architecture/checklist.md#details
-diagram-tours init ./examples/checkout/payment-flow.tour.yaml
+diagram-tours init ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours init ./docs/interview-offers-pipeline.md
+diagram-tours init ./fixtures/markdown/checklist.md#details
+diagram-tours init ./examples/flowchart/new-flow.tour.yaml
 diagram-tours validate
-diagram-tours validate ./examples/checkout
-diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+diagram-tours validate ./examples
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 - `diagram-tours setup` creates `.diagram-tours/instructions.md` and can optionally install a Codex subagent definition that points back to that file. Run it with no flags for the interactive flow, or use `--agent`, `--agent-path <path>`, `--no-agent`, and `--overwrite` directly.
@@ -130,7 +139,9 @@ Raw diagrams work immediately. If a diagram has no authored tour yet, `diagram-t
 - an overview step for the whole diagram
 - one step per addressable Mermaid diagram element in source order
 
-For flowcharts, that means one step per Mermaid node. For sequence diagrams, that means one step per explicit participant plus one step per explicitly tagged message.
+For flowcharts, that means one step per Mermaid node. For sequence diagrams, that means one step per explicit participant plus one step per explicitly tagged message. For Sankey diagrams, that means one step per Sankey node in source order.
+
+Sankey diagrams use `sankey-beta` with CSV-like rows. In authored tours, Sankey `focus` values and `{{text references}}` use raw visible node labels such as `Gateway` or `Fraud Review`. If the same visible label appears more than once, the first source-order match wins.
 
 Add a `*.tour.yaml` file only when you want richer titles, custom step text, curated focus groups, and label interpolation.
 
@@ -143,7 +154,7 @@ Version 1 tour files look like this:
 ```yaml
 version: 1
 title: Payment Flow
-diagram: ./checkout-payment-flow.mmd
+diagram: ./flowchart/checkout-payment-flow.mmd
 
 steps:
   - focus:
@@ -168,63 +179,14 @@ sequenceDiagram
 
 That makes both `focus: [submit_order]` and `{{submit_order}}` resolve to `Submit order`.
 
-## For Contributors
+## Contributors
 
-Repository development still uses the Bun workspace monorepo:
+Use [AGENTS.md](AGENTS.md) as the default implementation policy.
 
-```bash
-bun install
-bun run dev
-bun run dev:open
-bun run dev:interactive
-```
+- [Contributor Workflow](docs/contributor-workflow.md)
+- [Principles Index](docs/principles/README.md)
 
-- `bun run dev` starts the local player without opening the browser automatically.
-- `bun run dev:open` starts the same local player and opens the browser for you.
-- `bun run dev:interactive` starts the console flow for choosing the preview target interactively.
-
-Contributor guidance lives here:
-
-- [AGENTS.md](AGENTS.md)
-
-Operational docs:
-
-- [Runtime Loading](docs/runtime-loading.md)
-- [Authoring Guide](docs/authoring-guide.md)
-- [Adoption And Onboarding Notes](docs/adoption-onboarding.md)
-- [Coverage Dashboard](docs/testing/coverage.md)
-- [Smoke Tests](docs/testing/smoke-tests.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [Tour Specification v1](docs/tour-spec-v1.md)
-- [Vision Log](VISION_LOG.md)
-
-## Testing And Coverage
-
-Agent default:
-
-- targeted local checks on touched files/packages via `closeout-validate`
-- operator runs exhaustive/full validation via `repo-validate`
-
-Operator quick path:
-
-```bash
-bun run allchecks:ai
-```
-
-`allchecks:ai` is the human-facing alias for the full validation pass (`prepush`) with normal logs.
-
-`prepush` now runs labeled `lint`, `typecheck`, and `test` checks in parallel first, then runs `smoke` only after that stage passes.
-
-Other available commands:
-
-- `bun run lint`
-- `bun run typecheck`
-- `bun run test`
-- `bun run prepush:checks`
-- `bun run smoke`
-- `bun run prepush`
-
-The shipped example library lives directly under `examples/` with flat, domain-prefixed stems such as `checkout-payment-flow` and `ops-huge-system`.
+The shipped example library is grouped by diagram type under `examples/`: [flowchart](examples/flowchart/), [sequence](examples/sequence/), and [sankey](examples/sankey/). Inside those folders, `checkout-payment-flow` is a small authored flowchart, `flowchart-addressability` covers addressable flowchart shapes and bare endpoints, `sequence-order-sequence` is a small authored sequence diagram, `payments-platform-overview` is a large authored demo, and `sankey-ops-review` is an interview-to-offer Sankey walkthrough.
 
 ## Repository Packages
 

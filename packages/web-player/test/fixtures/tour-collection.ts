@@ -5,34 +5,34 @@ import type {
 
 import { resolvedPaymentFlowTour } from "./resolved-tour";
 
-export const resolvedRefundFlowTour: ResolvedDiagramTour = {
+export const resolvedPaymentsPlatformTour: ResolvedDiagramTour = {
   sourceKind: "authored",
   version: 1,
-  title: "Refund Flow",
+  title: "Payments Platform Overview",
   diagram: {
     elements: [
-      { id: "customer", kind: "node", label: "Customer" },
-      { id: "refund_service", kind: "node", label: "Refund Service" },
-      { id: "payment_gateway", kind: "node", label: "Payment Gateway" },
-      { id: "receipt", kind: "node", label: "Receipt" }
+      { id: "edge_gateway", kind: "node", label: "Edge Gateway" },
+      { id: "checkout_orchestrator", kind: "node", label: "Checkout Orchestrator" },
+      { id: "payment_service", kind: "node", label: "Payment Service" },
+      { id: "event_bus", kind: "node", label: "Event Bus" }
     ],
-    path: "./checkout-refund-flow.mmd",
+    path: "./payments-platform-overview.mmd",
     source: `flowchart LR
-  customer[Customer] --> refund_service[Refund Service]
-  refund_service --> payment_gateway[Payment Gateway]
-  payment_gateway --> receipt[Receipt]`,
+  edge_gateway[Edge Gateway] --> checkout_orchestrator[Checkout Orchestrator]
+  checkout_orchestrator --> payment_service[Payment Service]
+  payment_service --> event_bus[Event Bus]`,
     type: "flowchart"
   },
   steps: [
     {
       index: 1,
-      focus: [{ id: "refund_service", kind: "node", label: "Refund Service" }],
-      text: "The Refund Service is where customer support or self-service tools ask to reverse a payment. It records the refund intent and makes sure the request is tied to a real purchase from Customer."
+      focus: [{ id: "checkout_orchestrator", kind: "node", label: "Checkout Orchestrator" }],
+      text: "The Checkout Orchestrator coordinates payment and order concerns before charging the customer."
     },
     {
       index: 2,
-      focus: [{ id: "payment_gateway", kind: "node", label: "Payment Gateway" }],
-      text: "The Payment Gateway executes the money movement with the processor. Only after that external confirmation arrives should the system issue the Receipt and tell the customer the refund is really underway."
+      focus: [{ id: "payment_service", kind: "node", label: "Payment Service" }],
+      text: "The Payment Service records durable payment outcomes and publishes downstream events."
     }
   ]
 };
@@ -46,10 +46,10 @@ export const resolvedTourCollection: ResolvedDiagramTourCollection = {
       tour: resolvedPaymentFlowTour
     },
     {
-      slug: "refund-flow",
-      sourcePath: "refund-flow/refund-flow.tour.yaml",
-      title: "Refund Flow",
-      tour: resolvedRefundFlowTour
+      slug: "payments-platform-overview",
+      sourcePath: "payments-platform-overview/payments-platform-overview.tour.yaml",
+      title: "Payments Platform Overview",
+      tour: resolvedPaymentsPlatformTour
     }
   ],
   skipped: []
@@ -64,10 +64,10 @@ export const nestedTourCollection: ResolvedDiagramTourCollection = {
       tour: resolvedPaymentFlowTour
     },
     {
-      slug: "refund-flow",
-      sourcePath: "payments/support/refund-flow/refund-flow.tour.yaml",
-      title: "Refund Flow",
-      tour: resolvedRefundFlowTour
+      slug: "payments-platform-overview",
+      sourcePath: "payments/platform/payments-platform-overview/payments-platform-overview.tour.yaml",
+      title: "Payments Platform Overview",
+      tour: resolvedPaymentsPlatformTour
     }
   ],
   skipped: []

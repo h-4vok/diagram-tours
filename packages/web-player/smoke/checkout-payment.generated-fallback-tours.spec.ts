@@ -4,7 +4,7 @@ import { startDevServer } from "./dev-server";
 
 test("generated fallback tours render a minimal overview and node-by-node walkthrough", async ({ page }) => {
   const server = await startDevServer({
-    args: ["./examples/checkout-payment-flow.mmd"],
+    args: ["./examples/flowchart/checkout-payment-flow.mmd"],
     port: 4183
   });
 

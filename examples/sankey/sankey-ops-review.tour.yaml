@@ -1,0 +1,37 @@
+version: 1
+title: Interview Offers Pipeline
+diagram: ./sankey-ops-review.mmd
+
+steps:
+  - focus: []
+    text: >
+      Overview of how one candidate funnel starts with many job applications, narrows through screening and interviews, and ends in real offer outcomes.
+
+  - focus:
+      - Applications
+      - Resume Review
+      - Recruiter Screen
+    text: >
+      {{Applications}} start broad, then {{Resume Review}} and {{Recruiter Screen}} remove obvious mismatches before the hiring team spends deeper interview time.
+
+  - focus:
+      - Hiring Manager
+      - Take-home
+      - Live Coding
+      - Panel
+    text: >
+      {{Hiring Manager}} splits promising candidates into different interview formats such as {{Take-home}}, {{Live Coding}}, and {{Panel}} depending on role and team preference.
+
+  - focus:
+      - Final Loop
+      - Reference Check
+    text: >
+      Candidates who survive the working interview stages converge into {{Final Loop}}, then move through {{Reference Check}} before an offer can be prepared.
+
+  - focus:
+      - Offers
+      - Accepted
+      - Declined
+      - Negotiating
+    text: >
+      {{Offers}} branch into accepted, declined, and still-{{Negotiating}} outcomes, which makes the funnel useful for both recruiting ops and forecasting.

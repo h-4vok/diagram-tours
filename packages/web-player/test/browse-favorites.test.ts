@@ -14,13 +14,13 @@ describe("browse-favorites", () => {
     expect(
       buildFavoriteBrowseEntries({
         entries: nestedTourCollection.entries,
-        favoriteSlugs: ["refund-flow", "payment-flow"],
-        query: "refund"
+        favoriteSlugs: ["payments-platform-overview", "payment-flow"],
+        query: "platform"
       })
     ).toEqual([
       {
-        slug: "refund-flow",
-        title: "Refund Flow"
+        slug: "payments-platform-overview",
+        title: "Payments Platform Overview"
       }
     ]);
   });
@@ -29,7 +29,7 @@ describe("browse-favorites", () => {
     expect(
       buildFavoriteBrowseEntries({
         entries: nestedTourCollection.entries,
-        favoriteSlugs: ["refund-flow", "payment-flow"],
+        favoriteSlugs: ["payments-platform-overview", "payment-flow"],
         query: ""
       })
     ).toEqual([
@@ -38,8 +38,8 @@ describe("browse-favorites", () => {
         title: "Payment Flow"
       },
       {
-        slug: "refund-flow",
-        title: "Refund Flow"
+        slug: "payments-platform-overview",
+        title: "Payments Platform Overview"
       }
     ]);
   });
@@ -49,15 +49,15 @@ describe("browse-favorites", () => {
 
     expect(readStoredFavoriteSlugs(storage)).toEqual([]);
 
-    writeStoredFavoriteSlugs(storage, ["refund-flow", "payment-flow"]);
+    writeStoredFavoriteSlugs(storage, ["payments-platform-overview", "payment-flow"]);
 
     expect(storage.setItem).toHaveBeenCalledWith(
       FAVORITES_STORAGE_KEY,
-      JSON.stringify(["payment-flow", "refund-flow"])
+      JSON.stringify(["payment-flow", "payments-platform-overview"])
     );
-    expect(toggleFavoriteSlug(["payment-flow"], "refund-flow")).toEqual([
+    expect(toggleFavoriteSlug(["payment-flow"], "payments-platform-overview")).toEqual([
       "payment-flow",
-      "refund-flow"
+      "payments-platform-overview"
     ]);
     expect(toggleFavoriteSlug(["payment-flow"], "payment-flow")).toEqual([]);
   });
@@ -69,15 +69,15 @@ describe("browse-favorites", () => {
   });
 
   it("ignores non-array favorite payloads in storage", () => {
-    const storage = createStorage('{"slug":"refund-flow"}');
+    const storage = createStorage('{"slug":"payments-platform-overview"}');
 
     expect(readStoredFavoriteSlugs(storage)).toEqual([]);
   });
 
   it("keeps only string favorite slugs from stored arrays", () => {
-    const storage = createStorage('["refund-flow", 42, null, "payment-flow"]');
+    const storage = createStorage('["payments-platform-overview", 42, null, "payment-flow"]');
 
-    expect(readStoredFavoriteSlugs(storage)).toEqual(["refund-flow", "payment-flow"]);
+    expect(readStoredFavoriteSlugs(storage)).toEqual(["payments-platform-overview", "payment-flow"]);
   });
 });
 

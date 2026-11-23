@@ -1,0 +1,35 @@
+version: 1
+title: Browser Extension Data Pipeline
+diagram: ./dom-injection-api.md#browser-extension-data-pipeline
+
+steps:
+  - focus:
+      - BrowserExtension
+      - ContentScriptRunner
+    text: >
+      {{BrowserExtension}} owns the orchestration while {{ContentScriptRunner}} is the
+      injected worker that bridges the page and the extension.
+
+  - focus:
+      - DomInjector
+      - PageScraper
+      - PageData
+    text: >
+      {{DomInjector}} mounts UI into the page, {{PageScraper}} reads the visible
+      content, and {{PageData}} is the shaped payload they pass around.
+
+  - focus:
+      - ApiClient
+      - RequestQueue
+      - QueuedRequest
+    text: >
+      {{ApiClient}} sends the collected data, with {{RequestQueue}} buffering
+      {{QueuedRequest}} items before each upload.
+
+  - focus:
+      - PermissionGate
+      - StorageAdapter
+      - LocalStorageAdapter
+    text: >
+      {{PermissionGate}} guards access, and the storage abstraction keeps cached
+      state separate from browser-specific persistence.

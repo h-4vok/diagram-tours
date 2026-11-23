@@ -15,11 +15,13 @@
     applySvgZoom,
     canZoomIn,
     canZoomOut,
+    createCenteredContentScrollPosition,
+    createContentZoomToFitScale,
     createNextZoomScale,
     createPreservedZoomScrollPosition,
-    createZoomToFitScale,
     DEFAULT_ZOOM_SCALE,
-    formatZoomPercentage
+    formatZoomPercentage,
+    type DiagramZoomContentBounds
   } from "$lib/diagram-zoom";
   import {
     createDiagramMinimapGeometry,
@@ -32,8 +34,9 @@
     type DiagramMinimapRect,
     type DiagramMinimapMetrics
   } from "$lib/diagram-minimap";
-  import { createOverviewScrollPosition, focusDiagramViewport } from "$lib/diagram-viewport";
+  import { focusDiagramViewport } from "$lib/diagram-viewport";
   import { createFocusGroup, type FocusGroup } from "$lib/focus-group";
+  import { readActiveInteractionContextFromDocument } from "$lib/interaction-context";
   import { createTourPlayer } from "$lib/player-state";
   import {
     createNodeStepChoices,
@@ -46,6 +49,7 @@
 
   const MINIMAP_BREAKPOINT = 720;
   const MINIMAP_STORAGE_KEY = "diagram-tour:minimap-collapsed";
+  const TELEPROMPTER_STORAGE_KEY = "diagram-tour:teleprompter-hidden";
   const MINIMAP_SIZE = {
     maxHeight: 160,
     maxWidth: 220
@@ -79,6 +83,11 @@
     '[data-diagram-element-id]:not([data-diagram-element-auxiliary="true"])',
     '[data-node-id]:not([data-diagram-element-auxiliary="true"])'
   ].join(", ");
+  const DIAGRAM_FIT_ELEMENT_SELECTOR = [
+    "[data-diagram-element-id]",
+    "[data-node-id]",
+    "[data-connector-role]"
+  ].join(", ");
 
   type ViewportDragInput = {
     dragState: ViewportDragState;
@@ -100,6 +109,7 @@
   let hasRenderedDiagram = false;
   let isCompactViewport = false;
   let isMinimapCollapsed = false;
+  let isTeleprompterHidden = false;
   let minimapGeometry: DiagramMinimapGeometry | null = null;
   let nodeStepChooser: NodeStepChooser | null = null;
   let nodeStepIndex = createDiagramElementStepIndex(tour);
@@ -108,7 +118,17 @@
   let renderedViewportRect: DiagramMinimapRect | null = null;
   let viewportDragState: ViewportDragState | null = null;
   let zoomScale = DEFAULT_ZOOM_SCALE;
-  $: stepTextLines = readStepTextLines(state.step.text);
+  $: isDesktopFloatingUi = !isCompactViewport;
+  $: isMinimapVisible = isDesktopFloatingUi && !isMinimapCollapsed;
+  $: isTeleprompterVisible = !isTeleprompterHidden;
+  $: teleprompterStyle = isDesktopFloatingUi
+    ? `right: ${isMinimapVisible ? "calc(24px + 15.5rem + 24px)" : "24px"};`
+    : "";
+  $: floatingPanelDockStyle = readFloatingPanelDockStyle({
+    isDesktopFloatingUi,
+    isMinimapVisible,
+    isTeleprompterVisible
+  });
 
   async function goPrevious(): Promise<void> {
     await goToStepIndex(state.stepIndex - 1);
@@ -142,7 +162,19 @@
   }
 
   async function resetZoom(): Promise<void> {
-    await updateZoomScale(DEFAULT_ZOOM_SCALE);
+    const zoomContext = readZoomContext();
+
+    if (zoomContext === null) {
+      return;
+    }
+
+    if (!applyZoomScaleToSvg(zoomContext.svg, DEFAULT_ZOOM_SCALE)) {
+      return;
+    }
+
+    zoomScale = DEFAULT_ZOOM_SCALE;
+    await waitForDiagramLayout();
+    centerZoomViewportOnDiagram(zoomContext.context);
   }
 
   async function fitZoomToView(): Promise<void> {
@@ -152,38 +184,12 @@
       return;
     }
 
-    if (!applyZoomToFitScale(zoomContext)) {
+    if (!applyContentFitZoomScale(zoomContext)) {
       return;
     }
 
     await waitForDiagramLayout();
-
-    const nextPosition = createOverviewScrollPosition(readCurrentMetrics(zoomContext.context));
-
-    writeDiagramScrollPosition(nextPosition, "auto");
-  }
-
-  function applyZoomToFitScale(zoomContext: {
-    context: { container: HTMLDivElement; content: HTMLDivElement };
-    svg: SVGSVGElement;
-  }): boolean {
-    const previousMetrics = readDiagramMinimapMetrics(zoomContext.context);
-    const nextZoomScale = createZoomToFitScale({
-      currentScale: zoomScale,
-      metrics: previousMetrics
-    });
-
-    if (nextZoomScale === null) {
-      return false;
-    }
-
-    if (!applyZoomScaleToSvg(zoomContext.svg, nextZoomScale)) {
-      return false;
-    }
-
-    zoomScale = nextZoomScale;
-
-    return true;
+    centerZoomViewportOnDiagram(zoomContext.context);
   }
 
   async function syncFocusState(behavior: ScrollBehavior = "smooth"): Promise<void> {
@@ -276,11 +282,21 @@
   }
 
   async function navigateToStep(stepIndex: number): Promise<void> {
+    if (isStaticRuntime()) {
+      window.location.hash = `/${selectedSlug}?step=${stepIndex}`;
+      return;
+    }
+
     await goto(resolve(`/${selectedSlug}?step=${stepIndex}`), {
       invalidateAll: false,
       keepFocus: true,
       noScroll: true
     });
+  }
+
+  function isStaticRuntime(): boolean {
+    return import.meta.env.PUBLIC_DIAGRAM_TOUR_STATIC === "true" ||
+      "__DIAGRAM_TOUR_DATA__" in window;
   }
 
   function waitForDiagramLayout(): Promise<void> {
@@ -320,6 +336,27 @@
     persistMinimapState();
   }
 
+  function toggleTeleprompter(): void {
+    isTeleprompterHidden = !isTeleprompterHidden;
+    persistTeleprompterState();
+  }
+
+  function readFloatingPanelDockStyle(input: {
+    isDesktopFloatingUi: boolean;
+    isMinimapVisible: boolean;
+    isTeleprompterVisible: boolean;
+  }): string {
+    if (!input.isDesktopFloatingUi) {
+      return "";
+    }
+
+    if (input.isMinimapVisible !== input.isTeleprompterVisible) {
+      return "bottom: calc(24px + var(--floating-panel-height) + 12px); right: 24px;";
+    }
+
+    return "bottom: 24px; right: 24px;";
+  }
+
   async function renderInitialDiagram(): Promise<void> {
     try {
       await renderMermaidDiagram({
@@ -348,6 +385,7 @@
     }
 
     isMinimapCollapsed = window.localStorage.getItem(MINIMAP_STORAGE_KEY) === "true";
+    isTeleprompterHidden = window.localStorage.getItem(TELEPROMPTER_STORAGE_KEY) === "true";
   }
 
   function persistMinimapState(): void {
@@ -356,6 +394,14 @@
     }
 
     window.localStorage.setItem(MINIMAP_STORAGE_KEY, String(isMinimapCollapsed));
+  }
+
+  function persistTeleprompterState(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(TELEPROMPTER_STORAGE_KEY, String(isTeleprompterHidden));
   }
 
   function attachWindowListeners(): () => void {
@@ -457,6 +503,59 @@
     return applySvgZoom(svg, nextZoomScale);
   }
 
+  function createContentFitZoomScale(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): number | null {
+    const contentBounds = readIntrinsicDiagramBounds(zoomContext);
+    const svgSize = readZoomSvgSize(zoomContext.svg);
+
+    return contentBounds === null || svgSize === null
+      ? null
+      : createContentZoomToFitScale({
+          bounds: contentBounds,
+          svgHeight: svgSize.height,
+          svgWidth: svgSize.width,
+          viewportHeight: zoomContext.context.container.clientHeight,
+          viewportWidth: zoomContext.context.container.clientWidth
+        });
+  }
+
+  function applyContentFitZoomScale(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): boolean {
+    return applyNextZoomScale(zoomContext.svg, createContentFitZoomScale(zoomContext));
+  }
+
+  function centerZoomViewportOnDiagram(
+    context: { container: HTMLDivElement; content: HTMLDivElement }
+  ): void {
+    const contentBounds = readRenderedDiagramBounds(context.content);
+
+    if (contentBounds === null) {
+      return;
+    }
+
+    writeDiagramScrollPosition(
+      createCenteredContentScrollPosition({
+        bounds: contentBounds,
+        metrics: readCurrentMetrics(context)
+      }),
+      "auto"
+    );
+  }
+
+  function applyNextZoomScale(svg: SVGSVGElement, nextZoomScale: number | null): boolean {
+    if (nextZoomScale === null || !applyZoomScaleToSvg(svg, nextZoomScale)) {
+      return false;
+    }
+
+    zoomScale = nextZoomScale;
+
+    return true;
+  }
+
   function preserveZoomViewport(context: {
     container: HTMLDivElement;
     content: HTMLDivElement;
@@ -474,6 +573,164 @@
     content: HTMLDivElement;
   }): DiagramMinimapMetrics {
     return readDiagramMinimapMetrics(context);
+  }
+
+  function readIntrinsicDiagramBounds(zoomContext: {
+    context: { container: HTMLDivElement; content: HTMLDivElement };
+    svg: SVGSVGElement;
+  }): DiagramZoomContentBounds | null {
+    const renderedBounds = readRenderedDiagramBounds(zoomContext.context.content);
+    const svgOrigin = readRenderedSvgOrigin(zoomContext.context.content, zoomContext.svg);
+    const currentZoomScale = readZoomScaleFromSvg(zoomContext.svg);
+
+    if (hasMissingIntrinsicBoundsInput(renderedBounds, svgOrigin, currentZoomScale)) {
+      return null;
+    }
+
+    const intrinsicBoundsInput = {
+      currentZoomScale,
+      renderedBounds,
+      svgOrigin
+    } as {
+      currentZoomScale: number;
+      renderedBounds: DiagramZoomContentBounds;
+      svgOrigin: { left: number; top: number };
+    };
+
+    return createIntrinsicDiagramBounds({
+      currentZoomScale: intrinsicBoundsInput.currentZoomScale,
+      renderedBounds: intrinsicBoundsInput.renderedBounds,
+      svgOrigin: intrinsicBoundsInput.svgOrigin
+    });
+  }
+
+  function readRenderedDiagramBounds(content: HTMLDivElement): DiagramZoomContentBounds | null {
+    return mergeDiagramBounds(
+      Array.from(content.querySelectorAll<Element>(DIAGRAM_FIT_ELEMENT_SELECTOR))
+        .map((element) => toRenderedDiagramBounds(content, element))
+        .filter((bounds): bounds is DiagramZoomContentBounds => bounds !== null)
+    );
+  }
+
+  function toRenderedDiagramBounds(
+    content: HTMLDivElement,
+    element: Element
+  ): DiagramZoomContentBounds | null {
+    const contentRect = content.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+
+    return hasUsableDiagramRect(elementRect)
+      ? {
+          left: elementRect.left - contentRect.left,
+          top: elementRect.top - contentRect.top,
+          width: elementRect.width,
+          height: elementRect.height
+        }
+      : null;
+  }
+
+  function mergeDiagramBounds(boundsList: DiagramZoomContentBounds[]): DiagramZoomContentBounds | null {
+    if (boundsList.length === 0) {
+      return null;
+    }
+
+    return boundsList.reduce((currentBounds, bounds) => {
+      const right = Math.max(currentBounds.left + currentBounds.width, bounds.left + bounds.width);
+      const bottom = Math.max(currentBounds.top + currentBounds.height, bounds.top + bounds.height);
+      const left = Math.min(currentBounds.left, bounds.left);
+      const top = Math.min(currentBounds.top, bounds.top);
+
+      return {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top
+      };
+    });
+  }
+
+  function readRenderedSvgOrigin(
+    content: HTMLDivElement,
+    svg: SVGSVGElement
+  ): { left: number; top: number } | null {
+    const contentRect = content.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+
+    return hasUsableDiagramRect(svgRect)
+      ? {
+          left: svgRect.left - contentRect.left,
+          top: svgRect.top - contentRect.top
+        }
+      : null;
+  }
+
+  function readZoomScaleFromSvg(svg: SVGSVGElement): number | null {
+    return readPositiveFiniteNumber(svg.dataset.zoomScale ?? String(zoomScale));
+  }
+
+  function readZoomSvgSize(svg: SVGSVGElement): { height: number; width: number } | null {
+    const currentZoomScale = readZoomScaleFromSvg(svg);
+    const width = readZoomSvgDimension(svg.dataset.intrinsicWidth, svg.getAttribute("width"), currentZoomScale);
+    const height = readZoomSvgDimension(
+      svg.dataset.intrinsicHeight,
+      svg.getAttribute("height"),
+      currentZoomScale
+    );
+
+    return width === null || height === null ? null : { height, width };
+  }
+
+  function readZoomSvgDimension(
+    intrinsicValue: string | undefined,
+    renderedValue: string | null,
+    currentZoomScale: number | null
+  ): number | null {
+    return (
+      readPositiveFiniteNumber(intrinsicValue ?? null) ??
+      readRenderedZoomSvgDimension(renderedValue, currentZoomScale)
+    );
+  }
+
+  function hasUsableDiagramRect(rect: DOMRect): boolean {
+    return [rect.left, rect.top, rect.width, rect.height].every(Number.isFinite) && rect.width > 0 && rect.height > 0;
+  }
+
+  function hasMissingIntrinsicBoundsInput(
+    renderedBounds: DiagramZoomContentBounds | null,
+    svgOrigin: { left: number; top: number } | null,
+    currentZoomScale: number | null
+  ): boolean {
+    return renderedBounds === null || svgOrigin === null || currentZoomScale === null;
+  }
+
+  function createIntrinsicDiagramBounds(input: {
+    currentZoomScale: number;
+    renderedBounds: DiagramZoomContentBounds;
+    svgOrigin: { left: number; top: number };
+  }): DiagramZoomContentBounds {
+    return {
+      left: (input.renderedBounds.left - input.svgOrigin.left) / input.currentZoomScale,
+      top: (input.renderedBounds.top - input.svgOrigin.top) / input.currentZoomScale,
+      width: input.renderedBounds.width / input.currentZoomScale,
+      height: input.renderedBounds.height / input.currentZoomScale
+    };
+  }
+
+  function readRenderedZoomSvgDimension(
+    renderedValue: string | null,
+    currentZoomScale: number | null
+  ): number | null {
+    const renderedDimension = readPositiveFiniteNumber(renderedValue);
+
+    return renderedDimension === null || currentZoomScale === null
+      ? null
+      : renderedDimension / currentZoomScale;
+  }
+
+  function readPositiveFiniteNumber(value: string | null): number | null {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
   async function handleDiagramClick(event: MouseEvent): Promise<void> {
@@ -1016,7 +1273,19 @@
   }
 
   function shouldIgnoreKeyboardNavigation(event: KeyboardEvent): boolean {
-    return event.defaultPrevented || hasNavigationModifierKeys(event) || isTypingTarget(event.target);
+    if (hasKeyboardNavigationBlocker(event)) {
+      return true;
+    }
+
+    return readActiveInteractionContextFromDocument(document) !== "diagram";
+  }
+
+  function hasKeyboardNavigationBlocker(event: KeyboardEvent): boolean {
+    return [
+      event.defaultPrevented,
+      hasNavigationModifierKeys(event),
+      isTypingTarget(event.target)
+    ].some(Boolean);
   }
 
   function hasNavigationModifierKeys(event: KeyboardEvent): boolean {
@@ -1076,10 +1345,6 @@
     return svg === null ? null : { context, svg };
   }
 
-  function readStepTextLines(text: string): string[] {
-    return normalizeStepText(text).split("\n");
-  }
-
   function normalizeStepText(text: string): string {
     return text.replace(/<br\s*\/?>/giu, "\n");
   }
@@ -1130,127 +1395,93 @@
       </div>
     {/if}
 
+    {#if isTeleprompterVisible}
     <aside
       class="teleprompter"
       data-testid="teleprompter"
+      style={teleprompterStyle}
     >
       <div class="teleprompter__progress" style={`width: ${((state.stepIndex + 1) / tour.steps.length) * 100}%`}></div>
       
       <div class="teleprompter__content" data-testid="step-overlay">
-        <div class="teleprompter__navleft">
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-out-button"
-            aria-label="Zoom out"
-            disabled={!canZoomOut(zoomScale)}
-            on:click={() => void zoomOut()}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            aria-label="Fit diagram to view"
-            on:click={() => void fitZoomToView()}
-          >
-            Fit
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button viewport-toolbar__button--value"
-            data-testid="zoom-reset-button"
-            aria-label="Reset zoom to 100%"
-            disabled={zoomScale === DEFAULT_ZOOM_SCALE}
-            on:click={() => void resetZoom()}
-          >
-            {formatZoomPercentage(zoomScale)}
-          </button>
-          <button
-            type="button"
-            class="viewport-toolbar__button"
-            data-testid="zoom-in-button"
-            aria-label="Zoom in"
-            disabled={!canZoomIn(zoomScale)}
-            on:click={() => void zoomIn()}
-          >
-            +
-          </button>
-        </div>
-      <aside class="step-panel step-panel--overlay">
-        <p class="step-count">Step {state.step.index} of {tour.steps.length}</p>
-        <div class="step-timeline" data-testid="step-timeline">
-          {#each tour.steps as step, stepIndex (step.index)}
+        <div class="teleprompter__main">
+          <div class="teleprompter__actions">
             <button
               type="button"
-              class:step-timeline__pill--current={stepIndex === state.stepIndex}
-              class:step-timeline__pill--complete={stepIndex < state.stepIndex}
-              class="step-timeline__pill"
-              data-testid="timeline-step-button"
-              aria-current={stepIndex === state.stepIndex ? "step" : undefined}
-              on:click={() => void goToStepIndex(stepIndex)}
+              class="teleprompter__paneltoggle"
+              data-testid="teleprompter-toggle"
+              aria-label="Hide teleprompter"
+              title="Hide teleprompter"
+              on:click={toggleTeleprompter}
             >
-              {step.index}
+              <span aria-hidden="true">×</span>
             </button>
-          {/each}
-        </div>
-        <p class="step-text">
-          {#each stepTextLines as line, index (index)}
-            {line}
-            {#if index < stepTextLines.length - 1}<br />{/if}
-          {/each}
-        </p>
+          </div>
 
-        <div class="controls">
-          <button
-            type="button"
-            class="button button--secondary"
-            on:click={goPrevious}
-            disabled={!state.canGoPrevious}
-            data-testid="previous-button"
-            aria-label="Previous step"
-          >
-            <span class="teleprompter__btnicon">←</span>
-          </button>
-        </div>
-
-          <div class="teleprompter__textarea" data-testid="step-text-container">
-            <p class="teleprompter__stepinfo">Step {state.stepIndex + 1} of {tour.steps.length}</p>
-          <p data-testid="step-text" class="teleprompter__text">
-            {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
-              {#if segment.isCode}
-                <code class="teleprompter__code">{segment.content}</code>
-              {:else}
-                {#each segment.content.split("\n") as line, lineIndex (`${state.stepIndex}-${segmentIndex}-${lineIndex}`)}
-                  {line}
-                  {#if lineIndex < segment.content.split("\n").length - 1}<br />{/if}
-                {/each}
-              {/if}
+          <div class="step-timeline" data-testid="step-timeline">
+            {#each tour.steps as step, stepIndex (step.index)}
+              <button
+                type="button"
+                class:step-timeline__pill--current={stepIndex === state.stepIndex}
+                class:step-timeline__pill--complete={stepIndex < state.stepIndex}
+                class="step-timeline__pill"
+                data-testid="timeline-step-button"
+                aria-current={stepIndex === state.stepIndex ? "step" : undefined}
+                on:click={() => void goToStepIndex(stepIndex)}
+              >
+                {step.index}
+              </button>
             {/each}
-          </p>
-        </div>
+          </div>
 
-        <div class="teleprompter__navright">
-          <button
-            type="button"
-            class="teleprompter__btn"
-            on:click={goNext}
-            disabled={!state.canGoNext}
-            data-testid="next-button"
-            aria-label="Next step"
-          >
-            <span class="teleprompter__btnicon">→</span>
-          </button>
+          <div class="teleprompter__reader">
+            <button
+              type="button"
+              class="teleprompter__btn teleprompter__btn--cta"
+              on:click={goPrevious}
+              disabled={!state.canGoPrevious}
+              data-testid="previous-button"
+              aria-label="Previous step"
+            >
+              <span class="teleprompter__btnicon">&larr;</span>
+            </button>
+
+            <div class="teleprompter__textarea" data-testid="step-text-container">
+              <p class="teleprompter__stepinfo">Step {state.stepIndex + 1} of {tour.steps.length}</p>
+              <p data-testid="step-text" class="teleprompter__text">
+                {#each createStepTextSegments(normalizeStepText(state.step.text)) as segment, segmentIndex (`${state.stepIndex}-${segmentIndex}`)}
+                  {#if segment.isCode}
+                    <code class="teleprompter__code">{segment.content}</code>
+                  {:else}
+                    {#each segment.content.split("\n") as line, lineIndex (`${state.stepIndex}-${segmentIndex}-${lineIndex}`)}
+                      {line}
+                      {#if lineIndex < segment.content.split("\n").length - 1}<br />{/if}
+                    {/each}
+                  {/if}
+                {/each}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="teleprompter__btn teleprompter__btn--cta"
+              on:click={goNext}
+              disabled={!state.canGoNext}
+              data-testid="next-button"
+              aria-label="Next step"
+            >
+              <span class="teleprompter__btnicon">&rarr;</span>
+            </button>
+          </div>
         </div>
-      </aside>
       </div>
     </aside>
+    {/if}
 
-    {#if !isCompactViewport}
+    {#if isMinimapVisible}
       <div class="camera-control-cluster" data-testid="camera-control-cluster">
         <div class="camera-control-panel" data-testid="camera-control-panel">
           <aside
-            class:minimap-shell--collapsed={isMinimapCollapsed}
             class="minimap-shell"
             data-testid="minimap-shell"
           >
@@ -1259,14 +1490,15 @@
                 type="button"
                 class="minimap-shell__toggle"
                 data-testid="minimap-toggle"
-                aria-expanded={!isMinimapCollapsed}
+                aria-expanded="true"
+                aria-label="Hide minimap panel"
                 on:click={toggleMinimap}
               >
-                {isMinimapCollapsed ? "Show" : "Hide"}
+                _
               </button>
             </div>
 
-            {#if !isMinimapCollapsed && minimapGeometry !== null}
+            {#if minimapGeometry !== null}
               <div
                 bind:this={minimapSurface}
                 class="minimap-surface"
@@ -1318,11 +1550,11 @@
           </aside>
 
           <aside class="viewport-toolbar" data-testid="viewport-toolbar">
-            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
-            <div class="viewport-toolbar__actions">
+            <div class="viewport-toolbar__actions" data-testid="zoom-primary-controls">
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--soft"
+                data-testid="zoom-out-button"
                 aria-label="Zoom out"
                 disabled={!canZoomOut(zoomScale)}
                 on:click={() => void zoomOut()}
@@ -1331,7 +1563,7 @@
               </button>
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--accent"
                 data-testid="zoom-fit-button"
                 aria-label="Fit diagram to view"
                 on:click={() => void fitZoomToView()}
@@ -1340,7 +1572,8 @@
               </button>
               <button
                 type="button"
-                class="viewport-toolbar__button"
+                class="viewport-toolbar__button viewport-toolbar__button--soft"
+                data-testid="zoom-in-button"
                 aria-label="Zoom in"
                 disabled={!canZoomIn(zoomScale)}
                 on:click={() => void zoomIn()}
@@ -1348,9 +1581,54 @@
                 +
               </button>
             </div>
+            <p class="viewport-toolbar__value" data-testid="zoom-value">{formatZoomPercentage(zoomScale)}</p>
+            <button
+              type="button"
+              class="viewport-toolbar__button viewport-toolbar__button--accent"
+              data-testid="zoom-one-hundred-button"
+              aria-label="Reset zoom to 100%"
+              disabled={zoomScale === DEFAULT_ZOOM_SCALE}
+              on:click={() => void resetZoom()}
+            >
+              100%
+            </button>
           </aside>
         </div>
       </div>
+    {/if}
+
+    {#if isMinimapCollapsed || isTeleprompterHidden}
+      <aside
+        class="floating-panel-dock"
+        data-testid="floating-panel-dock"
+        style={floatingPanelDockStyle}
+      >
+        {#if isTeleprompterHidden}
+          <button
+            type="button"
+            class="floating-panel-dock__button"
+            data-testid="restore-teleprompter-button"
+            aria-label="Show teleprompter"
+            title="Show teleprompter"
+            on:click={toggleTeleprompter}
+          >
+            <span aria-hidden="true">≣</span>
+          </button>
+        {/if}
+
+        {#if isMinimapCollapsed}
+          <button
+            type="button"
+            class="floating-panel-dock__button"
+            data-testid="restore-minimap-button"
+            aria-label="Show minimap panel"
+            title="Show minimap panel"
+            on:click={toggleMinimap}
+          >
+            <span aria-hidden="true">⌖</span>
+          </button>
+        {/if}
+      </aside>
     {/if}
 
     {#if diagramError.length > 0}

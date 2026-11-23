@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE } from "../src/lib/interaction-context";
 import TourPlayer from "../src/lib/tour-player.svelte";
 import { resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
@@ -47,6 +48,7 @@ describe("tour-player.svelte", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    document.documentElement.removeAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE);
     setWindowWidth(1280);
     mockElementAnimate();
   });
@@ -185,9 +187,37 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("camera-control-panel").lastElementChild).toBe(
       screen.getByTestId("viewport-toolbar"),
     );
+    expect(screen.getByTestId("zoom-one-hundred-button")).toBeDefined();
     expect(
       container.querySelector('[data-testid="step-overlay"]'),
     ).not.toBeNull();
+  });
+
+  it("clicking the minimap surface recenters the diagram viewport", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const minimapSurface = await screen.findByTestId("minimap-surface");
+
+    expect(screen.getByTestId("minimap-viewport-rect")).toBeDefined();
+    mockElementRect(minimapSurface, { height: 154, left: 0, top: 0, width: 220 });
+    diagramContainer.scrollLeft = 180;
+    diagramContainer.scrollTop = 120;
+
+    await fireEvent.pointerDown(minimapSurface, {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    });
+
+    await waitFor(() => {
+      expect(diagramContainer.scrollLeft).toBe(0);
+      expect(diagramContainer.scrollTop).toBe(0);
+    });
   });
 
   it("hides the minimap automatically on small screens", async () => {
@@ -204,7 +234,7 @@ describe("tour-player.svelte", () => {
     expect(screen.queryByTestId("minimap-shell")).toBeNull();
   });
 
-  it("restores the persisted collapsed minimap state and can be reopened", async () => {
+  it("restores the persisted hidden minimap state and can be reopened from the dock", async () => {
     window.localStorage.setItem("diagram-tour:minimap-collapsed", "true");
 
     render(TourPlayer, {
@@ -213,18 +243,15 @@ describe("tour-player.svelte", () => {
       tour: resolvedPaymentFlowTour,
     });
 
-    expect(await screen.findByTestId("minimap-shell")).toBeDefined();
-    expect(screen.queryByTestId("minimap-surface")).toBeNull();
-    expect(
-      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
-    ).toBe("false");
+    await screen.findByTestId("step-text");
+    expect(screen.queryByTestId("camera-control-panel")).toBeNull();
+    expect(screen.getByTestId("floating-panel-dock")).toBeDefined();
+    expect(screen.getByTestId("restore-minimap-button")).toBeDefined();
 
-    await fireEvent.click(screen.getByTestId("minimap-toggle"));
+    await fireEvent.click(screen.getByTestId("restore-minimap-button"));
 
-    expect(
-      screen.getByTestId("minimap-toggle").getAttribute("aria-expanded"),
-    ).toBe("true");
     await waitFor(() => {
+      expect(screen.getByTestId("camera-control-panel")).toBeDefined();
       expect(screen.getByTestId("minimap-surface")).toBeDefined();
     });
     expect(window.localStorage.getItem("diagram-tour:minimap-collapsed")).toBe(
@@ -232,7 +259,100 @@ describe("tour-player.svelte", () => {
     );
   });
 
-  it("zooms the rendered svg and updates the segmented zoom value", async () => {
+  it("restores the persisted hidden teleprompter state and can be reopened from the dock", async () => {
+    window.localStorage.setItem("diagram-tour:teleprompter-hidden", "true");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    await screen.findByTestId("camera-control-panel");
+    expect(screen.queryByTestId("teleprompter")).toBeNull();
+    expect(screen.getByTestId("floating-panel-dock")).toBeDefined();
+    expect(screen.getByTestId("restore-teleprompter-button")).toBeDefined();
+
+    await fireEvent.click(screen.getByTestId("restore-teleprompter-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teleprompter")).toBeDefined();
+    });
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "false",
+    );
+  });
+
+  it("hides the minimap panel and lets the teleprompter take that space", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const teleprompter = await screen.findByTestId("teleprompter");
+    const initialStyle = teleprompter.getAttribute("style") ?? "";
+
+    expect(screen.getByTestId("camera-control-panel")).toBeDefined();
+    expect(initialStyle).toContain("15.5rem");
+
+    await fireEvent.click(screen.getByTestId("minimap-toggle"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("camera-control-panel")).toBeNull();
+      expect(screen.getByTestId("restore-minimap-button")).toBeDefined();
+      expect(screen.getByTestId("teleprompter").getAttribute("style")).toContain("right: 24px");
+      expect(screen.getByTestId("floating-panel-dock").getAttribute("style")).toContain(
+        "var(--floating-panel-height)",
+      );
+    });
+  });
+
+  it("can hide and restore the teleprompter from the dock", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    expect(await screen.findByTestId("teleprompter")).toBeDefined();
+
+    await fireEvent.click(screen.getByTestId("teleprompter-toggle"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("teleprompter")).toBeNull();
+      expect(screen.getByTestId("restore-teleprompter-button")).toBeDefined();
+    });
+
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "true",
+    );
+
+    await fireEvent.click(screen.getByTestId("restore-teleprompter-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teleprompter")).toBeDefined();
+    });
+    expect(window.localStorage.getItem("diagram-tour:teleprompter-hidden")).toBe(
+      "false",
+    );
+  });
+
+  it("uses underscore minimize affordances for both panels", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    expect(await screen.findByTestId("teleprompter-toggle")).toBeDefined();
+    expect(screen.getByTestId("minimap-toggle").textContent?.trim()).toContain("_");
+    expect(screen.getByTestId("teleprompter-toggle").getAttribute("title")).toBe(
+      "Hide teleprompter",
+    );
+  });
+
+  it("zooms the rendered svg, keeps the visible percentage separate, and enables the explicit 100 percent reset", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -247,6 +367,18 @@ describe("tour-player.svelte", () => {
     expect(screen.getByTestId("zoom-value").textContent).toContain(
       "100%",
     );
+    expect(
+      Array.from(screen.getByTestId("viewport-toolbar").children).map(
+        (element) => element.getAttribute("data-testid") ?? element.textContent?.trim(),
+      ),
+    ).toEqual(["zoom-primary-controls", "zoom-value", "zoom-one-hundred-button"]);
+    expect(screen.getByTestId("zoom-primary-controls").textContent?.replace(/\s+/gu, "")).toBe(
+      "-Fit+",
+    );
+    expect(
+      (screen.getByTestId("zoom-one-hundred-button") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
 
     await fireEvent.click(screen.getByTestId("zoom-in-button"));
 
@@ -256,6 +388,13 @@ describe("tour-player.svelte", () => {
       expect(screen.getByTestId("zoom-value").textContent).toContain(
         "125%",
       );
+      expect(screen.getByTestId("zoom-one-hundred-button").textContent).toBe(
+        "100%",
+      );
+      expect(
+        (screen.getByTestId("zoom-one-hundred-button") as HTMLButtonElement)
+          .disabled,
+      ).toBe(false);
     });
 
     await fireEvent.click(screen.getByTestId("zoom-out-button"));
@@ -269,7 +408,7 @@ describe("tour-player.svelte", () => {
     });
   });
 
-  it("fits the current diagram to the viewport when requested", async () => {
+  it("keeps fit stable after a manual zoom change", async () => {
     render(TourPlayer, {
       initialStepIndex: 0,
       selectedSlug: "payment-flow",
@@ -284,11 +423,52 @@ describe("tour-player.svelte", () => {
     await fireEvent.click(screen.getByTestId("zoom-fit-button"));
 
     await waitFor(() => {
-      expect(svg?.getAttribute("width")).toBe("480");
-      expect(svg?.getAttribute("height")).toBe("320");
+      expect(svg?.getAttribute("width")).toBe("720");
+      expect(svg?.getAttribute("height")).toBe("480");
       expect(screen.getByTestId("zoom-value").textContent).toContain(
-        "50%",
+        "75%",
       );
+    });
+
+    const fittedScrollLeft = diagramContainer.scrollLeft;
+    const fittedScrollTop = diagramContainer.scrollTop;
+
+    await fireEvent.click(screen.getByTestId("zoom-in-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("960");
+      expect(screen.getByTestId("zoom-value").textContent).toContain("100%");
+    });
+
+    await fireEvent.click(screen.getByTestId("zoom-fit-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("720");
+      expect(svg?.getAttribute("height")).toBe("480");
+      expect(diagramContainer.scrollLeft).toBe(fittedScrollLeft);
+      expect(diagramContainer.scrollTop).toBe(fittedScrollTop);
+    });
+  });
+
+  it("resets back to 100 percent and recenters on the diagram content", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour,
+    });
+
+    const diagramContainer = await screen.findByTestId("diagram-container");
+    const svg = diagramContainer.querySelector("svg");
+
+    await fireEvent.click(screen.getByTestId("zoom-fit-button"));
+    await fireEvent.click(screen.getByTestId("zoom-one-hundred-button"));
+
+    await waitFor(() => {
+      expect(svg?.getAttribute("width")).toBe("960");
+      expect(svg?.getAttribute("height")).toBe("640");
+      expect(screen.getByTestId("zoom-value").textContent).toContain("100%");
+      expect(diagramContainer.scrollLeft).toBe(300);
+      expect(diagramContainer.scrollTop).toBe(234);
     });
   });
 
@@ -314,6 +494,76 @@ describe("tour-player.svelte", () => {
         invalidateAll: false,
         keepFocus: true,
         noScroll: true,
+      });
+    });
+  });
+
+  it("allows arrow navigation when diagram is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "diagram");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
+      });
+    });
+  });
+
+  it("blocks arrow navigation when browse is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "browse");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks arrow navigation when diagnostics is the active interaction context", async () => {
+    document.documentElement.setAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE, "diagnostics");
+
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(gotoMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to diagram behavior when context marker is missing", async () => {
+    render(TourPlayer, {
+      initialStepIndex: 0,
+      selectedSlug: "payment-flow",
+      tour: resolvedPaymentFlowTour
+    });
+
+    await screen.findByTestId("step-text");
+    await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(gotoMock).toHaveBeenLastCalledWith("/payment-flow?step=2", {
+        invalidateAll: false,
+        keepFocus: true,
+        noScroll: true
       });
     });
   });
@@ -555,6 +805,7 @@ function renderDiagramForTest(input: {
 }): Promise<void> {
   const parent = input.container.parentElement as HTMLElement;
   const positions = createNodePositions();
+  const svgOrigin = { left: 180, top: 140 };
 
   input.container.innerHTML = `<svg data-testid="diagram-svg" width="960" height="640" data-intrinsic-width="960" data-intrinsic-height="640">${input.diagram.elements
     .map(
@@ -591,7 +842,12 @@ function renderDiagramForTest(input: {
   const svg = input.container.querySelector("svg") as SVGSVGElement;
 
   svg.getBoundingClientRect = () =>
-    createDomRect({ height: 640, left: 160, top: 140, width: 960 });
+    createDomRect({
+      height: readRenderedSvgDimension(svg, "height"),
+      left: svgOrigin.left,
+      top: svgOrigin.top,
+      width: readRenderedSvgDimension(svg, "width"),
+    });
 
   input.container
     .querySelectorAll<SVGGElement>("[data-node-id]")
@@ -599,7 +855,13 @@ function renderDiagramForTest(input: {
       const nodeId = element.dataset.nodeId ?? "";
       const rect = positions[nodeId];
 
-      element.getBoundingClientRect = () => createDomRect(rect);
+      element.getBoundingClientRect = () =>
+        createScaledNodeRect(rect, readRenderedZoomScale(svg), svgOrigin);
+      Object.assign(element, {
+        getBBox() {
+          return createSvgRect(rect);
+        },
+      });
     });
 
   const connector = input.container.querySelector(".flowchart-link") as SVGElement;
@@ -623,12 +885,12 @@ function renderDiagramForTest(input: {
 
 function createNodePositions(): Record<string, RectInput> {
   return {
-    api_gateway: { height: 82, left: 360, top: 290, width: 122 },
-    client: { height: 76, left: 150, top: 292, width: 118 },
-    payment_provider: { height: 84, left: 930, top: 290, width: 136 },
-    payment_service: { height: 84, left: 760, top: 290, width: 126 },
-    response: { height: 76, left: 1120, top: 292, width: 128 },
-    validation_service: { height: 84, left: 560, top: 290, width: 142 },
+    api_gateway: { height: 82, left: 220, top: 292, width: 122 },
+    client: { height: 76, left: 40, top: 294, width: 118 },
+    payment_provider: { height: 84, left: 690, top: 292, width: 136 },
+    payment_service: { height: 84, left: 540, top: 292, width: 126 },
+    response: { height: 76, left: 812, top: 294, width: 108 },
+    validation_service: { height: 84, left: 370, top: 292, width: 142 },
   };
 }
 
@@ -761,6 +1023,19 @@ interface RectInput {
   width: number;
 }
 
+function createScaledNodeRect(
+  input: RectInput,
+  zoomScale: number,
+  svgOrigin: { left: number; top: number },
+): DOMRect {
+  return createDomRect({
+    height: input.height * zoomScale,
+    left: svgOrigin.left + input.left * zoomScale,
+    top: svgOrigin.top + input.top * zoomScale,
+    width: input.width * zoomScale,
+  });
+}
+
 function createDomRect(input: RectInput): DOMRect {
   return {
     bottom: input.top + input.height,
@@ -770,6 +1045,30 @@ function createDomRect(input: RectInput): DOMRect {
     top: input.top,
     width: input.width,
   } as DOMRect;
+}
+
+function createSvgRect(input: RectInput): SVGRect {
+  return {
+    height: input.height,
+    width: input.width,
+    x: input.left,
+    y: input.top,
+  } as SVGRect;
+}
+
+function mockElementRect(element: Element, input: RectInput): void {
+  element.getBoundingClientRect = () => createDomRect(input);
+}
+
+function readRenderedZoomScale(svg: SVGSVGElement): number {
+  return Number(svg.dataset.zoomScale ?? 1);
+}
+
+function readRenderedSvgDimension(
+  svg: SVGSVGElement,
+  axis: "height" | "width",
+): number {
+  return Number(svg.getAttribute(axis));
 }
 
 function createScrollToForTest(parent: HTMLElement): typeof parent.scrollTo {

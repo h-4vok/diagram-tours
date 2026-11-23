@@ -1,14 +1,30 @@
-import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { gotoMock, pageState } = vi.hoisted(() => ({
-  gotoMock: vi.fn(() => Promise.resolve()),
-  pageState: {
+const { afterNavigateMock, gotoMock, pageState, resetNavigationMocks, setPageUrl } = vi.hoisted(() => {
+  const currentPage = {
     url: new URL("https://example.test/payment-flow")
-  }
-}));
+  };
+  const afterNavigateCallbacks = new Set<(value: { to: { url: URL } }) => void>();
+
+  return {
+    afterNavigateMock(callback: (value: { to: { url: URL } }) => void) {
+      afterNavigateCallbacks.add(callback);
+    },
+    gotoMock: vi.fn(() => Promise.resolve()),
+    pageState: currentPage,
+    resetNavigationMocks() {
+      afterNavigateCallbacks.clear();
+    },
+    setPageUrl(url: string) {
+      currentPage.url = new URL(url);
+      afterNavigateCallbacks.forEach((run) => run({ to: currentPage }));
+    }
+  };
+});
 
 vi.mock("$app/navigation", () => ({
+  afterNavigate: afterNavigateMock,
   goto: gotoMock
 }));
 
@@ -20,6 +36,7 @@ import Layout from "../src/routes/+layout.svelte";
 import {
   FAVORITES_STORAGE_KEY
 } from "../src/lib/browse-favorites";
+import { ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE } from "../src/lib/interaction-context";
 import { RECENT_STORAGE_KEY } from "../src/lib/browse-recents";
 import {
   nestedTourCollection,
@@ -36,9 +53,10 @@ const directorySourceTarget = {
 describe("+layout.svelte", () => {
   beforeEach(() => {
     gotoMock.mockClear();
+    resetNavigationMocks();
     window.localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
-    pageState.url = new URL("https://example.test/payment-flow");
+    setPageUrl("https://example.test/payment-flow");
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn(() => Promise.resolve())
@@ -92,7 +110,7 @@ describe("+layout.svelte", () => {
   });
 
   it("shows favorites and recents as separate sections above all diagrams", async () => {
-    window.localStorage.setItem(FAVORITES_STORAGE_KEY, '["refund-flow"]');
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, '["payments-platform-overview"]');
     window.localStorage.setItem(RECENT_STORAGE_KEY, '["payment-flow"]');
 
     render(Layout, {
@@ -106,7 +124,7 @@ describe("+layout.svelte", () => {
 
     expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Favorites");
     expect(screen.getByText("Recent")).toBeDefined();
-    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Refund Flow");
+    expect(screen.getByTestId("browse-favorite-row").textContent).toContain("Payments Platform Overview");
     expect(screen.getByTestId("browse-recent-row").textContent).toContain("Payment Flow");
   });
 
@@ -120,11 +138,11 @@ describe("+layout.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
     await fireEvent.input(screen.getByTestId("browse-search-input"), {
-      currentTarget: { value: "rfnd" },
-      target: { value: "rfnd" }
+      currentTarget: { value: "pltf" },
+      target: { value: "pltf" }
     });
 
-    expect(screen.getByText("Refund Flow")).toBeDefined();
+    expect(screen.getByText("Payments Platform Overview")).toBeDefined();
     expect(screen.queryByText("Payment Flow")).toBeNull();
 
     await fireEvent.input(screen.getByTestId("browse-search-input"), {
@@ -148,14 +166,14 @@ describe("+layout.svelte", () => {
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
     const refundRow = screen
       .getAllByTestId("browse-tour-row")
-      .find((element) => element.textContent?.includes("Refund Flow"));
+      .find((element) => element.textContent?.includes("Payments Platform Overview"));
 
     expect(refundRow).toBeDefined();
 
     await fireEvent.click(within(refundRow!).getByTestId("favorite-toggle"));
 
-    expect(window.localStorage.getItem(FAVORITES_STORAGE_KEY)).toBe('["refund-flow"]');
-    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Refund Flow");
+    expect(window.localStorage.getItem(FAVORITES_STORAGE_KEY)).toBe('["payments-platform-overview"]');
+    expect((await screen.findByTestId("browse-favorites")).textContent).toContain("Payments Platform Overview");
   });
 
   it("opens the command palette from Ctrl/Cmd+K and slash, but ignores slash while typing", async () => {
@@ -187,7 +205,7 @@ describe("+layout.svelte", () => {
   });
 
   it("tracks the active row from the current route, arrow keys, and enter", async () => {
-    pageState.url = new URL("https://example.test/refund-flow");
+    setPageUrl("https://example.test/payments-platform-overview");
 
     render(Layout, {
       data: {
@@ -198,11 +216,11 @@ describe("+layout.svelte", () => {
 
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
-    const refundOption = within(
-      screen.getAllByTestId("browse-recent-row").find((element) => element.dataset.tourSlug === "refund-flow")!
-    ).getByRole("option");
+    const refundOption = screen
+      .getAllByRole("option")
+      .find((element) => element.textContent?.includes("Payments Platform Overview"));
 
-    expect(refundOption.getAttribute("aria-selected")).toBe("true");
+    expect(refundOption?.getAttribute("aria-selected")).toBe("true");
 
     await fireEvent.keyDown(window, { key: "ArrowDown" });
     await fireEvent.keyDown(window, { key: "Enter" });
@@ -230,8 +248,32 @@ describe("+layout.svelte", () => {
     expect(screen.queryByTestId("browse-panel")).toBeNull();
   });
 
+  it("publishes active interaction context across overlay transitions", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    const themeRoot = screen.getByTestId("theme-root");
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
+
+    await fireEvent.click(screen.getByTestId("search-hint-trigger"));
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("browse");
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
+
+    await fireEvent.click(screen.getByTestId("diagnostics-trigger"));
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagnostics");
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(themeRoot.getAttribute(ACTIVE_INTERACTION_CONTEXT_ATTRIBUTE)).toBe("diagram");
+  });
+
   it("keeps the command palette open when reopened after a route change settles", async () => {
-    pageState.url = new URL("https://example.test/payment-flow");
+    setPageUrl("https://example.test/payment-flow");
 
     render(Layout, {
       data: {
@@ -240,7 +282,7 @@ describe("+layout.svelte", () => {
       }
     });
 
-    pageState.url = new URL("https://example.test/refund-flow");
+    setPageUrl("https://example.test/payments-platform-overview");
     await fireEvent.click(screen.getByTestId("search-hint-trigger"));
 
     expect(await screen.findByTestId("browse-panel")).toBeDefined();
@@ -250,6 +292,23 @@ describe("+layout.svelte", () => {
     expect(screen.getByTestId("browse-panel")).toBeDefined();
   });
 
+  it("updates breadcrumbs when the active route changes inside the shell", async () => {
+    render(Layout, {
+      data: {
+        collection: resolvedTourCollection,
+        sourceTarget: directorySourceTarget
+      }
+    });
+
+    expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Payment Flow");
+
+    setPageUrl("https://example.test/payments-platform-overview");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("topbar-breadcrumbs").textContent).toContain("Payments Platform Overview");
+    });
+  });
+
   it("shows the preview notice for single-file author previews", async () => {
     render(Layout, {
       data: {
@@ -257,7 +316,7 @@ describe("+layout.svelte", () => {
         sourceTarget: {
           kind: "file" as const,
           label: "checkout-payment-flow.tour.yaml",
-          path: "/repo/examples/checkout-payment-flow.tour.yaml"
+          path: "/repo/examples/flowchart/checkout-payment-flow.tour.yaml"
         }
       }
     });
@@ -330,3 +389,5 @@ describe("+layout.svelte", () => {
     expect(screen.getByText("All clear")).toBeDefined();
   });
 });
+
+

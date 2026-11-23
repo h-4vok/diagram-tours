@@ -1,0 +1,27 @@
+# Interview Offers Pipeline
+
+```mermaid
+sankey-beta
+Applications,Resume Review,180
+Resume Review,Recruiter Screen,120
+Resume Review,Rejected Early,60
+Recruiter Screen,Hiring Manager,90
+Recruiter Screen,Rejected After Screen,30
+Hiring Manager,Take-home,35
+Hiring Manager,Live Coding,20
+Hiring Manager,Panel,25
+Hiring Manager,Rejected By Team,10
+Take-home,Final Loop,22
+Live Coding,Final Loop,12
+Panel,Final Loop,18
+Take-home,Rejected After Exercise,13
+Live Coding,Rejected After Exercise,8
+Panel,Rejected After Panel,7
+Final Loop,Reference Check,40
+Final Loop,Rejected Final,12
+Reference Check,Offers,34
+Reference Check,Offer Withdrawn,6
+Offers,Accepted,18
+Offers,Declined,10
+Offers,Negotiating,6
+```

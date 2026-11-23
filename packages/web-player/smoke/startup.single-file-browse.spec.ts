@@ -4,7 +4,7 @@ import { startDevServer } from "./dev-server";
 
 test("explicit single-file startup limits browse to one tour", async ({ page }) => {
   const server = await startDevServer({
-    args: ["./examples/checkout-payment-flow.tour.yaml"],
+    args: ["./examples/flowchart/checkout-payment-flow.tour.yaml"],
     port: 4176
   });
 

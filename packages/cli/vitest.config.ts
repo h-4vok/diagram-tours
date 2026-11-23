@@ -14,16 +14,15 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
-    exclude: ["test/init.test.ts"],
     maxWorkers: 1,
     fileParallelism: false,
     coverage: {
       all: true,
-      provider: "istanbul",
-      reporter: ["text-summary", "json-summary"],
+      provider: "v8",
+      reporter: ["text-summary", "html", "json-summary"],
       reportsDirectory: resolveFromPackageRoot("../../coverage/packages/cli"),
       include: ["src/lib/**/*.ts"],
-      exclude: ["src/lib/init.ts", "src/lib/types.ts"],
+      exclude: ["src/lib/types.ts"],
       thresholds: {
         statements: 100,
         branches: 100,

@@ -30,6 +30,15 @@ type SvgPointLike = { x: number; y: number };
 const MESSAGE_MARKER_ATTRIBUTES = ["marker-start", "marker-mid", "marker-end"] as const;
 const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
+const DIAGRAM_ANNOTATORS = {
+  classDiagram: annotateClassElements,
+  flowchart: annotateFlowchartElements,
+  sankey: annotateSankeyElements,
+  sequence: annotateSequenceElements
+} satisfies Record<
+  ResolvedDiagram["type"],
+  (container: HTMLElement, elements: DiagramElement[]) => void
+>;
 const MERMAID_THEME_DEFAULTS = {
   background: "#0e1116",
   fontFamily: MERMAID_FONT_STACK,
@@ -57,6 +66,7 @@ export async function renderMermaidDiagram(input: {
   const mermaid = await loadMermaid();
 
   mermaid.default.initialize({
+    ...readMermaidDiagramConfig(input.diagram),
     startOnLoad: false,
     theme: "base",
     themeVariables: readMermaidThemeVariables(input.container)
@@ -98,7 +108,7 @@ export function applyFocusState(input: {
 }
 
 export function createRenderableDiagramSource(diagram: ResolvedDiagram): string {
-  if (diagram.type === "sequence") {
+  if (diagram.type !== "flowchart") {
     return diagram.source;
   }
 
@@ -111,6 +121,20 @@ export function createRenderableDiagramSource(diagram: ResolvedDiagram): string 
 
 export function getMermaidErrorMessage(): string {
   return MERMAID_ERROR_MESSAGE;
+}
+
+function readMermaidDiagramConfig(diagram: ResolvedDiagram): Record<string, unknown> {
+  if (diagram.type !== "sankey") {
+    return {};
+  }
+
+  return {
+    sankey: {
+      height: 860,
+      useMaxWidth: false,
+      width: 1560
+    }
+  };
 }
 
 async function loadMermaid(): Promise<MermaidModule> {
@@ -199,13 +223,7 @@ async function renderDiagramSource(input: {
 }
 
 function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagram): void {
-  if (diagram.type === "sequence") {
-    annotateSequenceElements(container, diagram.elements);
-
-    return;
-  }
-
-  annotateFlowchartElements(container, diagram.elements);
+  DIAGRAM_ANNOTATORS[diagram.type](container, diagram.elements);
 }
 
 function annotateFlowchartElements(container: HTMLElement, elements: DiagramElement[]): void {
@@ -218,6 +236,92 @@ function annotateFlowchartElements(container: HTMLElement, elements: DiagramElem
 
     setDiagramElementDataset(renderedElement, element);
   });
+}
+
+function annotateClassElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedClassNodes = Array.from(
+    container.querySelectorAll<RenderedDiagramElement>("svg.classDiagram g.node.default")
+  );
+  const classElements = elements.filter(isClassNodeElement);
+  const memberElementGroups = groupClassMemberElements(elements);
+
+  renderedClassNodes.forEach((renderedClassNode) => {
+    const classLabel = readClassNodeLabel(renderedClassNode);
+    const classElement = classElements.find((candidate) => candidate.label === classLabel);
+
+    if (classElement === undefined) {
+      return;
+    }
+
+    setDiagramElementDataset(renderedClassNode, classElement);
+    annotateClassNodeMembers(renderedClassNode, memberElementGroups.get(classElement.id) ?? []);
+  });
+}
+
+function annotateClassNodeMembers(
+  renderedClassNode: RenderedDiagramElement,
+  memberElements: DiagramElement[]
+): void {
+  const renderedMemberLabels = Array.from(
+    renderedClassNode.querySelectorAll<RenderedDiagramElement>(".members-group .label, .methods-group .label")
+  );
+
+  memberElements.forEach((memberElement) => {
+    const renderedMemberLabel = renderedMemberLabels.find(
+      (candidate) => normalizeTextContent(candidate) === memberElement.label
+    );
+
+    if (renderedMemberLabel === undefined) {
+      return;
+    }
+
+    setDiagramElementDataset(renderedMemberLabel, memberElement);
+  });
+}
+
+function groupClassMemberElements(elements: DiagramElement[]): Map<string, DiagramElement[]> {
+  const groups = new Map<string, DiagramElement[]>();
+
+  elements.filter(isClassMemberElement).forEach((element) => {
+    const classId = readClassMemberClassId(element.id);
+    const group = groups.get(classId) ?? [];
+
+    group.push(element);
+    groups.set(classId, group);
+  });
+
+  return groups;
+}
+
+function isClassNodeElement(element: DiagramElement): boolean {
+  return !isClassMemberElement(element);
+}
+
+function isClassMemberElement(element: DiagramElement): boolean {
+  return element.id.includes(".");
+}
+
+function readClassMemberClassId(elementId: string): string {
+  return elementId.slice(0, elementId.lastIndexOf("."));
+}
+
+function annotateSankeyElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedNodes = Array.from(container.querySelectorAll<RenderedDiagramElement>(".nodes .node"));
+  const renderedLabels = Array.from(container.querySelectorAll<RenderedDiagramElement>(".node-labels text"));
+
+  elements.forEach((element, index) => {
+    annotateSankeyRenderedElement(renderedNodes[index], element);
+    annotateSankeyRenderedElement(renderedLabels[index], element);
+  });
+}
+
+function annotateSankeyRenderedElement(
+  renderedElement: RenderedDiagramElement | undefined,
+  element: DiagramElement
+): void {
+  if (renderedElement !== undefined) {
+    setDiagramElementDataset(renderedElement, element);
+  }
 }
 
 function annotateFlowchartConnectors(container: HTMLElement, diagram: ResolvedDiagram): void {
@@ -888,7 +992,7 @@ function findSequenceMessageTextIndex(
   return -1;
 }
 
-function normalizeTextContent(element: RenderedDiagramElement): string {
+function normalizeTextContent(element: Element): string {
   return (element.textContent || "").replace(/\s+/gu, " ").trim();
 }
 
@@ -968,6 +1072,10 @@ function createClassStatement(nodeId: string): string {
 
 function createNodeClass(nodeId: string): string {
   return `${APP_NODE_CLASS_PREFIX}${nodeId}`;
+}
+
+function readClassNodeLabel(element: RenderedDiagramElement): string {
+  return normalizeTextContent(element.querySelector(".label-group .label") ?? element);
 }
 
 function readDiagramElementId(element: RenderedDiagramElement): string {

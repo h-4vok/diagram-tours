@@ -1,6 +1,0 @@
-flowchart TD
-  request[Request Submitted] --> eligibility[Eligible Decision]
-  eligibility -->|Yes| review[Manual Review]
-  eligibility -->|No| reject[Reject Request]
-  review --> approve[Approve Request]
-  approve --> notify[Notify Customer]

@@ -4,16 +4,16 @@ import { startDevServer } from "./dev-server";
 
 test("interactive open-all matches repo-wide startup", async ({ page }) => {
   const server = await startDevServer({
+    args: ["."],
     port: 4177,
-    promptInputs: ["1", "n", "", ""]
   });
 
   try {
-    await openBrowse(page, `${server.baseUrl}/checkout-payment-flow`);
+    await openBrowse(page, `${server.baseUrl}/examples/flowchart/checkout-payment-flow`);
 
     await expectBrowseSearchMatch(page, "alpha", "Alpha Tour");
     await expectBrowseSearchMatch(page, "beta", "Beta Tour");
-    await expectBrowseSearchMatch(page, "release", "Release Pipeline");
+    await expectBrowseSearchMatch(page, "platform", "Payments Platform Overview");
   } finally {
     await server.stop();
   }

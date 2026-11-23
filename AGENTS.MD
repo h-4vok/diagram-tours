@@ -2,20 +2,37 @@
 
 Load first:
 - `AGENTS.md`
-- `README.md`
+
+Load on demand:
+- `README.md` for product-facing docs, setup, install, or public CLI/docs changes
+- `docs/contributor-workflow.md` for the human overview of PM -> Tech Lead -> implementation -> review -> closeout
+- `docs/runtime-loading.md` for startup, target resolution, or runtime-loading work
+- `docs/authoring-guide.md` and `docs/tour-spec-v1.md` for authoring, parser, or contract-visible tour work
+- `docs/testing/smoke-tests.md` for smoke-visible work
+- `docs/principles/08-engineering-review-rubric.md` for structural or refactor-heavy review
 
 ## Workflow
 - Task shape: bounded capability; user-visible, contract-visible, validation-visible, or delivery-unblocking infra.
 - Flow: contract -> test -> code -> refactor -> closeout-validate -> operator validation.
+- Code-related work only: if a task changes code, tests, contract-visible docs, behavior-visible docs, startup flow, validation flow, or smoke-visible behavior, the implementing thread must raise a separate reviewer thread/subagent before final closeout.
+- Non-code work only: requirement definition and technical planning do not require reviewer by themselves unless that thread also changes code-related artifacts.
+- Reviewer loop: reviewer must inspect source-of-truth inputs directly, including issue or acceptance criteria, current diff or touched files, `AGENTS.md`, and relevant docs. Do not hand-copy review context into the reviewer thread.
+- Findings loop: if reviewer reports material findings, the implementing thread must fix them or justify them, then rerun reviewer before `closeout-validate`.
 - Prefer behavior tests, small pure functions, guard clauses, explicit data.
 - Avoid helper-only tasks, unrelated bundles, hidden side effects, undocumented contract changes.
 - Reuse examples/fixtures before new patterns.
 
+## Communication
+- Use the `caveman` skill by default for all Codex responses in this repo.
+- Use the `ponytail` skill by default when writing or changing code in this repo.
+- Use `graphify` first for codebase questions, architecture lookups, and file-relationship questions when the local graph exists or can be queried.
+- Stay in Caveman mode unless the user explicitly asks for normal mode or the message needs clearer phrasing for safety, irreversible actions, or multi-step instructions.
+
 ## Boundaries
-- `packages/core`: domain only. No filesystem, YAML, CLI, browser, Svelte.
-- `packages/parser`: loading, parsing, validation, discovery, slugging. No UI.
-- `packages/web-player`: resolved-runtime UI only. No raw parsing responsibilities.
-- `packages/cli`: startup orchestration only. No parser/web-player leakage of startup policy.
+- `packages/core`: domain only. Models, types, resolved tour/domain contracts, UI-agnostic logic. No filesystem, YAML, CLI, browser, or Svelte.
+- `packages/parser`: loading, parsing, validation, discovery, slugging, and resolved outputs. No UI.
+- `packages/web-player`: resolved-runtime UI only. SvelteKit player, overlays, focus state, viewport, browse, diagnostics, and theme. No raw parsing responsibilities.
+- `packages/cli`: startup orchestration only. Args, wizard, startup target selection, server/browser launch, and runtime packaging. No parser/web-player leakage of startup policy.
 - Do not move parsing into `web-player`.
 - Do not add filesystem, YAML, or UI concerns to `core`.
 
@@ -34,6 +51,7 @@ Load first:
 
 ## Validation
 - Before done: run `closeout-validate` on the touched files and report the exact checks run.
+- Separate reviewer does not replace `closeout-validate`. Review first, then targeted validation, then operator validation.
 - Lint: modified JS/TS/Svelte/CSS files only.
 - Tests: affected Vitest files only. No full suite.
 - Smoke: touched smoke spec only. No full smoke.
@@ -41,10 +59,8 @@ Load first:
 - Fix failures immediately.
 - Final message: list targeted checks passed.
 - Exhaustive checks: operator-run via `repo-validate`.
-- Full commands: `allchecks:ai`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush.
-- Operator request: `Run bun run allchecks:ai; send failing summary only.`  
-- Narrow request: `Run [command]; send failing file/assertion/stack only.`
-- Analyze summary, stack, failing assertion, failing file.
+- Full commands: `allchecks`, full smoke, full test suite, repo-wide lint/typecheck/build/prepush`.
+- Validation requests: run exact requested command; for exhaustive or narrow requests, send failing summary or failing file/assertion/stack only when the user asks for fail-only output.
 - Delivery ready: targeted checks passed; operator confirms exhaustive checks when relevant; coverage stays 100%.
 - Do not use `repo-validate` as the normal closeout path for a single change.
 - Browser-visible/runtime/startup/docs-visible changes: operator runs smoke.
@@ -52,8 +68,9 @@ Load first:
 
 ## Docs / Tracking
 - Update docs when behavior, contracts, startup flow, validation flow, or contributor workflow changes.
-- Check when relevant: `README.md`, `docs/runtime-loading.md`, `docs/authoring-guide.md`, `docs/adoption-onboarding.md`, `docs/testing/smoke-tests.md`, `docs/tour-spec-v1.md`.
-- If `backlog.md` item changed materially, update it in same change.
+- Default docs context is `AGENTS.md`.
+- Load other docs only when task touches their area.
+- Track backlog and planning work in GitHub Issues, not repo-local backlog files.
 - `docs/reqs.md`: reference only after checking code/newer docs.
 
 ## UX / PR
@@ -63,8 +80,23 @@ Load first:
 - PR work not done until required CI is green.
 - If CI fails: inspect, fix, push, recheck.
 
-## Package Scopes
-- `core`: models, types, resolved tour/domain contracts, UI-agnostic logic.
-- `parser`: Mermaid/YAML/Markdown ingestion, validation, discovery, slugging, resolved outputs.
-- `web-player`: SvelteKit player, overlays, focus state, viewport, browse, diagnostics, theme.
-- `cli`: args, wizard, startup target selection, server/browser launch, runtime packaging.
+## Some important skills
+- `product-manager`: requirement discovery and issue refinement. Non-code by default.
+- `tech-lead`: technical planning after product scope is clear. Non-code by default.
+- `reviewer`: normal code-related change review after implementation.
+- `architecture-reviewer`: structural or refactor-heavy review when normal review needs design lens.
+- `closeout-validate`: targeted validation before closing a task.
+- Specialized review/reference skills are on-demand only. Do not preload them as default context.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

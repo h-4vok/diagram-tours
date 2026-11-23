@@ -1,6 +1,7 @@
 import type {
   BrowserPreference,
   ParsedCliArgs,
+  ParsedBuildArgs,
   ParsedInitArgs,
   ParsedSetupArgs,
   ParsedStartupArgs,
@@ -8,23 +9,32 @@ import type {
 } from "./types.js";
 
 const DEFAULT_HOST = "127.0.0.1";
+const HELP_COMMAND = "help";
+const SERVE_COMMAND = "serve";
 const INIT_COMMAND = "init";
 const SETUP_COMMAND = "setup";
 const VALIDATE_COMMAND = "validate";
-const SUBCOMMANDS = new Set([INIT_COMMAND, SETUP_COMMAND, VALIDATE_COMMAND]);
+const BUILD_COMMAND = "build";
 
+// eslint-disable-next-line complexity
 export function parseCliArgs(input: string[]): ParsedCliArgs {
-  const command = readCommand(input);
-
-  if (command !== null) {
-    return parseSubcommandArgs(command, input.slice(1));
+  const first = input[0] ?? HELP_COMMAND;
+  switch (first) {
+    case HELP_COMMAND:
+    case "?": return parseHelpArgs(input.slice(1));
+    case "--version":
+    case "-v": return { command: "version" };
+    case SERVE_COMMAND:
+    case BUILD_COMMAND:
+    case INIT_COMMAND:
+    case SETUP_COMMAND:
+    case VALIDATE_COMMAND: return parseSubcommandArgs(first, input.slice(1));
+    default: throw new Error(`Unknown command or target "${first}". Use "diagram-tours serve ${first}" or "diagram-tours help".`);
   }
-
-  return parseStartupArgs(input);
 }
 
 type ParsedStartupOrVersionArgs =
-  | Extract<ParsedCliArgs, { command: "startup" }>
+  | Extract<ParsedCliArgs, { command: "serve" }>
   | Extract<ParsedCliArgs, { command: "version" }>;
 
 function parseStartupArgs(input: string[]): ParsedStartupOrVersionArgs {
@@ -49,7 +59,7 @@ function readStartupCommand(state: ReturnType<typeof createInitialState>): Parse
   return state.mode === "version"
     ? { command: "version" }
     : {
-        command: "startup",
+        command: "serve",
         options: finalizeState(state)
       };
 }
@@ -58,44 +68,144 @@ function createInitialState() {
   return {
     browser: "prompt" as BrowserPreference,
     host: DEFAULT_HOST,
-    mode: "wizard" as ParsedStartupArgs["mode"] | "version",
-    hasLaunchFlags: false,
+    mode: "direct" as ParsedStartupArgs["mode"] | "version",
     port: null as number | null,
     target: null as string | null,
     targets: [] as string[]
   };
 }
 
-function readCommand(input: string[]): "init" | "setup" | "validate" | null {
-  const firstValue = input[0];
-
-  return typeof firstValue === "string" && SUBCOMMANDS.has(firstValue)
-    ? (firstValue as "init" | "setup" | "validate")
-    : null;
+// eslint-disable-next-line complexity
+function parseSubcommandArgs(
+  command: "serve" | "build" | "init" | "setup" | "validate",
+  input: string[]
+): ParsedCliArgs {
+  if (input[0] === "--help" && input.length === 1 && command === BUILD_COMMAND) {
+    return { command: "help", topic: command };
+  }
+  switch (command) {
+    case SERVE_COMMAND: return parseServeCommand(input);
+    case BUILD_COMMAND: return { command, options: parseBuildArgs(input) };
+    case SETUP_COMMAND: return { command, options: parseSetupArgs(input) };
+    case VALIDATE_COMMAND: return { command, options: parseValidateArgs(input) };
+    case INIT_COMMAND: return { command, options: parseInitArgs(input) };
+  }
 }
 
-function parseSubcommandArgs(
-  command: "init" | "setup" | "validate",
-  input: string[]
-): Extract<ParsedCliArgs, { command: "init" | "setup" | "validate" }> {
-  if (command === SETUP_COMMAND) {
-    return {
-      command,
-      options: parseSetupArgs(input)
-    };
+function parseBuildArgs(input: string[]): ParsedBuildArgs {
+  const state = createBuildParseState();
+  for (let index = 0; index < input.length; index += 1) {
+    index = readBuildArgument(input, index, state);
   }
+  return state.options;
+}
 
-  if (command === VALIDATE_COMMAND) {
-    return {
-      command,
-      options: parseValidateArgs(input)
-    };
-  }
-
+function createBuildParseState() {
   return {
-    command,
-    options: parseInitArgs(input)
+    hasBrowserFlag: false,
+    hasTarget: false,
+    options: {
+      browser: "never" as ParsedBuildArgs["browser"],
+      continueOnError: false,
+      logLevel: "normal" as ParsedBuildArgs["logLevel"],
+      out: "dist",
+      overwrite: false,
+      target: "."
+    }
   };
+}
+
+type BuildParseState = ReturnType<typeof createBuildParseState>;
+type BuildArgumentHandler = (input: string[], index: number, state: BuildParseState) => number;
+
+const BUILD_FLAG_HANDLERS: Partial<Record<string, BuildArgumentHandler>> = {
+  "--overwrite": (_input, index, state) => { state.options.overwrite = true; return index; },
+  "--continue": (_input, index, state) => { state.options.continueOnError = true; return index; },
+  "--continue-on-error": (_input, index, state) => { state.options.continueOnError = true; return index; },
+  "--quiet": (_input, index, state) => { state.options.logLevel = readBuildLogLevel("--quiet", state.options.logLevel); return index; },
+  "--verbose": (_input, index, state) => { state.options.logLevel = readBuildLogLevel("--verbose", state.options.logLevel); return index; },
+  "--open": (_input, index, state) => { state.options.browser = readBuildBrowser("--open", state); return index; },
+  "--no-open": (_input, index, state) => { state.options.browser = readBuildBrowser("--no-open", state); return index; },
+  "--out": (input, index, state) => { state.options.out = readFlagValue("--out", input[index + 1]); return index + 1; }
+};
+
+function readBuildArgument(
+  input: string[],
+  index: number,
+  state: ReturnType<typeof createBuildParseState>
+): number {
+  const value = input[index];
+  const handler = BUILD_FLAG_HANDLERS[value];
+  return handler === undefined ? readBuildTarget(value, index, state) : handler(input, index, state);
+}
+
+function readBuildTarget(value: string, index: number, state: BuildParseState): number {
+  if (value.startsWith("-")) { throw new Error(`Unknown flag "${value}" for build.`); }
+  if (state.hasTarget) { throw new Error("Only one target path may be provided."); }
+  state.options.target = value;
+  state.hasTarget = true;
+  return index;
+}
+
+function readBuildLogLevel(
+  value: string,
+  current: ParsedBuildArgs["logLevel"]
+): ParsedBuildArgs["logLevel"] {
+  const next = value.slice(2) as ParsedBuildArgs["logLevel"];
+  if (hasConflictingLogLevel(current, next)) { throw new Error("Choose either --quiet or --verbose."); }
+  return next;
+}
+
+function hasConflictingLogLevel(
+  current: ParsedBuildArgs["logLevel"],
+  next: ParsedBuildArgs["logLevel"]
+): boolean {
+  return current !== "normal" && current !== next;
+}
+
+function readBuildBrowser(
+  value: string,
+  state: ReturnType<typeof createBuildParseState>
+): ParsedBuildArgs["browser"] {
+  const next = value === "--open" ? "always" : "never";
+  if (hasConflictingBrowser(state, next)) { throw new Error("Choose either --open or --no-open."); }
+  state.hasBrowserFlag = true;
+  return next;
+}
+
+function hasConflictingBrowser(
+  state: BuildParseState,
+  next: ParsedBuildArgs["browser"]
+): boolean {
+  return state.hasBrowserFlag && state.options.browser !== next;
+}
+
+// eslint-disable-next-line complexity
+function parseServeCommand(input: string[]): ParsedCliArgs {
+  if (input[0] === "--help" && input.length === 1) {
+    return { command: "help", topic: "serve" };
+  }
+  const parsed = parseStartupArgs(input);
+  return parsed.command === "version" ? parsed : { command: "serve", options: parseServeArgs(parsed.options) };
+}
+
+// eslint-disable-next-line complexity
+function parseHelpArgs(input: string[]): Extract<ParsedCliArgs, { command: "help" }> {
+  switch (input.length) {
+    case 0: return { command: "help", topic: null };
+    case 1:
+      if (input[0] === SERVE_COMMAND || input[0] === BUILD_COMMAND) {
+        return { command: "help", topic: input[0] };
+      }
+      break;
+    default: break;
+  }
+  throw new Error('Expected help to receive no arguments, "serve", or "build".');
+}
+
+function parseServeArgs(options: Extract<ParsedCliArgs, { command: "serve" }>['options']): Extract<ParsedCliArgs, { command: "serve" }>['options'] {
+  const target = options.target ?? ".";
+  return { ...options, browser: options.browser === "prompt" ? "never" : options.browser, mode: "direct", hasExplicitTarget: true, target, targets: [target] };
 }
 
 function readFlag(
@@ -150,7 +260,6 @@ function assignBrowserPreference(
   state: ReturnType<typeof createInitialState>,
   browser: Exclude<BrowserPreference, "prompt">
 ): void {
-  state.hasLaunchFlags = true;
 
   if (state.browser !== "prompt" && state.browser !== browser) {
     throw new Error("Choose either --open or --no-open.");
@@ -178,7 +287,7 @@ function finalizeDirectOrWizardState(state: ReturnType<typeof createInitialState
     browser: readBrowserPreference(state.browser, hasExplicitTarget),
     hasExplicitTarget,
     host: state.host,
-    mode: readMode(hasExplicitTarget),
+    mode: readMode(),
     port: state.port,
     target: state.target,
     targets: state.target === null ? [] : [state.target]
@@ -193,8 +302,8 @@ function readBrowserPreference(browser: BrowserPreference, hasExplicitTarget: bo
   return browser;
 }
 
-function readMode(hasExplicitTarget: boolean): ParsedStartupArgs["mode"] {
-  return hasExplicitTarget ? "direct" : "wizard";
+function readMode(): ParsedStartupArgs["mode"] {
+  return "direct";
 }
 
 function parseSetupArgs(input: string[]): ParsedSetupArgs {
@@ -359,22 +468,18 @@ const FLAG_HANDLERS: Partial<Record<
   ) => number
 >> = {
   "--host"(input, index, state) {
-    state.hasLaunchFlags = true;
     state.host = readFlagValue("--host", input[index + 1]);
     return index + 1;
   },
   "--port"(input, index, state) {
-    state.hasLaunchFlags = true;
     state.port = readPort(readFlagValue("--port", input[index + 1]));
     return index + 1;
   },
   "--open"(_input, index, state) {
-    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "always");
     return index;
   },
   "--no-open"(_input, index, state) {
-    state.hasLaunchFlags = true;
     assignBrowserPreference(state, "never");
     return index;
   },

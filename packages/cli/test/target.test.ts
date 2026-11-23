@@ -24,13 +24,13 @@ describe("validateTargetPath", () => {
   });
 
   it("accepts a tour file target", () => {
-    expect(validateTargetPath("./examples/checkout-payment-flow.tour.yaml")).toContain(
+    expect(validateTargetPath("./examples/flowchart/checkout-payment-flow.tour.yaml")).toContain(
       "payment-flow.tour.yaml"
     );
   });
 
   it("accepts a mermaid diagram target", () => {
-    expect(validateTargetPath("./examples/checkout-payment-flow.mmd")).toContain(
+    expect(validateTargetPath("./examples/flowchart/checkout-payment-flow.mmd")).toContain(
       "payment-flow.mmd"
     );
   });
@@ -77,19 +77,19 @@ describe("validateTargetPath", () => {
   });
 
   it("accepts a validation tour file target", () => {
-    expect(validateValidationTarget("./examples/checkout-payment-flow.tour.yaml")).toContain(
+    expect(validateValidationTarget("./examples/flowchart/checkout-payment-flow.tour.yaml")).toContain(
       "payment-flow.tour.yaml"
     );
   });
 
   it("rejects diagram files for validation", () => {
-    expect(() => validateValidationTarget("./examples/checkout-payment-flow.mmd")).toThrow(
+    expect(() => validateValidationTarget("./examples/flowchart/checkout-payment-flow.mmd")).toThrow(
       "Expected a .tour.yaml file or a directory:"
     );
   });
 
   it("accepts mermaid files for init", () => {
-    expect(validateInitTarget("./examples/checkout-payment-flow.mmd")).toContain("payment-flow.mmd");
+    expect(validateInitTarget("./examples/flowchart/checkout-payment-flow.mmd")).toContain("payment-flow.mmd");
   });
 
   it("accepts markdown files for init", async () => {
@@ -111,11 +111,11 @@ describe("validateTargetPath", () => {
   });
 
   it("accepts tour files for empty init", () => {
-    expect(validateInitTarget("./examples/checkout-payment-flow.tour.yaml")).toContain("payment-flow.tour.yaml");
+    expect(validateInitTarget("./examples/flowchart/checkout-payment-flow.tour.yaml")).toContain("payment-flow.tour.yaml");
   });
 
   it("rejects non-markdown fragments for init", () => {
-    expect(() => validateInitTarget("./examples/checkout-payment-flow.mmd#overview")).toThrow(
+    expect(() => validateInitTarget("./examples/flowchart/checkout-payment-flow.mmd#overview")).toThrow(
       "Expected a .mmd, .mermaid, .md, or .tour.yaml file for init:"
     );
   });

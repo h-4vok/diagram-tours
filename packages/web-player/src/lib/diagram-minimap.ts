@@ -458,11 +458,11 @@ function toRelativePoint(
   element: SVGElement,
   point: { x: number; y: number }
 ): { x: number; y: number } {
-  const svgOrigin = readSvgOrigin(contentRect, element);
+  const svgProjection = readSvgProjection(contentRect, element);
 
   return {
-    x: svgOrigin.x + point.x,
-    y: svgOrigin.y + point.y
+    x: svgProjection.x + point.x * svgProjection.scaleX,
+    y: svgProjection.y + point.y * svgProjection.scaleY
   };
 }
 
@@ -472,25 +472,67 @@ function readLinePoint(input: {
   xAttribute: "x1" | "x2";
   yAttribute: "y1" | "y2";
 }): { x: number; y: number } {
-  const svgOrigin = readSvgOrigin(input.contentRect, input.element);
+  const svgProjection = readSvgProjection(input.contentRect, input.element);
 
   return {
-    x: svgOrigin.x + sanitizeFiniteValue(input.element[input.xAttribute].baseVal.value),
-    y: svgOrigin.y + sanitizeFiniteValue(input.element[input.yAttribute].baseVal.value)
+    x: svgProjection.x + readScaledCoordinate(input.element[input.xAttribute].baseVal.value, svgProjection.scaleX),
+    y: svgProjection.y + readScaledCoordinate(input.element[input.yAttribute].baseVal.value, svgProjection.scaleY)
   };
 }
 
-function readSvgOrigin(contentRect: DOMRect, element: SVGElement): { x: number; y: number } {
-  const svgRect = element.ownerSVGElement?.getBoundingClientRect();
+function readScaledCoordinate(value: number, scale: number): number {
+  return sanitizeFiniteValue(value) * scale;
+}
 
-  if (svgRect === undefined) {
-    return { x: 0, y: 0 };
+function readSvgProjection(
+  contentRect: DOMRect,
+  element: SVGElement
+): { scaleX: number; scaleY: number; x: number; y: number } {
+  const svg = readProjectionSvg(element);
+
+  if (svg === null) {
+    return createDefaultSvgProjection();
   }
 
+  const svgRect = svg.getBoundingClientRect();
+  const svgDataset = readSvgDataset(svg);
+
   return {
+    scaleX: readSvgAxisScale(svgDataset.intrinsicWidth, svgRect.width),
+    scaleY: readSvgAxisScale(svgDataset.intrinsicHeight, svgRect.height),
     x: svgRect.left - contentRect.left,
     y: svgRect.top - contentRect.top
   };
+}
+
+function createDefaultSvgProjection(): { scaleX: number; scaleY: number; x: number; y: number } {
+  return { scaleX: 1, scaleY: 1, x: 0, y: 0 };
+}
+
+function readProjectionSvg(element: SVGElement): SVGSVGElement | null {
+  const svg = element.ownerSVGElement ?? null;
+
+  return hasProjectionSvgRect(svg) ? svg : null;
+}
+
+function hasProjectionSvgRect(svg: SVGSVGElement | null): svg is SVGSVGElement {
+  return svg !== null && typeof svg.getBoundingClientRect === "function";
+}
+
+function readSvgDataset(svg: SVGSVGElement): DOMStringMap {
+  return "dataset" in svg ? svg.dataset : {};
+}
+
+function readSvgAxisScale(intrinsicSize: string | undefined, renderedSize: number): number {
+  const intrinsicValue = sanitizeFiniteValue(Number(intrinsicSize));
+
+  if (intrinsicValue <= 0) {
+    return 1;
+  }
+
+  const renderedValue = sanitizeFiniteValue(renderedSize);
+
+  return renderedValue <= 0 ? 1 : renderedValue / intrinsicValue;
 }
 
 function toConnectorSegmentsFromPoints(points: Array<{ x: number; y: number }>): DiagramMinimapConnectorSegment[] {

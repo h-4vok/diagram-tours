@@ -1,0 +1,42 @@
+version: 1
+title: Payments Platform Overview
+diagram: ./payments-platform-overview.mmd
+
+steps:
+  - focus:
+      - edge_gateway
+    text: >
+      {{edge_gateway}} is the shared front door for customer, merchant, and partner traffic.
+
+  - focus:
+      - traffic_router
+      - checkout_orchestrator
+      - order_service
+    text: >
+      {{traffic_router}} fans traffic into {{checkout_orchestrator}} and {{order_service}} so checkout and order paths stay coordinated.
+
+  - focus:
+      - risk_engine
+      - fraud_model
+      - payment_service
+    text: >
+      {{risk_engine}} combines internal policy with {{fraud_model}} signals before handing control to {{payment_service}}.
+
+  - focus:
+      - payment_service
+      - ledger_service
+      - settlement_jobs
+    text: >
+      {{payment_service}} records durable state in {{ledger_service}} and hands off delayed work to {{settlement_jobs}}.
+
+  - focus:
+      - event_bus
+      - notifications
+      - analytics_stream
+      - support_console
+    text: >
+      {{event_bus}} broadcasts outcomes so {{notifications}}, {{analytics_stream}}, and {{support_console}} stay in sync.
+
+  - focus: []
+    text: >
+      Pull back to the full system to explore minimap, zoom, and pan across the end-to-end platform.

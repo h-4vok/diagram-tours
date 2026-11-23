@@ -1,0 +1,9 @@
+flowchart LR
+  intake[Inbound Intake] --> decision{Decision}
+  decision -- Approved --> archive
+  decision -- Review --> manual_review[/Manual Review\]
+  manual_review --> queue[(Review Queue)]
+  queue --> worker((Worker))
+  worker --> done@{ shape: rect, label: "Done" }
+
+  click decision "https://example.com/decision" "Decision rule details"

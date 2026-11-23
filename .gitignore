@@ -7,8 +7,14 @@ coverage/
 .turbo/
 .svelte-kit/
 packages/web-player/build/
+packages/web-player/build-static/
 packages/web-player/.vercel/
 *.tsbuildinfo
 packages/web-player/test-results/
 .env
 .aider*
+graphify-out/cost.json
+graphify-out/cache/
+graphify-out/.graphify_*
+graphify-out/*/.graphify_*
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/

@@ -4,12 +4,12 @@
   "version": "0.1.0",
   "description": "Monorepo scaffold for guided tours over Mermaid diagrams.",
   "license": "MIT",
-  "packageManager": "bun@1.2.19",
+  "packageManager": "bun@1.4.4",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/cli build",
+    "build": "bun run --cwd packages/core build && bun run --cwd packages/parser build && bun run --cwd packages/web-player build && bun run --cwd packages/web-player build:static-template && bun run --cwd packages/cli build",
     "test:scripts": "vitest run --config ./scripts/vitest.config.ts --coverage",
     "test:unit": "bun run test:scripts && bun run --cwd packages/core test && bun run --cwd packages/parser test && bun run --cwd packages/web-player test && bun run --cwd packages/cli test",
     "coverage:dashboard": "bun ./scripts/build-coverage-dashboard.ts",
@@ -30,14 +30,13 @@
     "version:beta": "node ./scripts/changeset-version.mjs beta",
     "version:release": "node ./scripts/changeset-version.mjs release",
     "prepush": "bun run prepush:checks && bun run smoke",
-    "allchecks:ai": "bun run prepush",
+    "allchecks": "bun run prepush",
     "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.6",
     "@eslint/js": "^9.23.0",
     "@types/node": "^24.5.2",
-    "@vitest/coverage-istanbul": "3.2.4",
     "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^9.2.1",
     "eslint": "^9.23.0",

@@ -48,3 +48,39 @@ export const resolvedPaymentFlowTour: ResolvedDiagramTour = {
     }
   ]
 };
+
+export const resolvedClassTour: ResolvedDiagramTour = {
+  sourceKind: "authored",
+  version: 1,
+  title: "Class Tour",
+  diagram: {
+    elements: [
+      { id: "Animal", kind: "node", label: "Animal" },
+      { id: "Animal.name", kind: "node", label: "+String name" },
+      { id: "Animal.speak", kind: "node", label: "+void speak()" },
+      { id: "Duck", kind: "node", label: "Duck" },
+      { id: "Duck.quack", kind: "node", label: "+void quack()" }
+    ],
+    path: "./animal-hierarchy.mmd",
+    source: `classDiagram
+  class Animal {
+    +String name
+    +void speak()
+  }
+  class Duck {
+    +void quack()
+  }
+  Animal <|-- Duck`,
+    type: "classDiagram"
+  },
+  steps: [
+    {
+      index: 1,
+      focus: [
+        { id: "Animal", kind: "node", label: "Animal" },
+        { id: "Animal.name", kind: "node", label: "+String name" }
+      ],
+      text: "Animal exposes +String name."
+    }
+  ]
+};

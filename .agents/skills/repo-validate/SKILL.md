@@ -24,7 +24,7 @@ Use this skill when you need broad validation of the repository, not the normal 
    - startup/runtime packaging
    - release-facing paths
 5. Prefer `bun run prepush` for cross-package or release-facing changes.
-6. Prefer `bun run allchecks:ai` when the operator wants the full validation pass with normal logs.
+6. Prefer `bun run allchecks` when the operator wants the full validation pass with normal logs.
 
 ## Report format
 

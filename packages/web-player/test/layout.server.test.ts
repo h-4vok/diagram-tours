@@ -9,16 +9,19 @@ import { load } from "../src/routes/+layout.server";
 import type { SourceTargetInfo } from "../src/lib/source-target";
 
 const ORIGINAL_TARGET = process.env.DIAGRAM_TOUR_SOURCE_TARGET;
+const ORIGINAL_STATIC_OUT = process.env.DIAGRAM_TOUR_STATIC_OUT;
+const ORIGINAL_STATIC_DATA = process.env.DIAGRAM_TOUR_STATIC_DATA;
 const EXAMPLES_ROOT = resolve(process.cwd(), "../../examples");
 
 afterEach(() => {
   if (ORIGINAL_TARGET === undefined) {
     delete process.env.DIAGRAM_TOUR_SOURCE_TARGET;
-
-    return;
+  } else {
+    process.env.DIAGRAM_TOUR_SOURCE_TARGET = ORIGINAL_TARGET;
   }
 
-  process.env.DIAGRAM_TOUR_SOURCE_TARGET = ORIGINAL_TARGET;
+  restoreEnvironment("DIAGRAM_TOUR_STATIC_OUT", ORIGINAL_STATIC_OUT);
+  restoreEnvironment("DIAGRAM_TOUR_STATIC_DATA", ORIGINAL_STATIC_DATA);
 });
 
 describe("+layout.server", () => {
@@ -26,18 +29,12 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
-      "checkout-decision-flow",
-      "checkout-payment-flow",
-      "checkout-refund-flow",
-      "navigation-viewport-centering",
-      "navigation-viewport-stability",
-      "ops-huge-system",
-      "ops-incident-response",
-      "ops-parallel-onboarding",
-      "ops-release-pipeline",
-      "sequence-order-sequence",
-      "support-support-decision-tree",
-      "support-support-handoff"
+      "class-diagram/dom-injection-api",
+      "flowchart/checkout-payment-flow",
+      "flowchart/flowchart-addressability",
+      "flowchart/payments-platform-overview",
+      "sankey/sankey-ops-review",
+      "sequence/sequence-order-sequence"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
     expect(result.sourceTarget).toEqual({
@@ -51,55 +48,31 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
-      "Decision Flow",
+      "Browser Extension Data Pipeline",
       "Payment Flow",
-      "Refund Flow",
-      "Viewport Centering",
-      "Viewport Stability",
-      "Huge System Stress Test",
-      "Incident Response",
-      "Parallel Onboarding",
-      "Release Pipeline",
-      "Order Sequence",
-      "Support Decision Tree",
-      "Support Support Handoff"
+      "Flowchart Addressability",
+      "Payments Platform Overview",
+      "Interview Offers Pipeline",
+      "Order Sequence"
     ]);
     expect(result.collection.skipped).toEqual([]);
     expect(result.sourceTarget.kind).toBe("directory");
   });
 
-  it("loads the viewport stability example with an empty-focus step", async () => {
-    const entry = await loadExampleEntry("navigation-viewport-stability");
+  it("loads the payments platform example as the large interactive tour", async () => {
+    const entry = await loadExampleEntry("flowchart/payments-platform-overview");
 
-    expectViewportStabilityExample(entry);
-  });
-
-  it("loads the huge system example as a discoverable stress-test tour", async () => {
-    const entry = await loadExampleEntry("ops-huge-system");
-
-    expectHugeSystemExample(entry);
+    expectPaymentsPlatformExample(entry);
   });
 
   it("loads the authored sequence example with participant and message focus", async () => {
-    const entry = await loadExampleEntry("sequence-order-sequence");
+    const entry = await loadExampleEntry("sequence/sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
   });
 
-  it("loads the viewport centering example with top, bottom, grouped, and empty focus steps", async () => {
-    const entry = await loadExampleEntry("navigation-viewport-centering");
-
-    expectViewportCenteringExample(entry);
-  });
-
-  it("loads a generated fallback sequence example from the examples directory", async () => {
-    const entry = await loadExampleEntry("support-support-handoff");
-
-    expectSupportHandoffExample(entry);
-  });
-
   it("describes file targets for direct author preview", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.tour.yaml");
+    const target = resolve(process.cwd(), "../../examples/flowchart/checkout-payment-flow.tour.yaml");
     process.env.DIAGRAM_TOUR_SOURCE_TARGET = target;
 
     const result = (await load({} as never)) as {
@@ -117,7 +90,7 @@ describe("+layout.server", () => {
   });
 
   it("loads a generated fallback collection from a diagram file target", async () => {
-    const target = resolve(process.cwd(), "../../examples/checkout-payment-flow.mmd");
+    const target = resolve(process.cwd(), "../../examples/flowchart/checkout-payment-flow.mmd");
     const result = await loadForTarget(target);
 
     expectGeneratedDiagramPreview(result, target);
@@ -195,7 +168,38 @@ describe("+layout.server", () => {
       "flowchart TD\n  detail[Detail] --> done[Done]"
     );
   });
+
+  it("loads the static payload during static player generation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "diagram-tour-static-layout-"));
+    const payloadPath = join(directory, "tours-data.json");
+
+    await writeFile(payloadPath, JSON.stringify({ version: 1, collection: resolvedCollection() }));
+    process.env.DIAGRAM_TOUR_STATIC_OUT = directory;
+    process.env.DIAGRAM_TOUR_STATIC_DATA = payloadPath;
+    process.env.DIAGRAM_TOUR_SOURCE_TARGET = EXAMPLES_ROOT;
+
+    const result = await load({} as never) as {
+      collection: ResolvedDiagramTourCollection;
+      sourceTarget: SourceTargetInfo;
+    };
+
+    expect(result.collection.entries).toEqual([]);
+    expect(result.sourceTarget.kind).toBe("directory");
+  });
 });
+
+function restoreEnvironment(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+function resolvedCollection(): ResolvedDiagramTourCollection {
+  return { entries: [], skipped: [] };
+}
 
 async function loadExamplesCollection(): Promise<{
   collection: ResolvedDiagramTourCollection;
@@ -234,41 +238,18 @@ async function loadExampleEntry(slug: string) {
   return (await loadExamplesCollection()).collection.entries.find((item) => item.slug === slug);
 }
 
-function expectViewportStabilityExample(
+function expectPaymentsPlatformExample(
   entry: ResolvedDiagramTourCollection["entries"][number] | undefined
 ): void {
   const steps = readSteps(entry);
 
-  expect(steps).toHaveLength(3);
-  expect(readFocusLength(steps, 0)).toBe(1);
-  expect(steps[1]?.focus).toEqual([]);
-  expect(readFocusLength(steps, 2)).toBe(2);
-}
-
-function expectViewportCenteringExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const steps = readSteps(entry);
-
-  expect(steps).toHaveLength(4);
-  expect(readFocusLength(steps, 0)).toBe(1);
-  expect(readFocusLength(steps, 1)).toBe(1);
-  expect(readFocusLength(steps, 2)).toBe(2);
-  expect(steps[3]?.focus).toEqual([]);
-}
-
-function expectHugeSystemExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const steps = readSteps(entry);
-
-  expect(readTitle(entry)).toBe("Huge System Stress Test");
-  expect(readNodeCount(entry)).toBeGreaterThanOrEqual(30);
-  expect(steps).toHaveLength(8);
+  expect(readTitle(entry)).toBe("Payments Platform Overview");
+  expect(readNodeCount(entry)).toBeGreaterThanOrEqual(25);
+  expect(steps).toHaveLength(6);
   expect(readFocusLength(steps, 0)).toBe(1);
   expect(readFocusLength(steps, 2)).toBe(3);
-  expect(readFocusLength(steps, 5)).toBe(3);
-  expect(steps[6]?.focus).toEqual([]);
+  expect(readFocusLength(steps, 4)).toBe(4);
+  expect(steps[5]?.focus).toEqual([]);
 }
 
 function expectOrderSequenceExample(
@@ -280,26 +261,6 @@ function expectOrderSequenceExample(
   expect(entry?.tour.diagram.type).toBe("sequence");
   expect(steps).toHaveLength(3);
   expect(readPrimaryFocusIds(steps)).toEqual(["customer", "submit_order", "enqueue_order"]);
-}
-
-function expectSupportHandoffExample(
-  entry: ResolvedDiagramTourCollection["entries"][number] | undefined
-): void {
-  const tour = readTour(entry);
-  const steps = tour.steps;
-
-  expect(readTitle(entry)).toBe("Support Support Handoff");
-  expect(tour.sourceKind).toBe("generated");
-  expect(tour.diagram.type).toBe("sequence");
-  expect(steps[0]?.text).toBe("Overview of Support Support Handoff.");
-  expect(readPrimaryFocusIds(steps)).toEqual([
-    undefined,
-    "customer",
-    "triage",
-    "agent",
-    "open_case",
-    "handoff_case"
-  ]);
 }
 
 function readSteps(

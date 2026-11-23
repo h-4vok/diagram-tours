@@ -8,15 +8,22 @@ It also supports Markdown files that contain fenced ```mermaid blocks. This is e
 
 ## Start with Stable Mermaid IDs
 
-Every diagram element that may appear in `focus` or `{{references}}` needs a stable, addressable Mermaid ID.
+Every diagram element that may appear in `focus` or `{{references}}` needs a stable, addressable Mermaid reference.
 
 Use readable, stable IDs:
 
 ```mermaid
 flowchart LR
 api_gateway[API Gateway]
-validation_service[Validation Service]
+validation_service(Validation Service)
+decision{Decision}
+queue[(Queue)]
+manual_review[/Manual Review\]
+metadata@{ shape: rect, label: "Metadata Node" }
+api_gateway --> response
 ```
+
+Flowchart IDs must match `[A-Za-z][A-Za-z0-9_]*`. Common Mermaid node shapes are addressable when they have an ID, including square, round, diamond, circle, database, subroutine, stadium, trapezoid, parallelogram, and `@{ shape: ..., label: ... }` forms. Bare linked endpoints like `api_gateway --> response` are addressable too, with the ID as their fallback label.
 
 Prefer:
 
@@ -111,28 +118,36 @@ If a step tries to explain too much, split it.
 
 ## Organize Tour Files
 
-The current convention is a flat `examples/` library with domain-prefixed stems:
+The current convention groups public examples by diagram type under `examples/`:
 
 ```text
 examples/
-  checkout-payment-flow.mmd
-  checkout-payment-flow.tour.yaml
-  checkout-refund-flow.mmd
-  checkout-refund-flow.tour.yaml
+  flowchart/
+    checkout-payment-flow.mmd
+    checkout-payment-flow.tour.yaml
+    payments-platform-overview.mmd
+    payments-platform-overview.tour.yaml
+  sequence/
+    sequence-order-sequence.mmd
+    sequence-order-sequence.tour.yaml
+  sankey/
+    sankey-ops-review.mmd
+    sankey-ops-review.tour.yaml
 ```
 
-That layout keeps contributor discovery simple while preserving readable slugs.
+That layout keeps contributor discovery simple while making diagram types obvious in both the repository and the runtime browse UX.
 
 If you only have a diagram at first, this is still valid:
 
 ```text
 examples/
-  checkout-payment-flow.mmd
+  flowchart/
+    checkout-payment-flow.mmd
 ```
 
 The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
 
-For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message.
+For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message. For Sankey diagrams, that is one step per node in source order.
 
 Markdown-backed diagrams are also valid:
 
@@ -148,7 +163,7 @@ flowchart TD
 If a Markdown file contains more than one Mermaid block, `diagram-tours` will generate one entry per block. An authored tour that targets one of those blocks should use a fragment:
 
 ```yaml
-diagram: ./country-implementation-checklist.md#review
+diagram: ./checklist.md#details
 ```
 
 Markdown fences can contain sequence diagrams too:
@@ -180,9 +195,9 @@ Run `setup` with no flags for the interactive flow, or use `--agent`, `--agent-p
 When you want a starter authored tour without writing everything by hand, run:
 
 ```bash
-diagram-tours init ./examples/checkout/payment-flow.mmd
-diagram-tours init ./docs/checklist.md#details
-diagram-tours init ./examples/checkout/payment-flow.tour.yaml
+diagram-tours init ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours init ./fixtures/markdown/checklist.md#details
+diagram-tours init ./examples/flowchart/new-flow.tour.yaml
 ```
 
 `init` accepts a single target path and picks the scaffold mode from that target:
@@ -211,8 +226,8 @@ Use the CLI validation command while authoring:
 
 ```bash
 diagram-tours validate
-diagram-tours validate ./examples/checkout
-diagram-tours validate ./examples/checkout/payment-flow.tour.yaml
+diagram-tours validate ./examples
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 ```
 
 With no target, validation walks the current directory recursively and checks authored `*.tour.yaml` files only.
@@ -231,20 +246,20 @@ A practical local loop is:
 For the published product flow, use the global CLI:
 
 ```bash
-diagram-tours ./examples/checkout-payment-flow.tour.yaml
-diagram-tours ./examples/checkout-payment-flow.mmd
-diagram-tours ./fixtures/markdown/checklist.md
-diagram-tours ./examples
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.tour.yaml
+diagram-tours serve ./examples/flowchart/checkout-payment-flow.mmd
+diagram-tours serve --open ./docs/interview-offers-pipeline.md
+diagram-tours serve ./examples
 diagram-tours
-diagram-tours validate ./examples/checkout-payment-flow.tour.yaml
+diagram-tours validate ./examples/flowchart/checkout-payment-flow.tour.yaml
 diagram-tours validate ./examples
 ```
 
 For repository contributor work, the Bun helpers still exist:
 
 ```bash
-bun run dev ./examples/checkout-payment-flow.tour.yaml
-bun run dev ./examples/checkout-payment-flow.mmd
+bun run dev ./examples/flowchart/checkout-payment-flow.tour.yaml
+bun run dev ./examples/flowchart/checkout-payment-flow.mmd
 bun run dev ./examples
 bun run dev:open
 bun run dev:interactive
@@ -255,7 +270,7 @@ The environment-variable flow still works when you want to drive the runtime dir
 PowerShell example:
 
 ```powershell
-$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/checkout-payment-flow.tour.yaml"
+$env:DIAGRAM_TOUR_SOURCE_TARGET = "./examples/flowchart/checkout-payment-flow.tour.yaml"
 bun run dev
 ```
 
@@ -263,9 +278,27 @@ bun run dev
 
 Use the repository examples as references:
 
-- `payment-flow` for a simple baseline tour
-- `order-sequence` for authored Mermaid sequence diagrams
-- `support-handoff` for generated fallback on a raw sequence diagram
-- `viewport-stability` for empty-focus behavior
-- `viewport-centering` for grouped and edge-position focus behavior
-- `huge-system` for large diagrams and dense label conditions
+- `checkout-payment-flow` for a small authored flowchart
+- `sankey-ops-review` for a small authored Sankey
+- `sequence-order-sequence` for an authored Mermaid sequence diagram
+- `payments-platform-overview` for a large authored demo that stresses minimap, zoom, and pan
+
+For Sankey diagrams, use common Mermaid `sankey-beta` CSV rows. Authored references use raw visible node labels, not generated IDs:
+
+```mermaid
+sankey-beta
+Checkout,Gateway,120
+Gateway,Fraud Review,20
+Gateway,Settlement,100
+```
+
+```yaml
+steps:
+  - focus:
+      - Gateway
+      - Fraud Review
+    text: >
+      {{Gateway}} may send traffic through {{Fraud Review}}.
+```
+
+If a visible Sankey label appears more than once, the first source-order match wins.
