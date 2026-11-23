@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    maxWorkers: 1,
+    fileParallelism: false,
     coverage: {
       all: true,
       provider: "v8",
