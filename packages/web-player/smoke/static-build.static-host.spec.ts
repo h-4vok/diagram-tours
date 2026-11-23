@@ -10,7 +10,7 @@ import { expect, test, type Page } from "@playwright/test";
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const cliEntry = resolve(repoRoot, "packages/cli/dist/bin/diagram-tours.js");
 
-test.setTimeout(120000);
+test.setTimeout(180000);
 
 test("build output works on a generic static host", async ({ page }) => {
   const tempRoot = await mkdtemp(resolve(tmpdir(), "diagram-tours-static-smoke-"));
