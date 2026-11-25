@@ -34,7 +34,8 @@ describe("+layout.server", () => {
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
       "sankey/sankey-ops-review",
-      "sequence/sequence-order-sequence"
+      "sequence/sequence-order-sequence",
+      "zenuml/checkout-zenuml"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
     expect(result.sourceTarget).toEqual({
@@ -53,7 +54,8 @@ describe("+layout.server", () => {
       "Flowchart Addressability",
       "Payments Platform Overview",
       "Interview Offers Pipeline",
-      "Order Sequence"
+      "Order Sequence",
+      "Checkout with inventory reservation"
     ]);
     expect(result.collection.skipped).toEqual([]);
     expect(result.sourceTarget.kind).toBe("directory");
@@ -259,8 +261,14 @@ function expectOrderSequenceExample(
 
   expect(readTitle(entry)).toBe("Order Sequence");
   expect(entry?.tour.diagram.type).toBe("sequence");
-  expect(steps).toHaveLength(3);
-  expect(readPrimaryFocusIds(steps)).toEqual(["customer", "submit_order", "enqueue_order"]);
+  expect(steps).toHaveLength(5);
+  expect(readPrimaryFocusIds(steps)).toEqual([
+    "customer",
+    "submit_order",
+    "reserve_inventory",
+    "enqueue_fulfillment",
+    "delivery_status"
+  ]);
 }
 
 function readSteps(
