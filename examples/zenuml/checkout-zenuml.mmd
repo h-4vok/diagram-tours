@@ -1,0 +1,17 @@
+zenuml
+title Checkout with inventory reservation
+
+@Actor Customer
+UI as Checkout
+
+while(cartHasItems) {
+  OrderService.submit() {
+    Inventory.reserve()
+    if(inventoryAvailable) {
+      PaymentGateway.authorize()
+      return receipt
+    } else {
+      PaymentGateway.decline()
+    }
+  }
+}

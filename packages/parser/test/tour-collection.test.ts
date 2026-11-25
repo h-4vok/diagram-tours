@@ -7,6 +7,7 @@ import {
   DISCOVERY_FIXTURE_ROOT,
   EXAMPLES_ROOT,
   CLASS_DIAGRAM_FIXTURE_TOUR_PATH,
+  ZENUML_FIXTURE_TOUR_PATH,
   FIXTURE_TOUR_PATH,
   INVALID_ONLY_FIXTURE_ROOT,
   createTempDiagramDirectory,
@@ -78,8 +79,7 @@ describe("@diagram-tour/parser tour collection", () => {
       "Focus on API Gateway.",
       "Focus on Send request."
     ]);
-    expect(entry.tour.diagram.source).toContain("user->>api: Send request");
-    expect(entry.tour.diagram.source).not.toContain("[request_sent]");
+    expect(entry.tour.diagram.source).toContain("user->>api: [request_sent] Send request");
   });
 
   it("builds generated fallback steps from a raw sankey diagram file target with unique nodes", async () => {
@@ -132,6 +132,49 @@ describe("@diagram-tour/parser tour collection", () => {
       "This path shows common flowchart shapes, including bare endpoints like archive and metadata-shaped nodes like Done.\n",
       "The flowchart stays fully navigable in the browser while the diagram source keeps its original Mermaid annotations.\n"
     ]);
+  });
+
+  it("loads the authored sequence example with stable participant and message targets", async () => {
+    const collection = await loadResolvedTourCollection(
+      resolve(EXAMPLES_ROOT, "./sequence/sequence-order-sequence.tour.yaml")
+    );
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(entry.tour.sourceKind).toBe("authored");
+    expect(entry.tour.diagram.type).toBe("sequence");
+    expect(entry.tour.diagram.elements.map((element) => element.id)).toEqual([
+      "customer",
+      "checkout",
+      "inventory",
+      "fulfillment",
+      "submit_order",
+      "reserve_inventory",
+      "inventory_reserved",
+      "enqueue_fulfillment",
+      "delivery_status",
+      "inventory_rejected"
+    ]);
+    expect(entry.tour.steps.map((step) => step.text)).toEqual([
+      "Customer starts an order with Checkout API. The note gives context without becoming a focus target.\n",
+      "Submit order opens the exchange and activates Checkout API.\n",
+      "Reserve inventory asks Inventory Service to reserve stock. The response inside the alt frame is a separate target.\n",
+      "Enqueue fulfillment sends authorized work to Fulfillment Queue inside the opt frame.\n",
+      "Report delivery status repeats while the loop frame waits for delivery acceptance.\n"
+    ]);
+    expect(entry.tour.diagram.source).toContain("Note over customer,checkout: The customer starts a new order");
+    expect(entry.tour.diagram.source).toContain("alt Inventory is available");
+    expect(entry.tour.diagram.source).toContain("[submit_order] Submit order");
+  });
+
+  it("loads the authored ZenUML example with parser-derived actor, interaction, and block targets", async () => {
+    const collection = await loadResolvedTourCollection(resolve(EXAMPLES_ROOT, "./zenuml/checkout-zenuml.tour.yaml"));
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(entry.tour.diagram.type).toBe("zenuml");
+    expect(entry.tour.diagram.elements.map((element) => element.id)).toContain(
+      "block-while-cart-has-items-order-service-submit-if-inventory-available"
+    );
+    expect(entry.tour.steps[0]?.focus.map((element) => element.id)).toEqual(["actor-customer", "actor-ui"]);
   });
 
   it("builds generated fallback steps from a raw class diagram file target", async () => {
@@ -190,6 +233,18 @@ describe("@diagram-tour/parser tour collection", () => {
       "Animal",
       "Animal.name"
     ]);
+  });
+
+  it("loads the realistic ZenUML fixture pair from the web-player fixtures", async () => {
+    const collection = await loadResolvedTourCollection(ZENUML_FIXTURE_TOUR_PATH);
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(entry.tour.diagram.type).toBe("zenuml");
+    expect(entry.tour.diagram.source).toContain("return receipt");
+    expect(entry.tour.steps.at(0)!.focus.map((element) => element.id)).toEqual(["actor-customer", "actor-ui"]);
+    expect(entry.tour.steps.at(4)!.focus[0]!.id).toBe(
+      "block-while-cart-has-items-order-service-submit-if-inventory-available"
+    );
   });
 
   it("discovers matching .tour.yaml files from a directory target", async () => {
@@ -463,6 +518,7 @@ describe("@diagram-tour/parser tour collection", () => {
       "flowchart/payments-platform-overview",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
+      "zenuml/checkout-zenuml"
     ]);
   });
 });

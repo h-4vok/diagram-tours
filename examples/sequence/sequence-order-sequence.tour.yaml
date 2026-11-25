@@ -6,14 +6,25 @@ steps:
   - focus:
       - customer
     text: >
-      The {{customer}} is the human entry point for the exchange.
+      {{customer}} starts an order with {{checkout}}. The note gives context without becoming a focus target.
 
   - focus:
       - submit_order
     text: >
-      {{submit_order}} captures the initial request crossing into {{api}}.
+      {{submit_order}} opens the exchange and activates {{checkout}}.
 
   - focus:
-      - enqueue_order
+      - reserve_inventory
+      - inventory_reserved
     text: >
-      {{enqueue_order}} hands the accepted work to {{queue}} for downstream processing.
+      {{reserve_inventory}} asks {{inventory}} to reserve stock. The response inside the alt frame is a separate target.
+
+  - focus:
+      - enqueue_fulfillment
+    text: >
+      {{enqueue_fulfillment}} sends authorized work to {{fulfillment}} inside the opt frame.
+
+  - focus:
+      - delivery_status
+    text: >
+      {{delivery_status}} repeats while the loop frame waits for delivery acceptance.

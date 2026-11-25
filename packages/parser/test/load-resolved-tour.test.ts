@@ -388,7 +388,7 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
           "sequenceDiagram",
           "  participant user as User",
           "  participant api as API Gateway",
-          "  user->>api: Send request"
+          "  user->>api: [request_sent] Send request"
         ].join("\n"),
         type: "sequence"
       },

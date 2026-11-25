@@ -1,8 +1,26 @@
 sequenceDiagram
-  participant customer as Customer
-  participant api as API Gateway
-  participant queue as Fulfillment Queue
+  autonumber
+  actor customer as Customer
+  participant checkout as Checkout API
+  participant inventory as Inventory Service
+  participant fulfillment as Fulfillment Queue
 
-  customer->>api: [submit_order] Submit order
-  api->>queue: [enqueue_order] Enqueue fulfillment
-  queue-->>api: Delivery accepted
+  link checkout: API runbook @ https://example.test/checkout
+  Note over customer,checkout: The customer starts a new order
+  customer->>+checkout: [submit_order] Submit order
+  checkout->>inventory: [reserve_inventory] Reserve inventory
+  alt Inventory is available
+    inventory-->>checkout: [inventory_reserved] Inventory reserved
+    opt Payment is authorized
+      checkout->>fulfillment: [enqueue_fulfillment] Enqueue fulfillment
+      activate fulfillment
+      loop Retry delivery until accepted
+        fulfillment-->>checkout: [delivery_status] Report delivery status
+      end
+      deactivate fulfillment
+    end
+  else Inventory is unavailable
+    inventory-->>checkout: [inventory_rejected] Reject order
+  end
+  Note right of checkout: Unaddressed messages and notes stay as context
+  checkout-->>-customer: Order processing complete

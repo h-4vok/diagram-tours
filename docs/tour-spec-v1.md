@@ -263,7 +263,7 @@ When a workspace contains invalid authored tours, the player may still load vali
 
 ## Mermaid Requirements
 
-Version 1 supports Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams.
+Version 1 supports Mermaid flowcharts, Mermaid sequence diagrams, Mermaid ZenUML diagrams, Mermaid class diagrams, and common Mermaid Sankey diagrams.
 
 Flowchart node IDs must match `[A-Za-z][A-Za-z0-9_]*`.
 
@@ -291,7 +291,7 @@ Flowchart labels can come from common Mermaid node forms such as `id[Label]`, `i
 
 Sequence diagrams support two addressable element kinds:
 
-- participants declared with `participant` or `actor`
+- participants declared with `participant` or `actor`; use their Mermaid source IDs
 - messages whose labels begin with `[message_id] `
 
 Example:
@@ -316,6 +316,12 @@ The user-facing label for `submit_order` is `Submit order`.
 
 Within one sequence diagram, addressable participant IDs and message IDs must be unique across the whole diagram.
 
+Sequence focus elements and generated overview targets follow their source order. The `[message_id]` tag is hidden from the rendered message label. All other valid Mermaid syntax remains in the render source. Lifelines, activation bars, notes, and `alt`, `opt`, `loop`, `par`, `critical`, and other sequence frames are rendered context, not independent focus targets. A tagged message inside a frame remains focusable. An untagged message is not a focus target. These context constructs have no stable independent source ID in this contract, so authors must not use Mermaid-generated SVG IDs.
+
+ZenUML diagrams use the Mermaid `zenuml` syntax and preserve the complete source for Mermaid rendering. Their focus keys are parser-derived: actors use `actor-<source-name>`; interactions use `interaction-<parent-path>-<interaction-name>`; named `if`, `while`, `for`, `forEach`, `foreach`, and `loop` groups use `block-<parent-path>-<block-kind>-<condition>`. Names use lower-case kebab case with camel-case boundaries. Nested call and named-block keys include their source parent path. Repeated semantic keys are disambiguated with `-2`, `-3`, etc. in source order. For example, `OrderService.submit()` inside `while(cartHasItems) { ... }` is `interaction-while-cart-has-items-order-service-submit`, and the loop is `block-while-cart-has-items`. Authors use these keys in `focus` and `{{key}}` text references; Mermaid-generated SVG IDs are not stable authoring keys.
+
+Explicit actor declarations and actors inferred from interactions, calls, messages, creations, and returns are focusable. Named conditional and loop groups focus the rendered group while their inner interactions remain independently focusable. Lifelines and rendering decorations, comments, titles, anonymous delimiters, `else`/`catch`/`finally` markers, and anonymous `opt`, `par`, `try`, `catch`, and `finally` blocks remain context. Unknown ZenUML references identify the expected actor, interaction, or block key in their diagnostic. See [`examples/zenuml/checkout-zenuml.tour.yaml`](../examples/zenuml/checkout-zenuml.tour.yaml) for an authored tour.
+
 ## Focus Semantics
 
 The `focus` field is semantic, not a strict UI instruction.
@@ -338,6 +344,7 @@ Supported:
 
 - Mermaid flowcharts
 - Mermaid sequence diagrams with addressable participants and tagged messages
+- Mermaid ZenUML diagrams with source-derived actor, interaction, and named conditional/loop focus keys
 - Common Mermaid Sankey diagrams with addressable node labels
 - YAML tour files
 - sequential tours
@@ -352,7 +359,8 @@ Not supported:
 - audio narration
 - conditional steps
 - player-specific viewport instructions in the tour file
-- Mermaid notes, activation bars, loops, alt blocks, and other non-addressable sequence constructs
+- Independent focus keys for sequence lifelines, activation bars, notes, untagged messages, and sequence frames
+- Independent focus keys for ZenUML delimiters, anonymous blocks, lifelines, and rendering decorations
 - flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
 - Stable authored Sankey link references
 
