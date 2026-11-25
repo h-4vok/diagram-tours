@@ -11,6 +11,7 @@ import { createClassDiagramModel } from "./class-diagram-model.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
 import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
+import { createStateDiagramModel } from "./state-diagram-model.js";
 import { createZenUmlDiagramModel } from "./zenuml-diagram-model.js";
 import {
   createStepFieldMessage,
@@ -21,6 +22,7 @@ import {
 
 const NODE_REFERENCE_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
 const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
+const STATE_DIAGRAM_PATTERN = /^\s*stateDiagram-v2\b/mu;
 const CLASS_DIAGRAM_PATTERN = /^\s*classDiagram\b/mu;
 const SANKEY_DIAGRAM_PATTERN = /^\s*sankey-beta\b/mu;
 const ZENUML_DIAGRAM_PATTERN = /^\s*zenuml\b/mu;
@@ -29,11 +31,13 @@ const DIAGRAM_MODEL_FACTORIES = {
   flowchart: createFlowchartDiagramModelAdapter,
   sankey: createSankeyDiagramModelAdapter,
   sequence: createSequenceDiagramModel,
+  stateDiagram: createStateDiagramModel,
   zenuml: createZenUmlDiagramModel
 } satisfies Record<DiagramType, (source: string, context: TourContext) => DiagramModel>;
 const DIAGRAM_TYPE_PATTERNS = [
   [CLASS_DIAGRAM_PATTERN, "classDiagram"],
   [SEQUENCE_DIAGRAM_PATTERN, "sequence"],
+  [STATE_DIAGRAM_PATTERN, "stateDiagram"],
   [SANKEY_DIAGRAM_PATTERN, "sankey"],
   [ZENUML_DIAGRAM_PATTERN, "zenuml"]
 ] as const;
@@ -243,6 +247,7 @@ function resolveElement(input: {
 function readUnknownElementTarget(diagramType: DiagramType): string {
   const targets: Partial<Record<DiagramType, string>> = {
     sequence: "participant or message id",
+    stateDiagram: "state or transition key",
     sankey: "node label",
     zenuml: "ZenUML actor, interaction, or block key"
   };

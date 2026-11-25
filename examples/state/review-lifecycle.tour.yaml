@@ -1,0 +1,34 @@
+version: 1
+title: Review Lifecycle
+diagram: ./review-lifecycle.mmd
+steps:
+  - focus: [state-draft]
+    text: "A change begins in {{state-draft}}."
+  - focus: [state-still, state-moving, state-decision, state-queue-a-shared]
+    text: "Standalone states, bracket pseudostates, and a shared state can be focused too."
+  - focus: [transition-state-draft-to-state-in-review-submit-complete]
+    text: "Submitting a complete change moves it from draft to review."
+  - focus: [transition-state-draft-to-state-draft-edit]
+    text: "A change can be edited while it is still a draft."
+  - focus: [transition-state-draft-to-state-in-review-retry]
+    text: "A retry is a separate transition, even though it shares endpoints with submission."
+  - focus: [state-in-review]
+    text: "{{state-in-review}} is a composite state with its own review steps."
+  - focus: [transition-state-in-review-assign-reviewers-to-state-in-review-reviewing-reviewers-assigned]
+    text: "Review starts after reviewers have been assigned."
+  - focus: [transition-state-in-review-reviewing-to-state-in-review-reviewing-retry]
+    text: "A reviewer can retry the same review state."
+  - focus: [state-in-review-review-fork]
+    text: "{{state-in-review-review-fork}} splits independent legal and security review."
+  - focus: [state-in-review-review-join]
+    text: "{{state-in-review-review-join}} waits for both reviews to finish."
+  - focus: [state-in-review-review-decision]
+    text: "The {{state-in-review-review-decision}} pseudostate selects a review outcome."
+  - focus: [transition-state-in-review-review-decision-to-state-in-review-approved-changes-accepted, transition-state-in-review-review-decision-to-state-in-review-changes-requested-changes-required]
+    text: "The choice leads to {{state-in-review-approved}} or {{state-in-review-changes-requested}}."
+  - focus: [transition-state-in-review-changes-requested-to-state-in-review-reviewing-revised]
+    text: "A revised change returns to review."
+  - focus: [transition-state-in-review-to-state-published-merge]
+    text: "Merging the reviewed change publishes it."
+  - focus: [transition-state-in-review-to-state-in-review-reopen]
+    text: "The composite review can be reopened."

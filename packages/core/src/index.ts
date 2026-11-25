@@ -11,14 +11,18 @@ export interface DiagramTour {
   steps: TourStep[];
 }
 
-export type DiagramType = "flowchart" | "sequence" | "sankey" | "classDiagram" | "zenuml";
+export type DiagramType = "flowchart" | "sequence" | "sankey" | "classDiagram" | "stateDiagram" | "zenuml";
 
-export type DiagramElementKind = "node" | "participant" | "message" | "group";
+export type DiagramElementKind = "node" | "participant" | "message" | "group" | "state" | "transition";
 
 export interface DiagramElement {
   id: string;
   kind: DiagramElementKind;
   label: string;
+  renderId?: string;
+  renderOrder?: number;
+  renderSourceId?: string;
+  renderTargetId?: string;
 }
 
 export interface DiagnosticLocation {

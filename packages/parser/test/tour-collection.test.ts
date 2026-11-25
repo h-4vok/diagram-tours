@@ -518,6 +518,7 @@ describe("@diagram-tour/parser tour collection", () => {
       "flowchart/payments-platform-overview",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
+      "state/review-lifecycle",
       "zenuml/checkout-zenuml"
     ]);
   });

@@ -30,11 +30,13 @@ type SvgPointLike = { x: number; y: number };
 const MESSAGE_MARKER_ATTRIBUTES = ["marker-start", "marker-mid", "marker-end"] as const;
 const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
+const STATE_GROUP_SELECTOR = "g.statediagram-state, g.statediagram-cluster, g.stateGroup";
 const DIAGRAM_ANNOTATORS = {
   classDiagram: annotateClassElements,
   flowchart: annotateFlowchartElements,
   sankey: annotateSankeyElements,
   sequence: annotateSequenceElements,
+  stateDiagram: annotateStateDiagramElements,
   zenuml: annotateZenUmlElements
 } satisfies Record<
   ResolvedDiagram["type"],
@@ -78,6 +80,15 @@ const SEQUENCE_THEME_VARIABLES = {
   sequenceNumberColor: "var(--text-secondary, #8b949e)",
   signalColor: "var(--color-node-base-stroke, #30363d)",
   signalTextColor: "var(--color-node-base-text, #e6edf3)"
+} satisfies MermaidThemeVariables;
+const STATE_DIAGRAM_THEME_VARIABLES = {
+  compositeBackground: "var(--bg-surface, #161b22)",
+  compositeTitleBackground: "var(--color-node-base-fill, #1c2128)",
+  labelBackgroundColor: "var(--bg-surface, #161b22)",
+  stateBkg: "var(--color-node-base-fill, #1c2128)",
+  stateBorder: "var(--color-node-base-stroke, #30363d)",
+  stateLabelColor: "var(--color-node-base-text, #e6edf3)",
+  transitionColor: "var(--color-node-base-stroke, #30363d)"
 } satisfies MermaidThemeVariables;
 const ZENUML_THEME_RULES = [
   [".frame-border-outer, .frame-header-line, .participant-box, .lifeline, .occurrence, .fragment-border, .group-outline", "stroke", "var(--color-node-base-stroke)"],
@@ -191,7 +202,13 @@ function readMermaidThemeVariables(container: HTMLElement, diagram: ResolvedDiag
     fontFamily: MERMAID_FONT_STACK
   };
 
-  return diagram.type === "sequence" ? { ...themeVariables, ...SEQUENCE_THEME_VARIABLES } : themeVariables;
+  if (diagram.type === "sequence") {
+    return { ...themeVariables, ...SEQUENCE_THEME_VARIABLES };
+  }
+
+  return diagram.type === "stateDiagram"
+    ? { ...themeVariables, ...STATE_DIAGRAM_THEME_VARIABLES }
+    : themeVariables;
 }
 
 function readPrimaryThemeVariables(styles: CSSStyleDeclaration): MermaidThemeVariables {
@@ -373,6 +390,147 @@ function annotateSankeyRenderedElement(
   if (renderedElement !== undefined) {
     setDiagramElementDataset(renderedElement, element);
   }
+}
+
+function annotateStateDiagramElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const stateElements = elements.filter((element) => element.kind === "state");
+  const stateGroups = Array.from(
+    container.querySelectorAll<RenderedDiagramElement>(STATE_GROUP_SELECTOR)
+  );
+
+  const matchedGroups = new Set<RenderedDiagramElement>();
+  stateElements.forEach((element) => annotateRenderedState(stateGroups, matchedGroups, element));
+  annotateStateTransitions({
+    container,
+    stateGroups,
+    states: stateElements,
+    transitions: elements.filter((element) => element.kind === "transition")
+  });
+}
+
+function annotateRenderedState(
+  stateGroups: RenderedDiagramElement[],
+  matchedGroups: Set<RenderedDiagramElement>,
+  element: DiagramElement
+): void {
+  const group = stateGroups.find((candidate) => !matchedGroups.has(candidate) && hasRenderedStateId(candidate, element)) ??
+    stateGroups.find((candidate) => !matchedGroups.has(candidate) && hasRenderedStateLabel(candidate, element.label));
+
+  if (group !== undefined) {
+    setDiagramElementDataset(group, element);
+    matchedGroups.add(group);
+  }
+}
+
+function hasRenderedStateLabel(group: RenderedDiagramElement, label: string): boolean {
+  return Array.from(group.querySelectorAll<RenderedDiagramElement>("text, foreignObject, .nodeLabel")).some(
+    (text) => normalizeTextContent(text) === label && text.closest(STATE_GROUP_SELECTOR) === group
+  );
+}
+
+function hasRenderedStateId(group: RenderedDiagramElement, element: DiagramElement): boolean {
+  return hasStateGroupId(group.id, element.renderId) || group.getAttribute("data-id") === element.renderId;
+}
+
+function hasStateGroupId(renderedId: string, alias: string | undefined): boolean {
+  if (alias === undefined) {return false;}
+  const stateId = `state-${alias}`;
+
+  return renderedId === stateId || hasNumberedStateId(renderedId, stateId);
+}
+
+function hasNumberedStateId(renderedId: string, stateId: string): boolean {
+  const suffix = renderedId.slice(stateId.length);
+
+  return renderedId.startsWith(`${stateId}-`) && /^\d+$/u.test(suffix.slice(1));
+}
+
+function annotateStateTransitions(input: {
+  container: HTMLElement;
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transitions: DiagramElement[];
+}): void {
+  input.transitions.forEach((transition) => {
+    const edgeId = readStateTransitionEdgeId({
+      stateGroups: input.stateGroups,
+      states: input.states,
+      transition
+    });
+    const paths = readStateTransitionPaths(input.container, edgeId);
+
+    paths.forEach((path) => setDiagramElementDataset(path, transition));
+
+    const label = readStateTransitionLabel(input.container, edgeId);
+    if (label !== null) {
+      setDiagramElementDataset(label, transition);
+    }
+  });
+}
+
+function readStateTransitionEdgeId(input: {
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transition: DiagramElement;
+}): string | undefined {
+  const { transition } = input;
+  if (transition.renderOrder === undefined) {return undefined;}
+  return transition.renderSourceId === transition.renderTargetId
+    ? readSelfTransitionEdgeId(input)
+    : `edge${transition.renderOrder}`;
+}
+
+function readSelfTransitionEdgeId(input: {
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transition: DiagramElement;
+}): string | undefined {
+  const sourceState = input.states.find((state) => state.id === input.transition.renderSourceId);
+  if (sourceState === undefined) {
+    return undefined;
+  }
+  return readSelfTransitionEdgeIdForState(input.stateGroups, sourceState);
+}
+
+function readSelfTransitionEdgeIdForState(
+  stateGroups: RenderedDiagramElement[],
+  state: DiagramElement
+): string | undefined {
+  if (state.renderId === undefined) {
+    return undefined;
+  }
+
+  return stateGroups.some((group) => hasRenderedStateId(group, state))
+    ? `${state.renderId}-cyclic-special-mid`
+    : undefined;
+}
+
+function readStateTransitionPaths(container: HTMLElement, edgeId: string | undefined): SVGElement[] {
+  if (edgeId === undefined) {return [];}
+
+  const loopMarker = "-cyclic-special-mid";
+  const loopPrefix = edgeId.endsWith(loopMarker) ? edgeId.slice(0, -loopMarker.length) : undefined;
+
+  return Array.from(container.querySelectorAll<SVGElement>("path[data-id]"))
+    .filter((path) => isStateTransitionPath(path, edgeId, loopPrefix));
+}
+
+function isStateTransitionPath(path: SVGElement, edgeId: string, loopPrefix: string | undefined): boolean {
+  if (path.classList.contains("note-edge")) {return false;}
+  const pathId = path.getAttribute("data-id");
+
+  return pathId === edgeId || hasStateLoopPathId(pathId, loopPrefix);
+}
+
+function hasStateLoopPathId(pathId: string | null, loopPrefix: string | undefined): boolean {
+  return loopPrefix !== undefined && pathId?.startsWith(`${loopPrefix}-cyclic-special-`) === true;
+}
+
+function readStateTransitionLabel(container: HTMLElement, edgeId: string | undefined): RenderedDiagramElement | null {
+  if (edgeId === undefined) {return null;}
+
+  return Array.from(container.querySelectorAll<RenderedDiagramElement>(".edgeLabel > .label[data-id]"))
+    .find((label) => label.getAttribute("data-id") === edgeId) ?? null;
 }
 
 function annotateFlowchartConnectors(container: HTMLElement, diagram: ResolvedDiagram): void {

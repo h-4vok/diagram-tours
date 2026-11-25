@@ -35,6 +35,7 @@ describe("+layout.server", () => {
       "flowchart/payments-platform-overview",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
+      "state/review-lifecycle",
       "zenuml/checkout-zenuml"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
@@ -55,6 +56,7 @@ describe("+layout.server", () => {
       "Payments Platform Overview",
       "Interview Offers Pipeline",
       "Order Sequence",
+      "Review Lifecycle",
       "Checkout with inventory reservation"
     ]);
     expect(result.collection.skipped).toEqual([]);

@@ -263,7 +263,7 @@ When a workspace contains invalid authored tours, the player may still load vali
 
 ## Mermaid Requirements
 
-Version 1 supports Mermaid flowcharts, Mermaid sequence diagrams, Mermaid ZenUML diagrams, Mermaid class diagrams, and common Mermaid Sankey diagrams.
+Version 1 supports Mermaid flowcharts, sequence diagrams, state diagrams, ZenUML diagrams, class diagrams, and common Sankey diagrams.
 
 Flowchart node IDs must match `[A-Za-z][A-Za-z0-9_]*`.
 
@@ -322,6 +322,8 @@ ZenUML diagrams use the Mermaid `zenuml` syntax and preserve the complete source
 
 Explicit actor declarations and actors inferred from interactions, calls, messages, creations, and returns are focusable. Named conditional and loop groups focus the rendered group while their inner interactions remain independently focusable. Lifelines and rendering decorations, comments, titles, anonymous delimiters, `else`/`catch`/`finally` markers, and anonymous `opt`, `par`, `try`, `catch`, and `finally` blocks remain context. Unknown ZenUML references identify the expected actor, interaction, or block key in their diagnostic. See [`examples/zenuml/checkout-zenuml.tour.yaml`](../examples/zenuml/checkout-zenuml.tour.yaml) for an authored tour.
 
+State diagrams use `stateDiagram-v2` and preserve their full source. Rendered named and implicit states, including standalone state IDs, nested/composite states, and `<<choice>>`, `<<fork>>`, and `<<join>>` pseudostates (or `[[...]]` forms), use `state-<parent-path>-<state-id>` keys. A bare `state Waiting` declaration does not render by itself and has no focus key. Mermaid merges repeated raw state IDs across composite scopes into one rendered state, keyed by its first occurrence; use unique source IDs when separate focus targets are needed. IDs are normalized to lower-case kebab case with camel-case boundaries. State display labels use a quoted alias label, otherwise the first Mermaid `StateId: Visible label` description, otherwise the source ID. Rendered Mermaid `-->` transitions, including self-transitions and transitions using `[*]`, are focusable with `transition-<source-state-key>-to-<destination-state-key>-<event-guard-label>`; unlabeled transitions use `unlabeled`, and collisions receive the next available numeric suffix in source order. Mermaid's default Dagre renderer collapses multiple self-transitions on the same state into the last declared loop, so only that visible loop receives a focus key; earlier loops have no rendered target. Display labels combine the source state, destination state, and transition label. The `[*]` marker, direction declarations, notes, and comments remain context; Mermaid `click` tooltips remain available but are not focus targets. Mermaid-generated SVG IDs are not stable authoring keys. See [`examples/state/review-lifecycle.tour.yaml`](../examples/state/review-lifecycle.tour.yaml).
+
 ## Focus Semantics
 
 The `focus` field is semantic, not a strict UI instruction.
@@ -343,6 +345,7 @@ The specification intentionally does not mandate one rendering strategy.
 Supported:
 
 - Mermaid flowcharts
+- Mermaid state diagrams with nested/composite states, transitions, and choice/fork/join focus keys
 - Mermaid sequence diagrams with addressable participants and tagged messages
 - Mermaid ZenUML diagrams with source-derived actor, interaction, and named conditional/loop focus keys
 - Common Mermaid Sankey diagrams with addressable node labels
@@ -360,6 +363,7 @@ Not supported:
 - conditional steps
 - player-specific viewport instructions in the tour file
 - Independent focus keys for sequence lifelines, activation bars, notes, untagged messages, and sequence frames
+- Independent focus keys for state diagram `[*]` markers, directions, notes, and comments
 - Independent focus keys for ZenUML delimiters, anonymous blocks, lifelines, and rendering decorations
 - flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
 - Stable authored Sankey link references
