@@ -75,6 +75,7 @@ export type DiagramModel = {
 };
 
 export type SequenceDiagramModel = {
+  elements: DiagramElement[];
   messages: DiagramElement[];
   participants: DiagramElement[];
   renderSource: string;

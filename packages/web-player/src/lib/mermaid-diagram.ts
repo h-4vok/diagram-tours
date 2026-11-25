@@ -34,7 +34,8 @@ const DIAGRAM_ANNOTATORS = {
   classDiagram: annotateClassElements,
   flowchart: annotateFlowchartElements,
   sankey: annotateSankeyElements,
-  sequence: annotateSequenceElements
+  sequence: annotateSequenceElements,
+  zenuml: annotateZenUmlElements
 } satisfies Record<
   ResolvedDiagram["type"],
   (container: HTMLElement, elements: DiagramElement[]) => void
@@ -56,6 +57,37 @@ const MERMAID_THEME_DEFAULTS = {
   tertiaryTextColor: "#e6edf3",
   textColor: "#e6edf3"
 } satisfies MermaidThemeVariables;
+const SEQUENCE_THEME_VARIABLES = {
+  actorBkg: "var(--color-node-base-fill, #1c2128)",
+  actorBorder: "var(--color-node-base-stroke, #30363d)",
+  actorLineColor: "var(--color-node-base-stroke, #30363d)",
+  actorTextColor: "var(--color-node-base-text, #e6edf3)",
+  activationBkgColor: "var(--bg-surface, #161b22)",
+  activationBorderColor: "var(--border-subtle, #30363d)",
+  altSectionBkgColor: "var(--bg-surface, #161b22)",
+  labelBoxBkgColor: "var(--bg-surface, #161b22)",
+  labelBoxBorderColor: "var(--border-subtle, #30363d)",
+  labelTextColor: "var(--text-primary, #e6edf3)",
+  loopLineColor: "var(--border-subtle, #30363d)",
+  loopTextColor: "var(--text-primary, #e6edf3)",
+  noteBkgColor: "var(--bg-surface, #161b22)",
+  noteBorderColor: "var(--border-subtle, #30363d)",
+  noteTextColor: "var(--text-primary, #e6edf3)",
+  sectionBkgColor: "var(--bg-surface, #161b22)",
+  sectionBkgColor2: "var(--bg-base, #0e1116)",
+  sequenceNumberColor: "var(--text-secondary, #8b949e)",
+  signalColor: "var(--color-node-base-stroke, #30363d)",
+  signalTextColor: "var(--color-node-base-text, #e6edf3)"
+} satisfies MermaidThemeVariables;
+const ZENUML_THEME_RULES = [
+  [".frame-border-outer, .frame-header-line, .participant-box, .lifeline, .occurrence, .fragment-border, .group-outline", "stroke", "var(--color-node-base-stroke)"],
+  [".frame-border-inner, .frame-header-bg, .participant-box, .occurrence, .fragment-header, .group-title-bg", "fill", "var(--color-node-base-fill)"],
+  [".frame-title, .participant-label, .message-label, .fragment-label, .fragment-condition, .fragment-section-label, .return-label, .group-title-text", "fill", "var(--color-node-base-text)"],
+  [".participant-icon, .return-icon", "fill", "var(--color-node-base-text)"],
+  [".message-line, .arrow-head, .return-line, .return-arrow", "stroke", "var(--color-node-base-stroke)"],
+  [".fragment-separator, .divider-bg", "stroke", "var(--border-subtle)"],
+  [".fragment-separator, .seq-number, .comment-text, .divider-label", "fill", "var(--text-secondary)"]
+] as const;
 
 let mermaidModulePromise: Promise<MermaidModule> | undefined;
 
@@ -69,7 +101,7 @@ export async function renderMermaidDiagram(input: {
     ...readMermaidDiagramConfig(input.diagram),
     startOnLoad: false,
     theme: "base",
-    themeVariables: readMermaidThemeVariables(input.container)
+    themeVariables: readMermaidThemeVariables(input.container, input.diagram)
   });
 
   const renderResult = await renderDiagramSource({
@@ -78,6 +110,7 @@ export async function renderMermaidDiagram(input: {
   });
 
   input.container.innerHTML = renderResult.svg;
+  applyZenUmlTheme(input.container);
   normalizeRenderedSvg(input.container);
   injectNodeGradients(input.container);
   annotateRenderedElements(input.container, input.diagram);
@@ -138,20 +171,27 @@ function readMermaidDiagramConfig(diagram: ResolvedDiagram): Record<string, unkn
 }
 
 async function loadMermaid(): Promise<MermaidModule> {
-  mermaidModulePromise ??= import("mermaid") as Promise<MermaidModule>;
+  mermaidModulePromise ??= loadMermaidWithZenUml();
 
   return mermaidModulePromise;
 }
 
-function readMermaidThemeVariables(container: HTMLElement): MermaidThemeVariables {
-  const themeStyles = getComputedStyle(readThemeTarget(container));
+async function loadMermaidWithZenUml(): Promise<MermaidModule> {
+  const [mermaid, zenuml] = await Promise.all([import("mermaid"), import("@mermaid-js/mermaid-zenuml")]);
+  await mermaid.default.registerExternalDiagrams([zenuml.default]);
+  return mermaid as MermaidModule;
+}
 
-  return {
+function readMermaidThemeVariables(container: HTMLElement, diagram: ResolvedDiagram): MermaidThemeVariables {
+  const themeStyles = getComputedStyle(readThemeTarget(container));
+  const themeVariables = {
     ...readPrimaryThemeVariables(themeStyles),
     ...readSecondaryThemeVariables(themeStyles),
     background: readThemeToken(themeStyles, "--bg-base", MERMAID_THEME_DEFAULTS.background),
     fontFamily: MERMAID_FONT_STACK
   };
+
+  return diagram.type === "sequence" ? { ...themeVariables, ...SEQUENCE_THEME_VARIABLES } : themeVariables;
 }
 
 function readPrimaryThemeVariables(styles: CSSStyleDeclaration): MermaidThemeVariables {
@@ -224,6 +264,17 @@ async function renderDiagramSource(input: {
 
 function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagram): void {
   DIAGRAM_ANNOTATORS[diagram.type](container, diagram.elements);
+}
+
+function applyZenUmlTheme(container: HTMLElement): void {
+  const svg = container.querySelector<SVGSVGElement>('svg[aria-roledescription="zenuml"]');
+
+  if (svg === null) {
+    return;
+  }
+  ZENUML_THEME_RULES.forEach(([selector, property, value]) => {
+    svg.querySelectorAll<SVGElement>(selector).forEach((element) => element.style.setProperty(property, value));
+  });
 }
 
 function annotateFlowchartElements(container: HTMLElement, elements: DiagramElement[]): void {
@@ -358,6 +409,63 @@ function annotateSequenceElements(container: HTMLElement, elements: DiagramEleme
 
   annotateSequenceParticipants(container, participants);
   annotateSequenceMessages(container, messages);
+}
+
+function annotateZenUmlElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedTexts = Array.from(container.querySelectorAll<RenderedDiagramElement>("text, foreignObject"));
+  const nextMatch = new Map<DiagramElement["kind"], number>([
+    ["node", 0], ["participant", 0], ["message", 0], ["group", 0]
+  ]);
+
+  elements.forEach((element) => annotateZenUmlElement(renderedTexts, nextMatch, element));
+}
+
+function annotateZenUmlElement(
+  renderedTexts: RenderedDiagramElement[],
+  nextMatch: Map<DiagramElement["kind"], number>,
+  element: DiagramElement
+): void {
+  const matchIndex = readZenUmlMatchIndex(renderedTexts, nextMatch.get(element.kind)!, element);
+
+  if (matchIndex === -1) {
+    return;
+  }
+
+  const text = renderedTexts[matchIndex]!;
+  nextMatch.set(element.kind, matchIndex + 1);
+  setDiagramElementDataset(readZenUmlTarget(text), element);
+  setDiagramElementDataset(text, element);
+}
+
+function readZenUmlTarget(text: RenderedDiagramElement): RenderedDiagramElement {
+  const group = text.closest("g");
+  return group === null ? text : group;
+}
+
+function readZenUmlMatchIndex(
+  renderedTexts: RenderedDiagramElement[],
+  start: number,
+  element: DiagramElement
+): number {
+  return renderedTexts.findIndex((text, index) => index >= start && isZenUmlLabelMatch(text, element));
+}
+
+function isZenUmlLabelMatch(text: RenderedDiagramElement, element: DiagramElement): boolean {
+  const rendered = normalizeTextContent(text).toLowerCase();
+  const expected = readZenUmlExpectedLabel(element).toLowerCase();
+
+  if (rendered === expected) {
+    return true;
+  }
+  return isZenUmlSubstringMatch(rendered, expected, element.kind);
+}
+
+function isZenUmlSubstringMatch(rendered: string, expected: string, kind: DiagramElement["kind"]): boolean {
+  return kind !== "participant" && expected.length > 0 && rendered.includes(expected);
+}
+
+function readZenUmlExpectedLabel(element: DiagramElement): string {
+  return element.kind === "group" ? element.label.replace(/^[^:]+:\s*/u, "") : element.label;
 }
 
 function readFlowchartNodeBounds(container: HTMLElement): SvgNodeBounds[] {
@@ -763,13 +871,14 @@ function annotateSequenceMessages(container: HTMLElement, messages: DiagramEleme
   let searchIndex = 0;
 
   for (const message of messages) {
-    const textIndex = findSequenceMessageTextIndex(textElements, message.label, searchIndex);
+    const textIndex = findSequenceMessageTextIndex(textElements, message.id, searchIndex);
 
     if (textIndex === -1) {
       continue;
     }
 
     searchIndex = textIndex + 1;
+    removeSequenceMessageTag(textElements[textIndex]!, message.id);
     setDiagramElementDataset(textElements[textIndex]!, message);
     setSequenceMessageLineDataset(lineElements.at(textIndex), message);
   }
@@ -980,16 +1089,53 @@ function isSequenceParticipantTarget(element: RenderedDiagramElement): boolean {
 
 function findSequenceMessageTextIndex(
   textElements: RenderedDiagramElement[],
-  label: string,
+  messageId: string,
   startIndex: number
 ): number {
+  const marker = `[${messageId}]`;
+
   for (let index = startIndex; index < textElements.length; index += 1) {
-    if (normalizeTextContent(textElements[index]) === label) {
+    if (normalizeTextContent(textElements[index]).startsWith(marker)) {
       return index;
     }
   }
 
   return -1;
+}
+
+function removeSequenceMessageTag(element: RenderedDiagramElement, messageId: string): void {
+  const marker = `[${messageId}]`;
+  const textNodes = readSequenceMessageTextNodes(element);
+  const text = textNodes.map((node) => node.textContent!).join("");
+  const markerEnd = text.indexOf(marker) + marker.length;
+  const messageLabel = text.slice(markerEnd);
+  const removeCount = markerEnd + messageLabel.length - messageLabel.trimStart().length;
+
+  removeSequenceTextPrefix(textNodes, removeCount);
+}
+
+function readSequenceMessageTextNodes(element: RenderedDiagramElement): Text[] {
+  const textWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let textNode = textWalker.nextNode();
+
+  while (textNode !== null) {
+    textNodes.push(textNode as Text);
+    textNode = textWalker.nextNode();
+  }
+  return textNodes;
+}
+
+function removeSequenceTextPrefix(textNodes: Text[], characterCount: number): void {
+  let remainingCharacters = characterCount;
+
+  textNodes.forEach((textNode) => {
+    const text = textNode.textContent!;
+    const removedCharacters = Math.min(text.length, remainingCharacters);
+
+    textNode.textContent = text.slice(removedCharacters);
+    remainingCharacters -= removedCharacters;
+  });
 }
 
 function normalizeTextContent(element: Element): string {

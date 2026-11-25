@@ -6,13 +6,13 @@ import { createTourMessage, invariant, type TourContext } from "./tour-context.j
 const SEQUENCE_PARTICIPANT_PATTERN =
   /^\s*(?:create\s+)?(participant|actor)\s+([A-Za-z][A-Za-z0-9_]*)(?:\s+as\s+(.+?))?\s*$/u;
 const SEQUENCE_MESSAGE_PATTERN =
-  /:\s*\[([A-Za-z][A-Za-z0-9_]*)\]\s+(.+?)\s*(?:;+\s*)?$/u;
+  /^(\s*[A-Za-z][A-Za-z0-9_]*(?:\(\))?\s*[-.=/\\|x<>)]{1,}\s*[+-]?\s*[A-Za-z][A-Za-z0-9_]*(?:\(\))?\s*:\s*)\[([A-Za-z][A-Za-z0-9_]*)\]\s+(.+?)(\s*;+\s*)?$/u;
 
 export function createSequenceDiagramModel(source: string, context: TourContext): DiagramModel {
   const sequenceModel = extractSequenceDiagramModel(source, context);
 
   return {
-    elements: [...sequenceModel.participants, ...sequenceModel.messages],
+    elements: [...sequenceModel.elements],
     renderSource: sequenceModel.renderSource,
     type: "sequence"
   };
@@ -20,6 +20,7 @@ export function createSequenceDiagramModel(source: string, context: TourContext)
 
 function extractSequenceDiagramModel(source: string, context: TourContext): SequenceDiagramModel {
   const elements = new Map<string, DiagramElement>();
+  const orderedElements: DiagramElement[] = [];
   const participants: DiagramElement[] = [];
   const messages: DiagramElement[] = [];
   const renderLines = source.split("\n").map((line) =>
@@ -28,11 +29,13 @@ function extractSequenceDiagramModel(source: string, context: TourContext): Sequ
       elements,
       line,
       messages,
+      orderedElements,
       participants
     })
   );
 
   return {
+    elements: orderedElements,
     messages,
     participants,
     renderSource: renderLines.join("\n")
@@ -44,6 +47,7 @@ function readSequenceRenderLine(input: {
   elements: Map<string, DiagramElement>;
   line: string;
   messages: DiagramElement[];
+  orderedElements: DiagramElement[];
   participants: DiagramElement[];
 }): string {
   const participant = readSequenceParticipant(input.line);
@@ -66,6 +70,7 @@ function registerSequenceParticipantLine(
     context: TourContext;
     elements: Map<string, DiagramElement>;
     line: string;
+    orderedElements: DiagramElement[];
     participants: DiagramElement[];
   },
   participant: DiagramElement
@@ -76,6 +81,7 @@ function registerSequenceParticipantLine(
     elements: input.elements
   });
   input.participants.push(participant);
+  input.orderedElements.push(participant);
 
   return input.line;
 }
@@ -86,17 +92,19 @@ function registerSequenceMessageLine(
     elements: Map<string, DiagramElement>;
     line: string;
     messages: DiagramElement[];
+    orderedElements: DiagramElement[];
   },
-  message: { element: DiagramElement; label: string }
+  message: DiagramElement
 ): string {
   registerSequenceElement({
     context: input.context,
-    element: message.element,
+    element: message,
     elements: input.elements
   });
-  input.messages.push(message.element);
+  input.messages.push(message);
+  input.orderedElements.push(message);
 
-  return replaceSequenceMessageLabel(input.line, message.label);
+  return input.line;
 }
 
 function readSequenceParticipant(line: string): DiagramElement | null {
@@ -119,27 +127,18 @@ function readSequenceParticipantLabel(match: RegExpMatchArray): string {
   return alias === undefined ? match[2]! : alias.trim();
 }
 
-function readSequenceMessage(line: string): { element: DiagramElement; label: string } | null {
+function readSequenceMessage(line: string): DiagramElement | null {
   const match = line.match(SEQUENCE_MESSAGE_PATTERN);
 
   if (match === null) {
     return null;
   }
 
-  const label = match[2].trim();
-
   return {
-    element: {
-      id: match[1],
-      kind: "message",
-      label
-    },
-    label
+    id: match[2],
+    kind: "message",
+    label: match[3].trim()
   };
-}
-
-function replaceSequenceMessageLabel(line: string, label: string): string {
-  return line.replace(SEQUENCE_MESSAGE_PATTERN, `: ${label}`);
 }
 
 function registerSequenceElement(input: {

@@ -1,0 +1,18 @@
+version: 1
+title: Checkout with inventory reservation
+diagram: ./checkout-zenuml.mmd
+steps:
+  - focus: [actor-customer, actor-ui]
+    text: "{{actor-customer}} starts a checkout in {{actor-ui}}."
+  - focus: [block-while-cart-has-items]
+    text: "The order repeats while {{block-while-cart-has-items}}."
+  - focus: [interaction-while-cart-has-items-order-service-submit]
+    text: "{{actor-order-service}} coordinates the submission."
+  - focus: [interaction-while-cart-has-items-order-service-submit-inventory-reserve]
+    text: "{{actor-inventory}} reserves stock before payment."
+  - focus: [block-while-cart-has-items-order-service-submit-if-inventory-available]
+    text: "The {{block-while-cart-has-items-order-service-submit-if-inventory-available}} branch decides whether payment can proceed."
+  - focus: [interaction-while-cart-has-items-order-service-submit-if-inventory-available-payment-gateway-authorize]
+    text: "{{actor-payment-gateway}} authorizes the payment."
+  - focus: [interaction-while-cart-has-items-order-service-submit-if-inventory-available-return-receipt]
+    text: "The order returns the receipt."

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import {
   applyFocusState,
@@ -9,8 +11,9 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedClassTour, resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { mermaidInitialize, mermaidRender } = vi.hoisted(() => ({
+const { mermaidInitialize, mermaidRegisterExternalDiagrams, mermaidRender } = vi.hoisted(() => ({
   mermaidInitialize: vi.fn(),
+  mermaidRegisterExternalDiagrams: vi.fn(async () => undefined),
   mermaidRender: vi.fn(async () => ({
     svg: [
       '<svg width="100%" style="max-width: 1440px;" viewBox="0 0 1440 960">',
@@ -26,13 +29,17 @@ const { mermaidInitialize, mermaidRender } = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({
   default: {
     initialize: mermaidInitialize,
+    registerExternalDiagrams: mermaidRegisterExternalDiagrams,
     render: mermaidRender
   }
 }));
 
+vi.mock("@mermaid-js/mermaid-zenuml", () => ({ default: { id: "zenuml-plugin" } }));
+
 describe("mermaid diagram helpers", () => {
   beforeEach(() => {
     mermaidInitialize.mockClear();
+    mermaidRegisterExternalDiagrams.mockClear();
     mermaidRender.mockClear();
     clearThemeTokens();
   });
@@ -87,11 +94,11 @@ describe("mermaid diagram helpers", () => {
         { id: "request_sent", kind: "message", label: "Send request" }
       ],
       path: "./sequence.mmd",
-      source: "sequenceDiagram\n  participant user as User\n  user->>user: Send request",
+      source: "sequenceDiagram\n  participant user as User\n  user->>user: [request_sent] Send request",
       type: "sequence"
     });
 
-    expect(source).toBe("sequenceDiagram\n  participant user as User\n  user->>user: Send request");
+    expect(source).toBe("sequenceDiagram\n  participant user as User\n  user->>user: [request_sent] Send request");
   });
 
   it("adds app-owned node classes to class diagram source", () => {
@@ -114,6 +121,18 @@ describe("mermaid diagram helpers", () => {
     expect(source).toBe("sankey-beta\nCheckout,Gateway,120");
   });
 
+  it("keeps ZenUML source unchanged for Mermaid rendering", () => {
+    const source = "zenuml\nA.method() {\n  return result\n}";
+
+    expect(createRenderableDiagramSource({ elements: [], path: "./zenuml.mmd", source, type: "zenuml" })).toBe(source);
+  });
+
+  it("preserves the authored fixture source for Mermaid rendering", async () => {
+    const source = await readFile(resolve(process.cwd(), "test/fixtures/zenuml/checkout-zenuml.mmd"), "utf8");
+
+    expect(createRenderableDiagramSource({ elements: [], path: "./checkout-zenuml.mmd", source, type: "zenuml" })).toBe(source);
+  });
+
   it("renders the diagram and tags nodes with stable app-owned hooks", async () => {
     const container = document.createElement("div");
     document.documentElement.style.setProperty("--bg-base", "#101820");
@@ -129,6 +148,7 @@ describe("mermaid diagram helpers", () => {
       diagram: resolvedPaymentFlowTour.diagram
     });
 
+    expect(mermaidRegisterExternalDiagrams).toHaveBeenCalledWith([{ id: "zenuml-plugin" }]);
     expect(mermaidInitialize).toHaveBeenCalledWith(
       expect.objectContaining({
         startOnLoad: false,
@@ -157,6 +177,64 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "",
       width: "1440"
     });
+  });
+
+  it("binds sequence colors to live light and dark theme tokens", async () => {
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: createSequenceDiagram() });
+
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        themeVariables: expect.objectContaining({
+          actorTextColor: "var(--color-node-base-text, #e6edf3)",
+          noteBkgColor: "var(--bg-surface, #161b22)",
+          noteTextColor: "var(--text-primary, #e6edf3)",
+          signalTextColor: "var(--color-node-base-text, #e6edf3)"
+        })
+      })
+    );
+  });
+
+  it("registers ZenUML and annotates source-derived actor, interaction, and block targets", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg aria-roledescription="zenuml" viewBox="0 0 640 480">',
+        "<style>.participant-box { fill: #ffffff; }</style>",
+        '<g class="actor"><rect class="participant-box"></rect><text>Customer</text></g>',
+        '<g class="message"><path></path><text>OrderService.submit()</text></g>',
+        '<g class="message"><path></path><foreignObject><div>receipt</div></foreignObject></g>',
+        "<text>unwrapped</text>",
+        '<g class="block"><rect></rect><text>cartHasItems</text></g>',
+        "</svg>"
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "actor-customer", kind: "participant" as const, label: "Customer" },
+        { id: "interaction-order-service-submit", kind: "message" as const, label: "submit()" },
+        { id: "interaction-return-receipt", kind: "message" as const, label: "receipt" },
+        { id: "interaction-unwrapped", kind: "message" as const, label: "unwrapped" },
+        { id: "interaction-missing", kind: "message" as const, label: "not rendered" },
+        { id: "block-while-cart-has-items", kind: "group" as const, label: "While: cartHasItems" }
+      ],
+      path: "./zenuml.mmd",
+      source: "zenuml\nOrderService.submit() {\n  return receipt\n}\nwhile(cartHasItems) {",
+      type: "zenuml" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup(["block-while-cart-has-items"]) });
+
+    expectFocusState(container, "actor-customer", "dimmed");
+    expectFocusState(container, "interaction-order-service-submit", "dimmed");
+    expectFocusState(container, "block-while-cart-has-items", "focused");
+    expect(container.querySelector('[data-node-id="interaction-return-receipt"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="interaction-unwrapped"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="interaction-missing"]')).toBeNull();
+    expect((container.querySelector(".participant-box") as SVGElement).style.fill).toBe("var(--color-node-base-fill)");
+    expect(mermaidRender).toHaveBeenCalledWith(expect.any(String), diagram.source);
   });
 
   it("renders and tags class diagram nodes", async () => {
@@ -807,7 +885,7 @@ describe("mermaid diagram helpers", () => {
         '<marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker>',
         "</defs>",
         '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
-        '<text class="messageText">Send request</text>',
+        '<text class="messageText">[request_sent] Send request</text>',
         '<line class="messageLine1"></line>',
         '<text class="messageText">Untagged response</text>',
         "</svg>",
@@ -826,6 +904,85 @@ describe("mermaid diagram helpers", () => {
 
     expectAnnotatedSequenceParticipant(container, "user");
     expectAnnotatedSequenceMessage(container);
+  });
+
+  it("focuses tagged sequence messages while keeping the participant and untagged context visible", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" viewBox="0 0 960 640">',
+        '<line class="messageLine0"></line>',
+        '<text class="messageText">[request_sent] Send request</text>',
+        '<text class="messageText">Untagged response</text>',
+        '<text class="noteText">Additional context</text>',
+        "</svg>",
+        '<div class="actor-top" name="user">User</div>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: createSequenceDiagram() });
+    applyFocusState({ container, focusGroup: createFocusGroup(["request_sent"]) });
+
+    expect(
+      container.querySelector('.messageText[data-node-id="request_sent"]')!.getAttribute("data-focus-state")
+    ).toBe("focused");
+    expect(container.querySelector('.actor-top[data-node-id="user"]')!.getAttribute("data-focus-state")).toBe(
+      "dimmed"
+    );
+    expect(container.querySelector(".messageText:not([data-node-id])")!.hasAttribute("data-focus-state")).toBe(
+      false
+    );
+    expect(container.querySelector(".noteText")!.hasAttribute("data-focus-state")).toBe(false);
+  });
+
+  it("uses explicit message ids to disambiguate duplicate labels and removes tags from split text", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" viewBox="0 0 960 640">',
+        '<line class="messageLine0"></line>',
+        '<line class="messageLine1"></line>',
+        '<line class="messageLine0"></line>',
+        '<text class="messageText">Repeated label</text>',
+        '<text class="messageText"><tspan>[first_</tspan><tspan>message] Repeated label</tspan></text>',
+        '<text class="messageText"> <tspan>[formatted_</tspan><tspan>message] Long</tspan><tspan> label</tspan></text>',
+        "</svg>"
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "first_message", kind: "message", label: "Repeated label" },
+          { id: "formatted_message", kind: "message", label: "Long label" }
+        ],
+        path: "./sequence.mmd",
+        source: "sequenceDiagram",
+        type: "sequence"
+      }
+    });
+    applyFocusState({ container, focusGroup: createFocusGroup(["first_message"]) });
+
+    expect(container.querySelectorAll(".messageText")[0]!.hasAttribute("data-node-id")).toBe(false);
+    expect(container.querySelector('.messageText[data-node-id="first_message"]')!.textContent).toBe(
+      "Repeated label"
+    );
+    expect(container.querySelector('.messageText[data-node-id="first_message"]')!.getAttribute("data-focus-state")).toBe(
+      "focused"
+    );
+    expect(container.querySelector('.messageText[data-node-id="formatted_message"]')!.textContent).toBe(
+      "Long label"
+    );
+    expect(container.querySelector('.messageText[data-node-id="formatted_message"]')!.getAttribute("data-focus-state")).toBe(
+      "dimmed"
+    );
+    expect(container.querySelectorAll(".messageLine0, .messageLine1")[0]!.hasAttribute("data-node-id")).toBe(
+      false
+    );
+    expect(container.querySelectorAll(".messageLine0, .messageLine1")[1]!.getAttribute("data-node-id")).toBe(
+      "first_message"
+    );
   });
 
   it("prefers exact participant header matches when Mermaid exposes them directly", async () => {
@@ -924,7 +1081,7 @@ describe("mermaid diagram helpers", () => {
       svg: [
         '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640"></svg>',
         '<div class="messageLine0"></div>',
-        '<div class="messageText">Send request</div>'
+        '<div class="messageText">[request_sent] Send request</div>'
       ].join("")
     });
 
@@ -950,7 +1107,7 @@ describe("mermaid diagram helpers", () => {
       svg: [
         '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
         '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
-        '<text class="messageText">Send request</text>',
+        '<text class="messageText">[request_sent] Send request</text>',
         "</svg>"
       ].join("")
     });
@@ -977,7 +1134,7 @@ describe("mermaid diagram helpers", () => {
       svg: [
         '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
         '<line class="messageLine0" marker-end="url(#arrowhead)"></line>',
-        '<text class="messageText">Send request</text>',
+        '<text class="messageText">[request_sent] Send request</text>',
         "</svg>",
         '<div id="arrowhead"></div>'
       ].join("")
@@ -1000,7 +1157,7 @@ describe("mermaid diagram helpers", () => {
         '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
         '<defs><marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker></defs>',
         '<line class="messageLine0" marker-start="url(#\'\')" marker-mid="url(arrowhead)" marker-end="url(#arrowhead)"></line>',
-        '<text class="messageText">Send request</text>',
+        '<text class="messageText">[request_sent] Send request</text>',
         "</svg>"
       ].join("")
     });
@@ -1024,7 +1181,7 @@ describe("mermaid diagram helpers", () => {
         '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
         '<defs><marker id="arrowhead"><path d="M -1 0 L 10 5 L 0 10 z"></path></marker></defs>',
         '<line class="messageLine0" marker-start="url(#arrowhead)" marker-end="url(#arrowhead)"></line>',
-        '<text class="messageText">Send request</text>',
+        '<text class="messageText">[request_sent] Send request</text>',
         "</svg>"
       ].join("")
     });
@@ -1087,7 +1244,7 @@ function createSequenceDiagram() {
       { id: "request_sent", kind: "message" as const, label: "Send request" }
     ],
     path: "./sequence.mmd",
-    source: "sequenceDiagram",
+    source: "sequenceDiagram\n  user->>api: [request_sent] Send request",
     type: "sequence" as const
   };
 }
@@ -1387,4 +1544,8 @@ async function withZeroLengthFlowchartGeometry(run: () => Promise<void>): Promis
   } finally {
     restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
   }
+}
+
+function expectFocusState(container: HTMLElement, id: string, state: string): void {
+  expect(container.querySelector(`[data-node-id="${id}"]`)?.getAttribute("data-focus-state")).toBe(state);
 }

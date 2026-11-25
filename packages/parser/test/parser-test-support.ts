@@ -21,6 +21,10 @@ export const CLASS_DIAGRAM_FIXTURE_TOUR_PATH = resolve(
   TEST_DIR,
   "../../web-player/test/fixtures/class-diagram.tour.yaml"
 );
+export const ZENUML_FIXTURE_TOUR_PATH = resolve(
+  TEST_DIR,
+  "../../web-player/test/fixtures/zenuml/checkout-zenuml.tour.yaml"
+);
 
 export function restoreParserTestState(): void {
   vi.restoreAllMocks();

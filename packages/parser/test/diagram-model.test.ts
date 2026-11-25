@@ -190,8 +190,7 @@ describe("@diagram-tour/parser diagram model", () => {
       { id: "api", kind: "participant", label: "API Gateway" },
       { id: "request_sent", kind: "message", label: "Send request" }
     ]);
-    expect(model.renderSource).toContain("user->>api: Send request");
-    expect(model.renderSource).not.toContain("[request_sent]");
+    expect(model.renderSource).toContain("user->>api: [request_sent] Send request");
   });
 
   it("detects sankey diagrams and extracts unique nodes in first-seen source order", () => {

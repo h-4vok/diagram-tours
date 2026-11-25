@@ -37,7 +37,7 @@ Avoid:
 - IDs that depend on presentation wording
 - renaming IDs just because the label changed
 
-For sequence diagrams, participants must be declared explicitly and addressable messages must start with `[message_id] ` inside the message text:
+For sequence diagrams, declare each participant or actor explicitly. Give a message a stable ID by prefixing its text with `[message_id] `:
 
 ```mermaid
 sequenceDiagram
@@ -52,6 +52,16 @@ In that example:
 - `customer` and `api` are participant IDs
 - `submit_order` is the message ID
 - the user-facing label for `submit_order` is `Submit order`
+
+Sequence focus keys use the declared participant or actor ID, or the explicit message ID. IDs must be unique across both kinds within one diagram. The tag is hidden from the rendered message label; Mermaid syntax around it stays intact. Untagged messages, lifelines, activation bars, notes, and `alt`/`opt`/`loop`/`par` frames remain visible context and are not focus targets. Tagged messages inside those frames remain focusable. Sequence constructs without a stable source ID stay out of the authoring contract; Mermaid-generated SVG IDs are never focus keys.
+
+## ZenUML Focus Keys
+
+ZenUML source uses `zenuml` and its own interaction syntax. Declared actors and participants use `actor-<source-name>` keys. Calls, messages, returns, and creations use `interaction-<parent-path>-<interaction-name>` keys. Named `if`, `while`, `for`, `forEach`, `foreach`, and `loop` blocks use `block-<parent-path>-<block-kind>-<condition>` keys. Names are lower-case kebab case, including a boundary between camel-case words; repeated semantic keys receive `-2`, `-3`, and so on in source order. Nested call and named-block keys include their parent path.
+
+For example, `OrderService.submit()` inside `while(cartHasItems) { ... }` uses `interaction-while-cart-has-items-order-service-submit`, and the loop uses `block-while-cart-has-items`. These are parser-derived source keys, not Mermaid-generated SVG IDs. ZenUML actors may be introduced explicitly (`@Actor Customer`, `UI as Checkout UI`) or by an interaction. Mermaid's annotator symbol and display alias do not change the actor key; the source identifier does. Keep keys in step `focus` and `{{key}}` references, as in [`examples/zenuml/checkout-zenuml.tour.yaml`](../examples/zenuml/checkout-zenuml.tour.yaml).
+
+ZenUML renders the full original source, including comments, titles, parameters, annotations, and all block delimiters. Actor declarations and interaction statements are focusable. Named conditional and loop blocks are focusable as a group, and their interactions remain individually focusable. Anonymous delimiters, `opt`, `par`, `try`, `catch`, and `finally` blocks, `else`/`catch`/`finally` markers, lifelines, rendering decorations, and comments stay contextual. Do not use generated SVG IDs as keys.
 
 ## Keep Tour Text Label-Friendly
 
@@ -98,7 +108,7 @@ Use `focus: []` when the step should reset attention, summarize, or let the read
 focus: []
 ```
 
-For sequence diagrams, `focus` may contain participant IDs or tagged message IDs:
+For sequence diagrams, `focus` may contain declared participant/actor IDs or tagged message IDs:
 
 ```yaml
 focus:
@@ -130,6 +140,9 @@ examples/
   sequence/
     sequence-order-sequence.mmd
     sequence-order-sequence.tour.yaml
+  zenuml/
+    checkout-zenuml.mmd
+    checkout-zenuml.tour.yaml
   sankey/
     sankey-ops-review.mmd
     sankey-ops-review.tour.yaml
@@ -147,7 +160,7 @@ examples/
 
 The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
 
-For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message. For Sankey diagrams, that is one step per node in source order.
+For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message, in source order. For ZenUML, generated targets are declared and encountered actors, interactions, and named conditional/loop blocks in source order. For Sankey diagrams, that is one step per node in source order.
 
 Markdown-backed diagrams are also valid:
 
