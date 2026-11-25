@@ -242,7 +242,7 @@ The current parser includes contextual information such as the tour source path 
 Example:
 
 ```text
-Tour "examples/flowchart/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node id "validation"
+Tour "examples/flowchart/checkout-payment-flow.tour.yaml": step 2 focus references unknown Mermaid node ID or transition key "validation"
 ```
 
 The published CLI exposes that validation through:
