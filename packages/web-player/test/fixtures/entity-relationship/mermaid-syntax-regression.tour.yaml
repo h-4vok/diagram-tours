@@ -1,0 +1,73 @@
+version: 1
+title: ER Syntax Regression
+diagram: ./mermaid-syntax-regression.mmd
+
+steps:
+  - focus:
+      - A
+    text: Focus {{A}}, keeping the first entity alias as its display label.
+
+  - focus:
+      - attribute-a-id-2
+      - attribute-a-id-3
+      - attribute-a-tags
+      - attribute-a-pk-id
+      - attribute-a-prenom
+      - attribute-a-name
+      - attribute-a-codes
+      - attribute-a-code
+      - attribute-a-note
+      - attribute-h-id
+    text: Focus inline attributes, including lowercase and prefixed keys.
+
+  - focus:
+      - relationship-a-to-b-owns-one-identifying-zero-or-more
+    text: Focus the spaced cardinality relationship.
+
+  - focus:
+      - relationship-a-to-b-owns-one-identifying-zero-or-more-2
+    text: Focus the no-space relationship form.
+
+  - focus:
+      - relationship-a-to-b-optional-link-one-non-identifying-zero-or-more
+    text: Focus the dashed optional link.
+
+  - focus:
+      - relationship-a-to-c-extends-unknown-identifying-one
+    text: Focus the unmarked cardinality.
+
+  - focus:
+      - relationship-a-to-b-dotted-link-one-non-identifying-one-or-more
+    text: Focus the dotted link.
+
+  - focus:
+      - relationship-a-to-a-latest-loop-one-identifying-zero-or-more
+    text: Focus the latest self-referencing relationship; Mermaid reuses its native loop identity.
+
+  - focus:
+      - relationship-a-to-b-follows-loops-one-identifying-zero-or-more
+    text: Confirm the relationship after repeated self-loops retains its native ordinal.
+
+  - focus:
+      - relationship-a-to-b-see-x-o-y-one-identifying-zero-or-more
+    text: Ignore arrow syntax in quoted labels and comments while focusing this real relationship.
+
+  - focus:
+      - relationship-a-to-b-later-one-identifying-zero-or-more
+      - NEXT
+      - attribute-next-code
+    text: Focus the relationship and the entity block that follows its role on the same line.
+
+  - focus:
+      - relationship-a-to-b-after-block-one-non-identifying-zero-or-more
+    text: Confirm the relationship after the inline entity block keeps its native ordinal.
+
+  - focus:
+      - attribute-a-id
+    text: Focus the entity whose ID resembles a derived attribute key.
+
+  - focus:
+      - relationship-k-to-l-follows-block-one-identifying-zero-or-more
+      - K
+      - attribute-k-id
+    text: Focus a relationship and its entity block after a same-line closing brace.

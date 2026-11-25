@@ -1,0 +1,19 @@
+requirementDiagram
+direction LR
+requirement "A <- X" {
+  id: 1
+  text: A quoted source name with an arrow token that wraps inside the node box.
+  risk: high
+  verifyMethod: test
+}
+requirement B {
+  id: 2
+  text: Target requirement.
+  risk: low
+  verifyMethod: inspection
+}
+"A <- X" - verifies -> B
+"A <- X" <- verifies - B
+"A <- X" - contains -> "A <- X"
+"A <- X" - verifies -> "A <- X"
+"A <- X" - verifies -> B

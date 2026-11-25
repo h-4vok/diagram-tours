@@ -9,6 +9,8 @@ import type {
 import type { DiagramModel } from "./parser-contracts.js";
 import { createClassDiagramModel } from "./class-diagram-model.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
+import { createEntityRelationshipDiagramModel } from "./entity-relationship-diagram-model.js";
+import { createRequirementDiagramModel } from "./requirement-diagram-model.js";
 import { createMindmapDiagramModel } from "./mindmap-diagram-model.js";
 import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
@@ -28,11 +30,15 @@ const STATE_DIAGRAM_PATTERN = /^[ \t]*stateDiagram-v2\b/u;
 const CLASS_DIAGRAM_PATTERN = /^[ \t]*classDiagram\b/u;
 const SANKEY_DIAGRAM_PATTERN = /^[ \t]*sankey-beta\b/u;
 const ZENUML_DIAGRAM_PATTERN = /^[ \t]*zenuml\b/u;
+const ENTITY_RELATIONSHIP_DIAGRAM_PATTERN = /^[ \t]*erDiagram\b/u;
+const REQUIREMENT_DIAGRAM_PATTERN = /^[ \t]*requirementDiagram\b/iu;
 const FLOWCHART_DIAGRAM_PATTERN = /^[ \t]*(?:flowchart|graph)\b/u;
 const MINDMAP_FRONTMATTER_PATTERN = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/u;
 const MINDMAP_DIRECTIVE_PATTERN = /%%\{[\s\S]*?\}%%/gu;
 const DIAGRAM_MODEL_FACTORIES = {
   classDiagram: createClassDiagramDiagramModel,
+  erDiagram: createEntityRelationshipDiagramModelAdapter,
+  requirementDiagram: createRequirementDiagramModelAdapter,
   flowchart: createFlowchartDiagramModelAdapter,
   mindmap: createMindmapDiagramModelAdapter,
   sankey: createSankeyDiagramModelAdapter,
@@ -47,7 +53,9 @@ const DIAGRAM_TYPE_PATTERNS = [
   [SEQUENCE_DIAGRAM_PATTERN, "sequence"],
   [STATE_DIAGRAM_PATTERN, "stateDiagram"],
   [SANKEY_DIAGRAM_PATTERN, "sankey"],
-  [ZENUML_DIAGRAM_PATTERN, "zenuml"]
+  [ZENUML_DIAGRAM_PATTERN, "zenuml"],
+  [ENTITY_RELATIONSHIP_DIAGRAM_PATTERN, "erDiagram"],
+  [REQUIREMENT_DIAGRAM_PATTERN, "requirementDiagram"]
 ] as const;
 
 type ElementIndex = Map<string, DiagramElement>;
@@ -174,6 +182,14 @@ function createSankeyDiagramModelAdapter(source: string): DiagramModel {
   return createSankeyDiagramModel(source);
 }
 
+function createEntityRelationshipDiagramModelAdapter(source: string): DiagramModel {
+  return createEntityRelationshipDiagramModel(source);
+}
+
+function createRequirementDiagramModelAdapter(source: string): DiagramModel {
+  return createRequirementDiagramModel(source);
+}
+
 function resolveLoadedTourSteps(
   steps: TourStep[],
   input: {
@@ -266,8 +282,10 @@ function resolveElement(input: {
 function readUnknownElementTarget(diagramType: DiagramType): string {
   const targets: Partial<Record<DiagramType, string>> = {
     flowchart: "node ID or transition key",
+    erDiagram: "entity ID, attribute key, or relationship key",
     sequence: "participant or message id",
     mindmap: "mindmap topic key",
+    requirementDiagram: "requirement ID or relationship key",
     stateDiagram: "state or transition key",
     sankey: "node label",
     zenuml: "ZenUML actor, interaction, or block key"

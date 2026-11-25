@@ -17,6 +17,12 @@ type FlowchartConnectorEndpoint = {
   sourceId: string;
   targetId: string;
 };
+type RequirementEdgeData = { id: string };
+type RequirementDiagramData = { edges: RequirementEdgeData[] };
+type RequirementDatabasePrototype = {
+  getData: (this: RequirementDatabase) => RequirementDiagramData;
+};
+type RequirementDatabase = object;
 type MermaidThemeVariables = Record<string, string>;
 type SvgNodeBounds = {
   elementId: string;
@@ -31,10 +37,14 @@ const MESSAGE_MARKER_ATTRIBUTES = ["marker-start", "marker-mid", "marker-end"] a
 const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
 const STATE_GROUP_SELECTOR = "g.statediagram-state, g.statediagram-cluster, g.stateGroup";
+const ER_ENTITY_SELECTOR = "svg .nodes .node";
+const ER_RELATIONSHIP_SELECTOR = "svg .edgePaths .relationshipLine";
 const DIAGRAM_ANNOTATORS = {
   classDiagram: annotateClassElements,
+  erDiagram: annotateEntityRelationshipElements,
   flowchart: annotateFlowchartElements,
   mindmap: annotateMindmapElements,
+  requirementDiagram: annotateRequirementElements,
   sankey: annotateSankeyElements,
   sequence: annotateSequenceElements,
   stateDiagram: annotateStateDiagramElements,
@@ -43,6 +53,7 @@ const DIAGRAM_ANNOTATORS = {
   ResolvedDiagram["type"],
   (container: HTMLElement, elements: DiagramElement[]) => void
 >;
+const requirementDatabasePrototypes = new WeakSet<object>();
 const MERMAID_THEME_DEFAULTS = {
   background: "#0e1116",
   fontFamily: MERMAID_FONT_STACK,
@@ -118,7 +129,8 @@ export async function renderMermaidDiagram(input: {
 
   const renderResult = await renderDiagramSource({
     mermaid,
-    source: createRenderableDiagramSource(input.diagram)
+    source: createRenderableDiagramSource(input.diagram),
+    type: input.diagram.type
   });
 
   input.container.innerHTML = renderResult.svg;
@@ -151,6 +163,7 @@ export function applyFocusState(input: {
       isFocused: focusedElementIds.has(readDiagramElementId(element))
     });
   });
+  setRequirementRelationshipContext(input.container, input.focusGroup);
 }
 
 export function createRenderableDiagramSource(diagram: ResolvedDiagram): string {
@@ -170,6 +183,9 @@ export function getMermaidErrorMessage(): string {
 }
 
 function readMermaidDiagramConfig(diagram: ResolvedDiagram): Record<string, unknown> {
+  if (diagram.type === "requirementDiagram") {
+    return { fontSize: 14 };
+  }
   if (diagram.type !== "sankey") {
     return {};
   }
@@ -273,12 +289,43 @@ function createRenderId(): string {
 async function renderDiagramSource(input: {
   mermaid: MermaidModule;
   source: string;
+  type: ResolvedDiagram["type"];
 }) {
   try {
+    if (input.type === "requirementDiagram") {
+      await normalizeRequirementEdgeIds(input.mermaid.default, input.source);
+    }
     return await input.mermaid.default.render(createRenderId(), input.source);
   } catch (_error) {
     throw new Error(MERMAID_ERROR_MESSAGE);
   }
+}
+
+async function normalizeRequirementEdgeIds(mermaid: typeof Mermaid, source: string): Promise<void> {
+  await mermaid.parse(source);
+  const diagram = await mermaid.mermaidAPI.getDiagramFromText(source);
+  const database = diagram.db as unknown as RequirementDatabase;
+  const prototype = Object.getPrototypeOf(database) as RequirementDatabasePrototype;
+
+  if (requirementDatabasePrototypes.has(prototype)) {
+    return;
+  }
+  patchRequirementDatabase(prototype);
+  requirementDatabasePrototypes.add(prototype);
+}
+
+function patchRequirementDatabase(prototype: RequirementDatabasePrototype): void {
+  const getData = prototype.getData;
+  prototype.getData = function () {
+    const data = getData.call(this);
+    return {
+      ...data,
+      edges: data.edges.map((edge, index) => ({
+        ...edge,
+        id: `diagram-tour-requirement-edge-${index}`
+      }))
+    };
+  };
 }
 
 function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagram): void {
@@ -466,6 +513,428 @@ function annotateClassElements(container: HTMLElement, elements: DiagramElement[
     setDiagramElementDataset(renderedClassNode, classElement);
     annotateClassNodeMembers(renderedClassNode, memberElementGroups.get(classElement.id) ?? []);
   });
+}
+
+function annotateEntityRelationshipElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedEntities = Array.from(container.querySelectorAll<RenderedDiagramElement>(ER_ENTITY_SELECTOR));
+  const entities = elements.filter((element) => element.kind === "node");
+  const relationships = elements.filter((element) => element.kind === "relationship");
+  const renderedRelationships = Array.from(
+    container.querySelectorAll<RenderedDiagramElement>(ER_RELATIONSHIP_SELECTOR)
+  );
+  const entityTargets = new Map(entities.map((entity) => [
+    entity.id,
+    renderedEntities.find((rendered) => isRenderedEntity(rendered, entity.id))
+  ]));
+  entities.forEach((entity) => annotateEntityRelationshipNode(entityTargets.get(entity.id), entity, elements));
+  relationships.forEach((relationship) => annotateMatchingRelationship({
+    container,
+    connectors: renderedRelationships,
+    entityTargets,
+    relationship
+  }));
+}
+
+function annotateRequirementElements(container: HTMLElement, elements: DiagramElement[]): void {
+  elements.forEach((element) => {
+    if (element.kind === "relationship") {
+      annotateRequirementRelationship(container, element);
+      return;
+    }
+    const node = Array.from(container.querySelectorAll<RenderedDiagramElement>("svg.requirementDiagram g.node"))
+      .find((candidate) => candidate.id === element.id);
+    if (node !== undefined) {
+      setDiagramElementDataset(node, element);
+    }
+  });
+}
+
+function annotateRequirementRelationship(container: HTMLElement, relationship: DiagramElement): void {
+  const renderId = relationship.renderId;
+  if (renderId === undefined) {
+    return;
+  }
+  const sourceId = relationship.renderSourceId as string;
+  const targetId = relationship.renderTargetId as string;
+  const paths = readRequirementRelationshipPaths({ container, renderId, sourceId, targetId });
+  const label = readRequirementRelationshipLabel(container, renderId);
+  annotateRequirementRelationshipTargets(paths, label, relationship);
+}
+
+function readRequirementRelationshipPaths(input: {
+  container: HTMLElement;
+  renderId: string;
+  sourceId: string;
+  targetId: string;
+}): SVGElement[] {
+  const { container, renderId, sourceId, targetId } = input;
+  const pathIds = sourceId === targetId
+    ? [renderId, `${sourceId}-cyclic-special-1`, `${sourceId}-cyclic-special-2`]
+    : [renderId];
+  return Array.from(container.querySelectorAll<SVGElement>("svg.requirementDiagram .edgePaths > path"))
+    .filter((candidate) => pathIds.includes(candidate.id));
+}
+
+function annotateRequirementRelationshipTargets(
+  paths: SVGElement[],
+  label: SVGElement | undefined,
+  relationship: DiagramElement
+): void {
+  if (paths.length === 0 || label === undefined) {
+    return;
+  }
+  paths.forEach((path) => {
+    setDiagramElementDataset(path, relationship);
+    path.dataset.requirementSourceId = relationship.renderSourceId as string;
+    path.dataset.requirementTargetId = relationship.renderTargetId as string;
+  });
+  setDiagramElementDataset(label, relationship);
+  label.dataset.requirementSourceId = relationship.renderSourceId as string;
+  label.dataset.requirementTargetId = relationship.renderTargetId as string;
+}
+
+function readRequirementRelationshipLabel(container: HTMLElement, renderId: string): SVGElement | undefined {
+  return Array.from(container.querySelectorAll<SVGElement>("svg.requirementDiagram .edgeLabels > .edgeLabel"))
+    .find((candidate) => Array.from(candidate.querySelectorAll<SVGElement>(".label[data-id]"))
+      .some((label) => label.getAttribute("data-id") === renderId));
+}
+
+function setRequirementRelationshipContext(container: HTMLElement, focusGroup: FocusGroup): void {
+  const nodes = Array.from(container.querySelectorAll<SVGElement>("svg.requirementDiagram g.node"));
+  nodes.forEach((node) => node.removeAttribute("data-requirement-context"));
+  if (focusGroup.mode === "empty") {
+    return;
+  }
+  const focusedRelationships = Array.from(
+    container.querySelectorAll<SVGElement>('svg.requirementDiagram [data-diagram-element-kind="relationship"]')
+  ).filter((element) => focusGroup.elementIds.includes(element.dataset.diagramElementId as string));
+  focusedRelationships.forEach((relationship) => markRequirementEndpoints(nodes, relationship));
+}
+
+function markRequirementEndpoints(nodes: SVGElement[], relationship: SVGElement): void {
+  const endpointIds = [relationship.dataset.requirementSourceId, relationship.dataset.requirementTargetId];
+  nodes.filter((node) => endpointIds.includes(node.id)).forEach((node) => {
+    node.dataset.requirementContext = "true";
+  });
+}
+
+function annotateMatchingRelationship(input: {
+  connectors: RenderedDiagramElement[];
+  container: HTMLElement;
+  entityTargets: Map<string, RenderedDiagramElement | undefined>;
+  relationship: DiagramElement;
+}): void {
+  const { connectors: renderedConnectors, container, entityTargets, relationship } = input;
+  const connectors = readEntityRelationshipConnectors({ connectors: renderedConnectors, entityTargets, relationship });
+  const label = readEntityRelationshipLabel(container, connectors, relationship);
+  if (hasMatchingRelationshipTargets({ connectors, entityTargets, label, relationship })) {
+    connectors.forEach((connector) => annotateEntityRelationshipConnector(connector, relationship));
+    if (label !== undefined) {
+      setDiagramElementDataset(label, relationship);
+    }
+  }
+}
+
+function hasMatchingRelationshipTargets(input: {
+  connectors: RenderedDiagramElement[];
+  entityTargets: Map<string, RenderedDiagramElement | undefined>;
+  label: RenderedDiagramElement | undefined;
+  relationship: DiagramElement;
+}): boolean {
+  return hasMatchingEntityRelationshipLabel(input.relationship, input.label) &&
+    hasMatchingEntityRelationshipSemantics(input.relationship, input.connectors, input.entityTargets);
+}
+
+function hasMatchingEntityRelationshipLabel(
+  relationship: DiagramElement,
+  label: RenderedDiagramElement | undefined
+): boolean {
+  return !hasEntityRelationshipRole(relationship.renderLabel) || label !== undefined;
+}
+
+function hasEntityRelationshipRole(label: string | undefined): label is string {
+  return label !== undefined && label.length > 0;
+}
+
+function hasMatchingEntityRelationshipSemantics(
+  relationship: DiagramElement,
+  connectors: RenderedDiagramElement[],
+  entityTargets: Map<string, RenderedDiagramElement | undefined>
+): boolean {
+  if (!hasRelationshipSemanticMetadata(relationship)) {
+    return true;
+  }
+  const edgeId = readEntityRelationshipEdgeId(entityTargets, relationship);
+  return edgeId !== null && hasMatchingEntityRelationshipIdentity(relationship, connectors, edgeId);
+}
+
+function hasRelationshipSemanticMetadata(relationship: DiagramElement): boolean {
+  return relationship.renderLinkType !== undefined && relationship.renderSourceCardinality !== undefined &&
+    relationship.renderTargetCardinality !== undefined;
+}
+
+function hasMatchingEntityRelationshipIdentity(
+  relationship: DiagramElement,
+  connectors: RenderedDiagramElement[],
+  edgeId: string
+): boolean {
+  return relationship.renderSourceId === relationship.renderTargetId
+    ? hasMatchingEntityRelationshipLoopSemantics(relationship, connectors, edgeId)
+    : hasMatchingEntityRelationshipConnector(relationship, connectors, edgeId);
+}
+
+function hasMatchingEntityRelationshipConnector(
+  relationship: DiagramElement,
+  connectors: RenderedDiagramElement[],
+  edgeId: string
+): boolean {
+  const connector = connectors.find((candidate) => candidate.getAttribute("data-id") === edgeId);
+  if (connector === undefined) {
+    return false;
+  }
+  return hasMatchingRelationshipCardinalities(relationship, connector) &&
+    hasEntityRelationshipLinkType(connector, relationship.renderLinkType!);
+}
+
+function hasMatchingRelationshipCardinalities(relationship: DiagramElement, connector: RenderedDiagramElement): boolean {
+  return hasEntityRelationshipCardinality(connector, "marker-start", relationship.renderSourceCardinality!) &&
+    hasEntityRelationshipCardinality(connector, "marker-end", relationship.renderTargetCardinality!);
+}
+
+function hasMatchingEntityRelationshipLoopSemantics(
+  relationship: DiagramElement,
+  connectors: RenderedDiagramElement[],
+  edgeId: string
+): boolean {
+  const prefix = edgeId.slice(0, -"mid".length);
+  const pair = readLoopConnectorPair(connectors, prefix);
+  if (pair === null) {
+    return false;
+  }
+  return hasMatchingLoopCardinalities(relationship, pair.start, pair.end) &&
+    hasMatchingLoopLinkType(connectors, relationship);
+}
+
+function readLoopConnectorPair(
+  connectors: RenderedDiagramElement[],
+  prefix: string
+): { end: RenderedDiagramElement; start: RenderedDiagramElement } | null {
+  const start = connectors.find((connector) => connector.getAttribute("data-id") === `${prefix}1`);
+  const end = connectors.find((connector) => connector.getAttribute("data-id") === `${prefix}2`);
+  return start === undefined || end === undefined ? null : { end, start };
+}
+
+function hasMatchingLoopLinkType(connectors: RenderedDiagramElement[], relationship: DiagramElement): boolean {
+  return connectors.every((connector) => hasEntityRelationshipLinkType(connector, relationship.renderLinkType!));
+}
+
+function hasMatchingLoopCardinalities(
+  relationship: DiagramElement,
+  start: RenderedDiagramElement,
+  end: RenderedDiagramElement
+): boolean {
+  return hasEntityRelationshipCardinality(start, "marker-start", relationship.renderSourceCardinality!) &&
+    hasEntityRelationshipCardinality(end, "marker-end", relationship.renderTargetCardinality!);
+}
+
+function hasEntityRelationshipCardinality(
+  connector: RenderedDiagramElement,
+  attribute: "marker-end" | "marker-start",
+  cardinality: string
+): boolean {
+  const marker = connector.getAttribute(attribute) ?? "";
+  const markerName = readMarkerName(cardinality);
+  if (markerName === "") {
+    return marker.length === 0;
+  }
+  return marker.includes(`-${markerName}${readMarkerSuffix(attribute)}`);
+}
+
+function readMarkerName(cardinality: string): string {
+  return ({
+    one: "onlyOne",
+    "zero-or-one": "zeroOrOne",
+    "zero-or-more": "zeroOrMore",
+    "one-or-more": "oneOrMore",
+    unknown: ""
+  } as Record<string, string>)[cardinality]!;
+}
+
+function readMarkerSuffix(attribute: "marker-end" | "marker-start"): string {
+  return attribute === "marker-start" ? "Start" : "End";
+}
+
+function hasEntityRelationshipLinkType(connector: RenderedDiagramElement, linkType: string): boolean {
+  const pattern = linkType === "identifying" ? "edge-pattern-solid" : "edge-pattern-dashed";
+  return connector.classList.contains(pattern);
+}
+
+function readEntityRelationshipConnectors(input: {
+  connectors: RenderedDiagramElement[];
+  entityTargets: Map<string, RenderedDiagramElement | undefined>;
+  relationship: DiagramElement;
+}): RenderedDiagramElement[] {
+  const edgeId = readEntityRelationshipEdgeId(input.entityTargets, input.relationship);
+  if (edgeId === null) {
+    return [];
+  }
+  const loopPrefix = edgeId.endsWith("-cyclic-special-mid")
+    ? edgeId.slice(0, -"mid".length)
+    : undefined;
+  return input.connectors.filter((candidate) => isEntityRelationshipConnector(candidate, edgeId, loopPrefix));
+}
+
+function isEntityRelationshipConnector(
+  candidate: RenderedDiagramElement,
+  edgeId: string,
+  loopPrefix: string | undefined
+): boolean {
+  const candidateId = candidate.getAttribute("data-id");
+  return candidateId === edgeId || hasEntityRelationshipLoopPrefix(candidateId, loopPrefix);
+}
+
+function hasEntityRelationshipLoopPrefix(candidateId: string | null, loopPrefix: string | undefined): boolean {
+  return loopPrefix !== undefined && candidateId?.startsWith(loopPrefix) === true;
+}
+
+function readEntityRelationshipEdgeId(
+  entityTargets: Map<string, RenderedDiagramElement | undefined>,
+  relationship: DiagramElement
+): string | null {
+  const source = entityTargets.get(relationship.renderSourceId!);
+  const target = entityTargets.get(relationship.renderTargetId!);
+  if (source === undefined || target === undefined) {
+    return null;
+  }
+  return createEntityRelationshipEdgeId(source, target, relationship.renderOrder!);
+}
+
+function createEntityRelationshipEdgeId(
+  source: RenderedDiagramElement,
+  target: RenderedDiagramElement,
+  renderOrder: number
+): string {
+  return source.id === target.id
+    ? `${source.id}-cyclic-special-mid`
+    : `id_${source.id}_${target.id}_${renderOrder}`;
+}
+
+function isRenderedEntity(rendered: RenderedDiagramElement, sourceId: string): boolean {
+  const prefix = `entity-${sourceId}-`;
+  const renderedId = rendered.id;
+  const suffix = renderedId.slice(prefix.length);
+  return renderedId.startsWith(prefix) && /^\d+$/u.test(suffix);
+}
+
+function readEntityRelationshipLabel(
+  container: HTMLElement,
+  connectors: RenderedDiagramElement[],
+  relationship: DiagramElement
+): RenderedDiagramElement | undefined {
+  const expectedId = readEntityRelationshipEdgeIdFromRelationship(relationship, connectors);
+  if (expectedId === null) {
+    return undefined;
+  }
+  return Array.from(container.querySelectorAll<RenderedDiagramElement>("svg .edgeLabels .label[data-id]"))
+    .find((label) => label.getAttribute("data-id") === expectedId);
+}
+
+function readEntityRelationshipEdgeIdFromRelationship(
+  relationship: DiagramElement,
+  connectors: RenderedDiagramElement[]
+): string | null {
+  if (connectors.length === 0) {
+    return null;
+  }
+  if (relationship.renderSourceId === relationship.renderTargetId) {
+    return readEntityRelationshipLoopLabelId(connectors);
+  }
+  return connectors[0]!.getAttribute("data-id");
+}
+
+function readEntityRelationshipLoopLabelId(connectors: RenderedDiagramElement[]): string | null {
+  const labelConnector = connectors.find((connector) =>
+    connector.getAttribute("data-id")?.endsWith("-cyclic-special-mid")
+  );
+  return labelConnector?.getAttribute("data-id") ?? null;
+}
+
+function annotateEntityRelationshipNode(
+  renderedEntity: RenderedDiagramElement | undefined,
+  entity: DiagramElement,
+  elements: DiagramElement[]
+): void {
+  if (renderedEntity === undefined) {
+    return;
+  }
+
+  setDiagramElementDataset(renderedEntity, entity);
+  elements
+    .filter((element) => element.kind === "attribute" && element.renderSourceId === entity.id)
+    .forEach((attribute) => annotateEntityRelationshipAttribute(renderedEntity, attribute));
+}
+
+function annotateEntityRelationshipAttribute(
+  renderedEntity: RenderedDiagramElement,
+  attribute: DiagramElement
+): void {
+  const renderedNames = Array.from(renderedEntity.querySelectorAll<RenderedDiagramElement>("g.attribute-name"));
+  const renderedName = readEntityRelationshipAttributeName(renderedNames, attribute);
+  const index = renderedNames.indexOf(renderedName!);
+  if (index < 0) {
+    return;
+  }
+
+  annotateEntityRelationshipAttributeColumns(renderedEntity, attribute, index);
+  annotateEntityRelationshipAttributeRow(renderedEntity, attribute, index);
+}
+
+function readEntityRelationshipAttributeName(
+  renderedNames: RenderedDiagramElement[],
+  attribute: DiagramElement
+): RenderedDiagramElement | undefined {
+  const matches = renderedNames.filter((element) => normalizeTextContent(element) === attribute.renderTargetId);
+  return matches.at(attribute.renderOrder ?? 0) as RenderedDiagramElement | undefined;
+}
+
+function annotateEntityRelationshipAttributeColumns(
+  renderedEntity: RenderedDiagramElement,
+  attribute: DiagramElement,
+  index: number
+): void {
+  ["attribute-type", "attribute-name", "attribute-keys", "attribute-comment"].forEach((className) => {
+    const target = renderedEntity.querySelectorAll<RenderedDiagramElement>(`g.${className}`).item(index) as
+      | RenderedDiagramElement
+      | null;
+    if (target !== null) {
+      setDiagramElementDataset(target, attribute);
+    }
+  });
+}
+
+function annotateEntityRelationshipAttributeRow(
+  renderedEntity: RenderedDiagramElement,
+  attribute: DiagramElement,
+  index: number
+): void {
+  const row = renderedEntity.querySelectorAll<RenderedDiagramElement>(".row-rect-even, .row-rect-odd").item(index) as
+    | RenderedDiagramElement
+    | null;
+  if (row !== null) {
+    setDiagramElementDataset(row, attribute);
+  }
+}
+
+function annotateEntityRelationshipConnector(
+  renderedConnector: RenderedDiagramElement | undefined,
+  relationship: DiagramElement
+): void {
+  if (renderedConnector !== undefined) {
+    setDiagramElementDataset(renderedConnector, relationship);
+    renderedConnector.dataset.connectorRole = "flow";
+    setFlowchartTransitionEndpoint(renderedConnector, "connectorSourceId", relationship.renderSourceId);
+    setFlowchartTransitionEndpoint(renderedConnector, "connectorTargetId", relationship.renderTargetId);
+  }
 }
 
 function annotateClassNodeMembers(

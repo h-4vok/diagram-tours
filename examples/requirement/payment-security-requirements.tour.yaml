@@ -1,0 +1,25 @@
+version: 1
+title: Payment authorization requirements
+diagram: payment-security-requirements.mmd
+steps:
+  - focus:
+      - REQ_AUTH
+    text: "This tour traces payment authorization requirements to the services that implement and verify them."
+  - focus:
+      - IDENTITY_PROVIDER
+    text: "The identity provider supplies authentication for {{REQ_AUTH}}."
+  - focus:
+      - relationship-identity-provider-satisfies-req-auth
+    text: "This traceability link shows that {{IDENTITY_PROVIDER}} satisfies {{REQ_AUTH}}."
+  - focus:
+      - relationship-identity-provider-verifies-req-auth
+    text: "A separate relationship records verification of {{REQ_AUTH}} by {{IDENTITY_PROVIDER}}."
+  - focus:
+      - REQ_MFA
+    text: "{{REQ_MFA}} derives from {{REQ_AUTH}} and adds a second factor for high-risk payments."
+  - focus:
+      - relationship-payment-api-verifies-req-auth
+    text: "{{PAYMENT_API}} verifies {{REQ_AUTH}}."
+  - focus:
+      - relationship-req-audit-traces-payment-api
+    text: "{{REQ_AUDIT}} traces to {{PAYMENT_API}}, which records the authorization decision."

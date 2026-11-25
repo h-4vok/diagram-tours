@@ -1,0 +1,16 @@
+version: 1
+title: Requirement render regressions
+diagram: review-regressions.mmd
+steps:
+  - focus:
+      - relationship-a-x-verifies-b
+    text: "The quoted source ID A <- X verifies B."
+  - focus:
+      - relationship-b-verifies-a-x
+    text: "The reversed relation goes from B to A <- X."
+  - focus:
+      - relationship-a-x-verifies-a-x
+    text: "Only the latest self-link is visible and focusable."
+  - focus:
+      - relationship-a-x-verifies-b-2
+    text: "The relation after the self-links retains its native ordinal."

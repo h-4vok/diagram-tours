@@ -1,0 +1,18 @@
+version: 1
+title: Order Data Model
+diagram: ./orders.mmd
+
+steps:
+  - focus:
+      - CUSTOMER
+    text: >
+      {{CUSTOMER}} owns the identity record.
+  - focus:
+      - attribute-customer-customer-id
+      - attribute-customer-email
+    text: >
+      These fields uniquely identify {{CUSTOMER}}.
+  - focus:
+      - relationship-customer-to-sales-order-places-one-identifying-zero-or-more
+    text: >
+      One {{CUSTOMER}} places many sales orders.

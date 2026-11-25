@@ -1,0 +1,35 @@
+---
+title: Entity Relationship Syntax Regression
+---
+erDiagram
+  ACCDESCR {
+    Fake is accessibility copy, not an entity.
+    attribute-a-id
+  }
+  A:::hot, two
+  D:::warm
+  A[First]
+  A[Second]
+  A["X ||--o{ Y"]
+  J[J]
+  J[Second]
+  A { string id string *id array~list of text~ tags string *pk_id chaîne prénom custom-type name int[10] codes string code[] string note "} suffix see X ||--o{ Y" }
+  A ONE TO MANY B : owns
+  A||--o{B : owns
+  A:::hot,two ||.-o{ B:::cool : "optional link"
+  A u--|| C : extends
+  A ||-.|{ B : "dotted link"
+  A ||--o{ A : "earlier loop"
+  A ||--o{ A : "latest loop"
+  A ||--o{ B : "follows loops"
+  A ||--o{ B : "see X ||--o{ Y"
+  A ||--o{ B : later NEXT { string code }
+  A ||..o{ B : "after block"
+  H:::hot {
+    string id PK
+  }
+  I:::hot, two
+  E { string code PK
+  }
+  attribute-a-id
+  K { string id } K ||--o{ L : "follows block"
