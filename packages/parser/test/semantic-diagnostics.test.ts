@@ -33,7 +33,7 @@ describe("@diagram-tour/parser semantic diagnostics", () => {
         diagnostic: {
           code: null,
           location: { column: 10, line: 6 },
-          message: 'step 1 focus references unknown Mermaid node id "ghost"'
+          message: 'step 1 focus references unknown Mermaid node ID or transition key "ghost"'
         },
         sourceId: normalizePath(invalidFilePath),
         sourcePath: "tour.tour.yaml"
@@ -42,7 +42,7 @@ describe("@diagram-tour/parser semantic diagnostics", () => {
         diagnostic: {
           code: null,
           location: { column: 12, line: 7 },
-          message: 'step 1 text references unknown Mermaid node id "ghost"'
+          message: 'step 1 text references unknown Mermaid node ID or transition key "ghost"'
         },
         sourceId: normalizePath(invalidFilePath),
         sourcePath: "tour.tour.yaml"
@@ -222,7 +222,7 @@ describe("@diagram-tour/parser semantic diagnostics", () => {
         diagnostic: {
           code: null,
           location: { column: 12, line: 7 },
-          message: 'step 1 text references unknown Mermaid node id "ghost"'
+          message: 'step 1 text references unknown Mermaid node ID or transition key "ghost"'
         },
         sourceId: normalizePath(invalidFilePath),
         sourcePath: "tour.tour.yaml"

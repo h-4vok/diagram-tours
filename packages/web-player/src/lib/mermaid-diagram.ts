@@ -30,11 +30,14 @@ type SvgPointLike = { x: number; y: number };
 const MESSAGE_MARKER_ATTRIBUTES = ["marker-start", "marker-mid", "marker-end"] as const;
 const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
+const STATE_GROUP_SELECTOR = "g.statediagram-state, g.statediagram-cluster, g.stateGroup";
 const DIAGRAM_ANNOTATORS = {
   classDiagram: annotateClassElements,
   flowchart: annotateFlowchartElements,
+  mindmap: annotateMindmapElements,
   sankey: annotateSankeyElements,
   sequence: annotateSequenceElements,
+  stateDiagram: annotateStateDiagramElements,
   zenuml: annotateZenUmlElements
 } satisfies Record<
   ResolvedDiagram["type"],
@@ -79,6 +82,15 @@ const SEQUENCE_THEME_VARIABLES = {
   signalColor: "var(--color-node-base-stroke, #30363d)",
   signalTextColor: "var(--color-node-base-text, #e6edf3)"
 } satisfies MermaidThemeVariables;
+const STATE_DIAGRAM_THEME_VARIABLES = {
+  compositeBackground: "var(--bg-surface, #161b22)",
+  compositeTitleBackground: "var(--color-node-base-fill, #1c2128)",
+  labelBackgroundColor: "var(--bg-surface, #161b22)",
+  stateBkg: "var(--color-node-base-fill, #1c2128)",
+  stateBorder: "var(--color-node-base-stroke, #30363d)",
+  stateLabelColor: "var(--color-node-base-text, #e6edf3)",
+  transitionColor: "var(--color-node-base-stroke, #30363d)"
+} satisfies MermaidThemeVariables;
 const ZENUML_THEME_RULES = [
   [".frame-border-outer, .frame-header-line, .participant-box, .lifeline, .occurrence, .fragment-border, .group-outline", "stroke", "var(--color-node-base-stroke)"],
   [".frame-border-inner, .frame-header-bg, .participant-box, .occurrence, .fragment-header, .group-title-bg", "fill", "var(--color-node-base-fill)"],
@@ -110,6 +122,7 @@ export async function renderMermaidDiagram(input: {
   });
 
   input.container.innerHTML = renderResult.svg;
+  renderResult.bindFunctions?.(input.container);
   applyZenUmlTheme(input.container);
   normalizeRenderedSvg(input.container);
   injectNodeGradients(input.container);
@@ -191,7 +204,13 @@ function readMermaidThemeVariables(container: HTMLElement, diagram: ResolvedDiag
     fontFamily: MERMAID_FONT_STACK
   };
 
-  return diagram.type === "sequence" ? { ...themeVariables, ...SEQUENCE_THEME_VARIABLES } : themeVariables;
+  if (diagram.type === "sequence") {
+    return { ...themeVariables, ...SEQUENCE_THEME_VARIABLES };
+  }
+
+  return diagram.type === "stateDiagram"
+    ? { ...themeVariables, ...STATE_DIAGRAM_THEME_VARIABLES }
+    : themeVariables;
 }
 
 function readPrimaryThemeVariables(styles: CSSStyleDeclaration): MermaidThemeVariables {
@@ -278,7 +297,7 @@ function applyZenUmlTheme(container: HTMLElement): void {
 }
 
 function annotateFlowchartElements(container: HTMLElement, elements: DiagramElement[]): void {
-  elements.forEach((element) => {
+  elements.filter((element) => element.kind === "node").forEach((element) => {
     const renderedElement = container.querySelector<RenderedDiagramElement>(`.${createNodeClass(element.id)}`);
 
     if (renderedElement === null) {
@@ -287,6 +306,146 @@ function annotateFlowchartElements(container: HTMLElement, elements: DiagramElem
 
     setDiagramElementDataset(renderedElement, element);
   });
+
+  const transitions = elements.filter((element) => element.kind === "transition");
+  transitions.forEach((transition) => {
+    annotateFlowchartTransition(container, transition, transitions);
+  });
+}
+
+function annotateFlowchartTransition(
+  container: HTMLElement,
+  transition: DiagramElement,
+  transitions: DiagramElement[]
+): void {
+  const renderId = transition.renderId;
+  if (renderId === undefined) {
+    return;
+  }
+
+  readFlowchartTransitionTargets({ container, renderId, transition, transitions }).forEach((element) => {
+    setDiagramElementDataset(element, transition);
+    annotateFlowchartTransitionConnector(element, transition);
+  });
+}
+
+function annotateFlowchartTransitionConnector(element: RenderedDiagramElement, transition: DiagramElement): void {
+  if (!element.matches(FLOWCHART_CONNECTOR_SELECTOR)) {
+    return;
+  }
+
+  element.dataset.connectorRole = "flow";
+  setFlowchartTransitionEndpoint(element, "connectorSourceId", transition.renderSourceId);
+  setFlowchartTransitionEndpoint(element, "connectorTargetId", transition.renderTargetId);
+}
+
+function setFlowchartTransitionEndpoint(
+  element: RenderedDiagramElement,
+  key: "connectorSourceId" | "connectorTargetId",
+  value: string | undefined
+): void {
+  if (value !== undefined) {
+    element.dataset[key] = value;
+  }
+}
+
+function readFlowchartTransitionTargets(input: {
+  container: HTMLElement;
+  renderId: string;
+  transition: DiagramElement;
+  transitions: DiagramElement[];
+}): RenderedDiagramElement[] {
+  const { container, renderId, transition, transitions } = input;
+  const connectors = Array.from(container.querySelectorAll<RenderedDiagramElement>(FLOWCHART_CONNECTOR_SELECTOR));
+  const labels = Array.from(container.querySelectorAll<RenderedDiagramElement>(".edgeLabel"));
+  const nodeBounds = readFlowchartNodeBounds(container);
+  const sameIdTransitions = transitions.filter((element) => element.renderId === renderId);
+  const duplicateIndex = readFlowchartTransitionIndex(sameIdTransitions, transition);
+  return [
+    ...readFlowchartTransitionConnectors(connectors, { duplicateIndex, nodeBounds, renderId, transition }),
+    ...readFlowchartTransitionLabels(labels, { duplicateIndex, renderId, sameIdTransitions })
+  ];
+}
+
+function readFlowchartTransitionIndex(transitions: DiagramElement[], transition: DiagramElement): number {
+  return [...transitions]
+    .sort((left, right) => (left.renderOrder ?? 0) - (right.renderOrder ?? 0))
+    .findIndex((element) => element.id === transition.id);
+}
+
+function readFlowchartTransitionConnectors(
+  connectors: RenderedDiagramElement[],
+  input: {
+    duplicateIndex: number;
+    nodeBounds: SvgNodeBounds[];
+    renderId: string;
+    transition: DiagramElement;
+  }
+): RenderedDiagramElement[] {
+  const matching = connectors.filter((element) => hasFlowchartRenderId(element, input.renderId));
+  if (matching.length < 2) {
+    return matching;
+  }
+
+  const byEndpoints = matching.filter((element) =>
+    hasFlowchartTransitionEndpoints(element, input.transition, input.nodeBounds)
+  );
+  return byEndpoints.length > 0
+    ? byEndpoints
+    : readOrdinalFlowchartTargets(matching, Math.min(input.duplicateIndex, matching.length - 1));
+}
+
+function readFlowchartTransitionLabels(
+  labels: RenderedDiagramElement[],
+  input: { duplicateIndex: number; renderId: string; sameIdTransitions: DiagramElement[] }
+): RenderedDiagramElement[] {
+  const matching = labels.filter(
+    (element) => hasFlowchartRenderId(element, input.renderId) || hasFlowchartLabelRenderId(element, input.renderId)
+  );
+  return input.sameIdTransitions.length < 2 ? matching : readOrdinalFlowchartTargets(matching, input.duplicateIndex);
+}
+
+function readOrdinalFlowchartTargets(
+  elements: RenderedDiagramElement[],
+  index: number
+): RenderedDiagramElement[] {
+  return elements.slice(index, index + 1);
+}
+
+function hasFlowchartTransitionEndpoints(
+  element: RenderedDiagramElement,
+  transition: DiagramElement,
+  nodeBounds: SvgNodeBounds[]
+): boolean {
+  return hasFlowchartTransitionEndpointClasses(element, transition) ||
+    hasFlowchartTransitionGeometry(element, transition, nodeBounds);
+}
+
+function hasFlowchartTransitionEndpointClasses(element: Element, transition: DiagramElement): boolean {
+  return (
+    element.classList.contains(`LS-${transition.renderSourceId}`) &&
+    element.classList.contains(`LE-${transition.renderTargetId}`)
+  );
+}
+
+function hasFlowchartTransitionGeometry(
+  element: RenderedDiagramElement,
+  transition: DiagramElement,
+  nodeBounds: SvgNodeBounds[]
+): boolean {
+  const endpoint = readFlowchartConnectorEndpointFromGeometry(element as SVGElement, nodeBounds);
+  return endpoint !== null && endpoint.sourceId === transition.renderSourceId &&
+    endpoint.targetId === transition.renderTargetId;
+}
+
+function hasFlowchartRenderId(element: Element, renderId: string): boolean {
+  return element.getAttribute("data-id") === renderId || element.getAttribute("id") === renderId;
+}
+
+function hasFlowchartLabelRenderId(element: Element, renderId: string): boolean {
+  return Array.from(element.querySelectorAll("[data-id], [id]")).some((label) =>
+    hasFlowchartRenderId(label, renderId)
+  );
 }
 
 function annotateClassElements(container: HTMLElement, elements: DiagramElement[]): void {
@@ -366,6 +525,12 @@ function annotateSankeyElements(container: HTMLElement, elements: DiagramElement
   });
 }
 
+function annotateMindmapElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedNodes = Array.from(container.querySelectorAll<RenderedDiagramElement>(".mindmap-node"));
+
+  elements.forEach((element, index) => annotateSankeyRenderedElement(renderedNodes[index], element));
+}
+
 function annotateSankeyRenderedElement(
   renderedElement: RenderedDiagramElement | undefined,
   element: DiagramElement
@@ -373,6 +538,147 @@ function annotateSankeyRenderedElement(
   if (renderedElement !== undefined) {
     setDiagramElementDataset(renderedElement, element);
   }
+}
+
+function annotateStateDiagramElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const stateElements = elements.filter((element) => element.kind === "state");
+  const stateGroups = Array.from(
+    container.querySelectorAll<RenderedDiagramElement>(STATE_GROUP_SELECTOR)
+  );
+
+  const matchedGroups = new Set<RenderedDiagramElement>();
+  stateElements.forEach((element) => annotateRenderedState(stateGroups, matchedGroups, element));
+  annotateStateTransitions({
+    container,
+    stateGroups,
+    states: stateElements,
+    transitions: elements.filter((element) => element.kind === "transition")
+  });
+}
+
+function annotateRenderedState(
+  stateGroups: RenderedDiagramElement[],
+  matchedGroups: Set<RenderedDiagramElement>,
+  element: DiagramElement
+): void {
+  const group = stateGroups.find((candidate) => !matchedGroups.has(candidate) && hasRenderedStateId(candidate, element)) ??
+    stateGroups.find((candidate) => !matchedGroups.has(candidate) && hasRenderedStateLabel(candidate, element.label));
+
+  if (group !== undefined) {
+    setDiagramElementDataset(group, element);
+    matchedGroups.add(group);
+  }
+}
+
+function hasRenderedStateLabel(group: RenderedDiagramElement, label: string): boolean {
+  return Array.from(group.querySelectorAll<RenderedDiagramElement>("text, foreignObject, .nodeLabel")).some(
+    (text) => normalizeTextContent(text) === label && text.closest(STATE_GROUP_SELECTOR) === group
+  );
+}
+
+function hasRenderedStateId(group: RenderedDiagramElement, element: DiagramElement): boolean {
+  return hasStateGroupId(group.id, element.renderId) || group.getAttribute("data-id") === element.renderId;
+}
+
+function hasStateGroupId(renderedId: string, alias: string | undefined): boolean {
+  if (alias === undefined) {return false;}
+  const stateId = `state-${alias}`;
+
+  return renderedId === stateId || hasNumberedStateId(renderedId, stateId);
+}
+
+function hasNumberedStateId(renderedId: string, stateId: string): boolean {
+  const suffix = renderedId.slice(stateId.length);
+
+  return renderedId.startsWith(`${stateId}-`) && /^\d+$/u.test(suffix.slice(1));
+}
+
+function annotateStateTransitions(input: {
+  container: HTMLElement;
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transitions: DiagramElement[];
+}): void {
+  input.transitions.forEach((transition) => {
+    const edgeId = readStateTransitionEdgeId({
+      stateGroups: input.stateGroups,
+      states: input.states,
+      transition
+    });
+    const paths = readStateTransitionPaths(input.container, edgeId);
+
+    paths.forEach((path) => setDiagramElementDataset(path, transition));
+
+    const label = readStateTransitionLabel(input.container, edgeId);
+    if (label !== null) {
+      setDiagramElementDataset(label, transition);
+    }
+  });
+}
+
+function readStateTransitionEdgeId(input: {
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transition: DiagramElement;
+}): string | undefined {
+  const { transition } = input;
+  if (transition.renderOrder === undefined) {return undefined;}
+  return transition.renderSourceId === transition.renderTargetId
+    ? readSelfTransitionEdgeId(input)
+    : `edge${transition.renderOrder}`;
+}
+
+function readSelfTransitionEdgeId(input: {
+  stateGroups: RenderedDiagramElement[];
+  states: DiagramElement[];
+  transition: DiagramElement;
+}): string | undefined {
+  const sourceState = input.states.find((state) => state.id === input.transition.renderSourceId);
+  if (sourceState === undefined) {
+    return undefined;
+  }
+  return readSelfTransitionEdgeIdForState(input.stateGroups, sourceState);
+}
+
+function readSelfTransitionEdgeIdForState(
+  stateGroups: RenderedDiagramElement[],
+  state: DiagramElement
+): string | undefined {
+  if (state.renderId === undefined) {
+    return undefined;
+  }
+
+  return stateGroups.some((group) => hasRenderedStateId(group, state))
+    ? `${state.renderId}-cyclic-special-mid`
+    : undefined;
+}
+
+function readStateTransitionPaths(container: HTMLElement, edgeId: string | undefined): SVGElement[] {
+  if (edgeId === undefined) {return [];}
+
+  const loopMarker = "-cyclic-special-mid";
+  const loopPrefix = edgeId.endsWith(loopMarker) ? edgeId.slice(0, -loopMarker.length) : undefined;
+
+  return Array.from(container.querySelectorAll<SVGElement>("path[data-id]"))
+    .filter((path) => isStateTransitionPath(path, edgeId, loopPrefix));
+}
+
+function isStateTransitionPath(path: SVGElement, edgeId: string, loopPrefix: string | undefined): boolean {
+  if (path.classList.contains("note-edge")) {return false;}
+  const pathId = path.getAttribute("data-id");
+
+  return pathId === edgeId || hasStateLoopPathId(pathId, loopPrefix);
+}
+
+function hasStateLoopPathId(pathId: string | null, loopPrefix: string | undefined): boolean {
+  return loopPrefix !== undefined && pathId?.startsWith(`${loopPrefix}-cyclic-special-`) === true;
+}
+
+function readStateTransitionLabel(container: HTMLElement, edgeId: string | undefined): RenderedDiagramElement | null {
+  if (edgeId === undefined) {return null;}
+
+  return Array.from(container.querySelectorAll<RenderedDiagramElement>(".edgeLabel > .label[data-id]"))
+    .find((label) => label.getAttribute("data-id") === edgeId) ?? null;
 }
 
 function annotateFlowchartConnectors(container: HTMLElement, diagram: ResolvedDiagram): void {
@@ -516,7 +822,7 @@ function annotateFlowchartConnector(
   nodeBounds: SvgNodeBounds[],
   index: number
 ): void {
-  const endpoint = readFlowchartConnectorEndpoint(element, nodeBounds);
+  const endpoint = readAnnotatedFlowchartTransitionEndpoint(element) ?? readFlowchartConnectorEndpoint(element, nodeBounds);
 
   if (endpoint === null) {
     return;
@@ -527,6 +833,13 @@ function annotateFlowchartConnector(
   element.dataset.connectorSourceId = endpoint.sourceId;
   element.dataset.connectorTargetId = endpoint.targetId;
   annotateFlowchartConnectorMarkers(element);
+}
+
+function readAnnotatedFlowchartTransitionEndpoint(element: SVGElement): FlowchartConnectorEndpoint | null {
+  const sourceId = element.dataset.connectorSourceId;
+  const targetId = element.dataset.connectorTargetId;
+
+  return sourceId !== undefined && targetId !== undefined ? { sourceId, targetId } : null;
 }
 
 function readFlowchartConnectorEndpoint(
@@ -1384,15 +1697,35 @@ function setConnectorContext(container: HTMLElement, focusGroup: FocusGroup): vo
 }
 
 function setConnectorLabelState(container: HTMLElement, focusGroup: FocusGroup): void {
+  const focusedElementIds = new Set(focusGroup.elementIds);
   container.querySelectorAll<HTMLElement>('[data-connector-role="label"]').forEach((element) => {
-    if (focusGroup.mode === "empty") {
+    const state = readConnectorLabelState(element, focusGroup, focusedElementIds);
+    if (state === null) {
       element.removeAttribute("data-connector-state");
 
       return;
     }
 
-    element.dataset.connectorState = "context";
+    element.dataset.connectorState = state;
   });
+}
+
+function readConnectorLabelState(
+  element: HTMLElement,
+  focusGroup: FocusGroup,
+  focusedElementIds: Set<string>
+): "active" | "context" | null {
+  if (focusGroup.mode === "empty") {
+    return null;
+  }
+
+  return isFocusedConnectorLabel(element, focusedElementIds) ? "active" : "context";
+}
+
+function isFocusedConnectorLabel(element: HTMLElement, focusedElementIds: Set<string>): boolean {
+  const elementId = element.dataset.diagramElementId;
+
+  return elementId !== undefined && focusedElementIds.has(elementId);
 }
 
 function setFlowConnectorState(
@@ -1422,10 +1755,18 @@ function isActiveFlowConnector(
   focusGroup: FocusGroup,
   focusedElementIds: Set<string>
 ): boolean {
+  const elementId = element.dataset.diagramElementId;
+  if (isFocusedFlowchartElement(elementId, focusedElementIds)) {
+    return true;
+  }
+
   const sourceId = element.dataset.connectorSourceId;
   const targetId = element.dataset.connectorTargetId;
-
   return shouldEvaluateActiveFlowConnector(focusGroup) && hasFocusedConnectorEndpoints(sourceId, targetId, focusedElementIds);
+}
+
+function isFocusedFlowchartElement(elementId: string | undefined, focusedElementIds: Set<string>): boolean {
+  return elementId !== undefined && focusedElementIds.has(elementId);
 }
 
 function shouldEvaluateActiveFlowConnector(focusGroup: FocusGroup): boolean {

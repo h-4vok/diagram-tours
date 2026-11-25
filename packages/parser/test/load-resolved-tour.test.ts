@@ -326,7 +326,7 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node id "missing_node"`
+      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node ID or transition key "missing_node"`
     );
   });
 
@@ -347,7 +347,7 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node id "missing_node"`
+      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node ID or transition key "missing_node"`
     );
   });
 

@@ -1,0 +1,17 @@
+version: 1
+title: Eligibility decision tree
+diagram: ./eligibility-flowchart.mmd
+
+steps:
+  - focus: [request]
+    text: "A {{request}} enters the eligibility process."
+  - focus: [eligibility]
+    text: "Evaluate the rules at {{eligibility}}."
+  - focus: [transition-eligibility-to-approved-yes]
+    text: "{{transition-eligibility-to-approved-yes}} leads to the approval outcome."
+  - focus: [transition-eligibility-to-documents-no]
+    text: "A no answer checks whether {{documents}} are complete."
+  - focus: [transition-documents-to-manual_review-yes]
+    text: "Complete documents lead to {{manual_review}}."
+  - focus: [transition-documents-to-rejected-no]
+    text: "Incomplete documents lead to {{rejected}}."

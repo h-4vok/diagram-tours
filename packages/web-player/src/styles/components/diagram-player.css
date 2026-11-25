@@ -191,6 +191,16 @@
   fill: color-mix(in srgb, var(--color-node-base-text) 90%, var(--color-node-base-stroke));
 }
 
+[data-diagram-element-kind="transition"]:is(path, line, polyline) {
+  fill: none;
+  stroke: var(--color-node-base-stroke);
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="transition"]:is(path, line, polyline) {
+  stroke: var(--accent-primary);
+  stroke-width: 2.5px;
+}
+
 [data-step-target="true"] {
   cursor: pointer;
 }

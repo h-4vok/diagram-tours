@@ -30,11 +30,15 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
       "class-diagram/dom-injection-api",
+      "decision-tree/eligibility-flowchart",
+      "decision-tree/eligibility-mindmap",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
+      "mindmap/release-plan",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
+      "state/review-lifecycle",
       "zenuml/checkout-zenuml"
     ]);
     expect(result.collection.skipped).toHaveLength(0);
@@ -50,11 +54,15 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
       "Browser Extension Data Pipeline",
+      "Eligibility decision tree",
+      "Eligibility decision tree topics",
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",
+      "Release planning",
       "Interview Offers Pipeline",
       "Order Sequence",
+      "Review Lifecycle",
       "Checkout with inventory reservation"
     ]);
     expect(result.collection.skipped).toEqual([]);
@@ -71,6 +79,24 @@ describe("+layout.server", () => {
     const entry = await loadExampleEntry("sequence/sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
+  });
+
+  it("loads the authored mindmap example with root and nested-topic focus", async () => {
+    const entry = await loadExampleEntry("mindmap/release-plan");
+    const steps = readSteps(entry);
+
+    expect(entry?.tour.diagram.type).toBe("mindmap");
+    expect(steps).toHaveLength(8);
+    expect(readPrimaryFocusIds(steps)).toEqual([
+      "plan",
+      "research",
+      "mindmap-plan-research-interviews",
+      "validation",
+      "design",
+      "prototype",
+      "mindmap-plan-measure-adoption",
+      "outcomes"
+    ]);
   });
 
   it("describes file targets for direct author preview", async () => {

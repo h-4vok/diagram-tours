@@ -2,11 +2,12 @@
 
 `diagram-tours` lets you open supported Mermaid diagrams from any local repository and view them in a browser, with optional `*.tour.yaml` files to enrich the walkthrough.
 
-It currently supports Mermaid flowcharts, Mermaid sequence diagrams, and common Mermaid Sankey diagrams. You can load them from:
+It currently supports Mermaid flowcharts, sequence diagrams, Mindmaps, and Sankey diagrams. You can load them from:
 
 - [Flowchart examples](examples/flowchart/) with `.mmd` or `.tour.yaml` pairs
 - [Sequence examples](examples/sequence/)
 - [Sankey examples](examples/sankey/)
+- [Mindmap examples](examples/mindmap/)
 - Markdown files with fenced `mermaid` blocks, including AI-generated docs
 - optional matching `*.tour.yaml` files for authored enrichment
 
@@ -186,7 +187,7 @@ Use [AGENTS.md](AGENTS.md) as the default implementation policy.
 - [Contributor Workflow](docs/contributor-workflow.md)
 - [Principles Index](docs/principles/README.md)
 
-The shipped example library is grouped by diagram type under `examples/`: [flowchart](examples/flowchart/), [sequence](examples/sequence/), and [sankey](examples/sankey/). Inside those folders, `checkout-payment-flow` is a small authored flowchart, `flowchart-addressability` covers addressable flowchart shapes and bare endpoints, `sequence-order-sequence` is a small authored sequence diagram, `payments-platform-overview` is a large authored demo, and `sankey-ops-review` is an interview-to-offer Sankey walkthrough.
+The shipped example library is grouped by diagram type under `examples/`: [flowchart](examples/flowchart/), [decision-tree](examples/decision-tree/), [sequence](examples/sequence/), [sankey](examples/sankey/), and [mindmap](examples/mindmap/). `decision-tree/eligibility-flowchart` demonstrates independently focusable yes/no branches; `decision-tree/eligibility-mindmap` presents the same decision as focusable topics. Other examples include `checkout-payment-flow`, `flowchart-addressability`, `sequence-order-sequence`, `payments-platform-overview`, `sankey-ops-review`, and `release-plan`.
 
 ## Repository Packages
 

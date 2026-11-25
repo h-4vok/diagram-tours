@@ -1,0 +1,7 @@
+version: 1
+title: Mermaid render ID collision with unlabeled edge
+diagram: ./render-id-collision-unlabeled.mmd
+
+steps:
+  - focus: [transition-A-to-B-yes]
+    text: "Follow {{transition-A-to-B-yes}}."

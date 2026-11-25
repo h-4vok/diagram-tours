@@ -1,0 +1,25 @@
+version: 1
+title: Eligibility decision tree topics
+diagram: ./eligibility-mindmap.mmd
+
+steps:
+  - focus: [eligibility]
+    text: "The {{eligibility}} process begins with the submitted request."
+  - focus: [eligible]
+    text: "Evaluate the decision at {{eligible}}."
+  - focus: [yes]
+    text: "A {{yes}} answer reaches the approval outcome."
+  - focus: [approved]
+    text: "The request is {{approved}}."
+  - focus: [no]
+    text: "A {{no}} answer checks the documents."
+  - focus: [mindmap-eligibility-eligible-no-documents-complete]
+    text: "Review {{mindmap-eligibility-eligible-no-documents-complete}} before deciding the next step."
+  - focus: [documents_yes]
+    text: "Complete documents lead to manual review."
+  - focus: [manual_review]
+    text: "The request enters {{manual_review}}."
+  - focus: [documents_no]
+    text: "Incomplete documents lead to rejection."
+  - focus: [rejected]
+    text: "The request is {{rejected}}."

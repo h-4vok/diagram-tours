@@ -1,0 +1,44 @@
+stateDiagram-v2
+  direction LR
+  Still
+  Moving
+  state Decision [[choice]]
+  state "Queue A" as QueueA {
+    Shared --> Left
+  }
+  state "Queue B" as QueueB {
+    Shared --> Right
+  }
+  [*] --> Draft
+  Draft --> InReview : submit [complete]
+  Draft --> Draft : initial edit
+  Draft --> Draft : edit
+  Draft --> InReview : retry
+  click Draft "https://example.test" "Draft details"
+
+  state "In review" as InReview {
+    [*] --> AssignReviewers
+    AssignReviewers --> Reviewing : reviewers assigned
+    Reviewing --> Reviewing : retry
+    Reviewing --> review_fork
+    state review_fork <<fork>>
+    review_fork --> LegalReview
+    review_fork --> SecurityReview
+    LegalReview --> review_join
+    SecurityReview --> review_join
+    state review_join <<join>>
+    review_join --> review_decision
+    state review_decision <<choice>>
+    review_decision --> Approved : changes accepted
+    review_decision --> ChangesRequested : changes required
+    ChangesRequested --> Reviewing : revised
+    note right of Reviewing
+      Reviewer notes stay visible context
+      Example: revise
+      C --> D : used in docs
+    end note
+  }
+
+  InReview --> Published : merge
+  InReview --> InReview : reopen
+  Published --> [*]

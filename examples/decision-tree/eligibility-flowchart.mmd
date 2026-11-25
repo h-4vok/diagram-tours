@@ -1,0 +1,8 @@
+flowchart TD
+  request([Request received]) --> eligibility{Eligible?}
+  eligibility -->|Yes| approved([Approved])
+  eligibility -->|No| documents{Documents complete?}
+  documents -->|Yes| manual_review[Manual review]
+  documents -->|No| rejected([Rejected])
+
+  click eligibility "https://example.com/eligibility" "Eligibility rules"

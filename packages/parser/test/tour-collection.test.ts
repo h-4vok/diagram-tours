@@ -57,6 +57,23 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(collection.skipped).toHaveLength(0);
   });
 
+  it("keeps generated flowchart fallback steps on nodes while exposing authored branch targets", async () => {
+    const flowchartRoot = await createTempDiagramDirectory({
+      "diagrams/decision.mmd": "flowchart TD\n  decision{Eligible?} -->|Yes| accepted[Accepted]"
+    });
+
+    const collection = await loadResolvedTourCollection(resolve(flowchartRoot, "./diagrams/decision.mmd"));
+    const entry = readCollectionEntryAt(collection, 0);
+
+    expect(entry.tour.diagram.elements.map(({ kind }) => kind)).toEqual(["node", "node", "transition"]);
+    expect(entry.tour.steps.map((step) => step.text)).toEqual([
+      "Overview of Decision.",
+      "Focus on Eligible?.",
+      "Focus on Accepted."
+    ]);
+    expect(entry.tour.diagram.elements.map(({ id }) => id)).toContain("transition-decision-to-accepted-yes");
+  });
+
   it("builds generated fallback steps from a raw sequence diagram file target", async () => {
     const sequenceRoot = await createTempDiagramDirectory({
       "diagrams/order-sequence.mmd": [
@@ -261,12 +278,12 @@ describe("@diagram-tour/parser tour collection", () => {
         {
           code: null,
           location: { column: 10, line: 6 },
-          message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+          message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
         },
         {
           code: null,
           location: { column: 12, line: 7 },
-          message: 'step 1 text references unknown Mermaid node id "missing_node"'
+          message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
         }
       ],
       sourceId: normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml")),
@@ -420,10 +437,10 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(result.invalid[0]).toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          message: 'step 1 focus references unknown Mermaid node id "missing_node"'
+          message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
         }),
         expect.objectContaining({
-          message: 'step 1 text references unknown Mermaid node id "missing_node"'
+          message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
         })
       ],
       sourcePath: "invalid-tour/invalid.tour.yaml"
@@ -438,10 +455,10 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(result.invalid[0]).toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          message: 'step 1 focus references unknown Mermaid node id "ghost"'
+          message: 'step 1 focus references unknown Mermaid node ID or transition key "ghost"'
         }),
         expect.objectContaining({
-          message: 'step 1 text references unknown Mermaid node id "ghost"'
+          message: 'step 1 text references unknown Mermaid node ID or transition key "ghost"'
         })
       ],
       sourcePath: "broken.tour.yaml"
@@ -482,7 +499,7 @@ describe("@diagram-tour/parser tour collection", () => {
     const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
 
     await expect(loadResolvedTourCollection(invalidFilePath)).rejects.toThrow(
-      `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node id "missing_node"`
+      `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node ID or transition key "missing_node"`
     );
   });
 
@@ -513,11 +530,15 @@ describe("@diagram-tour/parser tour collection", () => {
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
       "class-diagram/dom-injection-api",
+      "decision-tree/eligibility-flowchart",
+      "decision-tree/eligibility-mindmap",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
+      "mindmap/release-plan",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
+      "state/review-lifecycle",
       "zenuml/checkout-zenuml"
     ]);
   });

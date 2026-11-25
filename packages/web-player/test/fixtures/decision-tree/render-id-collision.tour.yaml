@@ -1,0 +1,9 @@
+version: 1
+title: Mermaid render ID collision
+diagram: ./render-id-collision.mmd
+
+steps:
+  - focus: [transition-A-to-B-yes]
+    text: "Follow {{transition-A-to-B-yes}}."
+  - focus: [transition-C-to-D-no]
+    text: "Follow {{transition-C-to-D-no}}."

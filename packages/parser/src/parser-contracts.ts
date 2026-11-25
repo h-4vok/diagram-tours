@@ -81,6 +81,11 @@ export type SequenceDiagramModel = {
   renderSource: string;
 };
 
+export type StateDiagramModel = {
+  elements: DiagramElement[];
+  renderSource: string;
+};
+
 export type StepValueNode = Scalar.Parsed;
 
 export type StepDraft = {
