@@ -516,6 +516,7 @@ describe("@diagram-tour/parser tour collection", () => {
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
+      "mindmap/release-plan",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
       "state/review-lifecycle",

@@ -33,6 +33,7 @@ describe("+layout.server", () => {
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
+      "mindmap/release-plan",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
       "state/review-lifecycle",
@@ -54,6 +55,7 @@ describe("+layout.server", () => {
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",
+      "Release planning",
       "Interview Offers Pipeline",
       "Order Sequence",
       "Review Lifecycle",
@@ -73,6 +75,24 @@ describe("+layout.server", () => {
     const entry = await loadExampleEntry("sequence/sequence-order-sequence");
 
     expectOrderSequenceExample(entry);
+  });
+
+  it("loads the authored mindmap example with root and nested-topic focus", async () => {
+    const entry = await loadExampleEntry("mindmap/release-plan");
+    const steps = readSteps(entry);
+
+    expect(entry?.tour.diagram.type).toBe("mindmap");
+    expect(steps).toHaveLength(8);
+    expect(readPrimaryFocusIds(steps)).toEqual([
+      "plan",
+      "research",
+      "mindmap-plan-research-interviews",
+      "validation",
+      "design",
+      "prototype",
+      "mindmap-plan-measure-adoption",
+      "outcomes"
+    ]);
   });
 
   it("describes file targets for direct author preview", async () => {

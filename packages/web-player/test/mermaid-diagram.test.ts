@@ -136,6 +136,14 @@ describe("mermaid diagram helpers", () => {
     ).toBe(source);
   });
 
+  it("preserves the complete mindmap fixture source for rendering", async () => {
+    const source = await readFile(resolve(process.cwd(), "test/fixtures/mindmap/release-plan.mmd"), "utf8");
+
+    expect(createRenderableDiagramSource({ elements: [], path: "./release-plan.mmd", source, type: "mindmap" })).toBe(
+      source
+    );
+  });
+
   it("preserves the authored fixture source for Mermaid rendering", async () => {
     const source = await readFile(resolve(process.cwd(), "test/fixtures/zenuml/checkout-zenuml.mmd"), "utf8");
 
@@ -204,6 +212,48 @@ describe("mermaid diagram helpers", () => {
         })
       })
     );
+  });
+
+  it("tags mindmap topics in render order and keeps branch lines as context", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg viewBox="0 0 640 480">',
+        '<path class="edge"></path>',
+        '<g class="mindmap-node section-root"><circle></circle><text>Release plan</text></g>',
+        '<g class="mindmap-node section-0"><rect></rect><text>Research</text></g>',
+        '<g class="mindmap-node section-0"><rect></rect><text>Interviews</text></g>',
+        "</svg>"
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "plan", kind: "node" as const, label: "Release plan" },
+        { id: "research", kind: "node" as const, label: "Research" },
+        { id: "mindmap-plan-research-interviews", kind: "node" as const, label: "Interviews" }
+      ],
+      path: "./release-plan.mmd",
+      source: "mindmap\n  plan((Release plan))\n    research[Research]\n      Interviews",
+      type: "mindmap" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup(["mindmap-plan-research-interviews"]) });
+
+    expectFocusState(container, "plan", "dimmed");
+    expectFocusState(container, "research", "dimmed");
+    expectFocusState(container, "mindmap-plan-research-interviews", "focused");
+    expect(container.querySelector(".edge")?.hasAttribute("data-focus-state")).toBe(false);
+    expect(mermaidInitialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        themeVariables: expect.objectContaining({
+          lineColor: "#30363d",
+          primaryColor: "#1c2128",
+          primaryTextColor: "#e6edf3"
+        })
+      })
+    );
+    expect(mermaidRender).toHaveBeenCalledWith(expect.any(String), diagram.source);
   });
 
   it("binds sequence colors to live light and dark theme tokens", async () => {

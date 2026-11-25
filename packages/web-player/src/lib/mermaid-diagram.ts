@@ -34,6 +34,7 @@ const STATE_GROUP_SELECTOR = "g.statediagram-state, g.statediagram-cluster, g.st
 const DIAGRAM_ANNOTATORS = {
   classDiagram: annotateClassElements,
   flowchart: annotateFlowchartElements,
+  mindmap: annotateMindmapElements,
   sankey: annotateSankeyElements,
   sequence: annotateSequenceElements,
   stateDiagram: annotateStateDiagramElements,
@@ -381,6 +382,12 @@ function annotateSankeyElements(container: HTMLElement, elements: DiagramElement
     annotateSankeyRenderedElement(renderedNodes[index], element);
     annotateSankeyRenderedElement(renderedLabels[index], element);
   });
+}
+
+function annotateMindmapElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const renderedNodes = Array.from(container.querySelectorAll<RenderedDiagramElement>(".mindmap-node"));
+
+  elements.forEach((element, index) => annotateSankeyRenderedElement(renderedNodes[index], element));
 }
 
 function annotateSankeyRenderedElement(

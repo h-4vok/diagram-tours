@@ -9,6 +9,7 @@ import type {
 import type { DiagramModel } from "./parser-contracts.js";
 import { createClassDiagramModel } from "./class-diagram-model.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
+import { createMindmapDiagramModel } from "./mindmap-diagram-model.js";
 import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
 import { createSequenceDiagramModel } from "./sequence-diagram-model.js";
 import { createStateDiagramModel } from "./state-diagram-model.js";
@@ -21,21 +22,28 @@ import {
 } from "./tour-context.js";
 
 const NODE_REFERENCE_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
-const SEQUENCE_DIAGRAM_PATTERN = /^\s*sequenceDiagram\b/mu;
-const STATE_DIAGRAM_PATTERN = /^\s*stateDiagram-v2\b/mu;
-const CLASS_DIAGRAM_PATTERN = /^\s*classDiagram\b/mu;
-const SANKEY_DIAGRAM_PATTERN = /^\s*sankey-beta\b/mu;
-const ZENUML_DIAGRAM_PATTERN = /^\s*zenuml\b/mu;
+const SEQUENCE_DIAGRAM_PATTERN = /^[ \t]*sequenceDiagram\b/u;
+const MINDMAP_DIAGRAM_PATTERN = /^[ \t]*mindmap\b/u;
+const STATE_DIAGRAM_PATTERN = /^[ \t]*stateDiagram-v2\b/u;
+const CLASS_DIAGRAM_PATTERN = /^[ \t]*classDiagram\b/u;
+const SANKEY_DIAGRAM_PATTERN = /^[ \t]*sankey-beta\b/u;
+const ZENUML_DIAGRAM_PATTERN = /^[ \t]*zenuml\b/u;
+const FLOWCHART_DIAGRAM_PATTERN = /^[ \t]*(?:flowchart|graph)\b/u;
+const MINDMAP_FRONTMATTER_PATTERN = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/u;
+const MINDMAP_DIRECTIVE_PATTERN = /%%\{[\s\S]*?\}%%/gu;
 const DIAGRAM_MODEL_FACTORIES = {
   classDiagram: createClassDiagramDiagramModel,
   flowchart: createFlowchartDiagramModelAdapter,
+  mindmap: createMindmapDiagramModelAdapter,
   sankey: createSankeyDiagramModelAdapter,
   sequence: createSequenceDiagramModel,
   stateDiagram: createStateDiagramModel,
   zenuml: createZenUmlDiagramModel
 } satisfies Record<DiagramType, (source: string, context: TourContext) => DiagramModel>;
 const DIAGRAM_TYPE_PATTERNS = [
+  [FLOWCHART_DIAGRAM_PATTERN, "flowchart"],
   [CLASS_DIAGRAM_PATTERN, "classDiagram"],
+  [MINDMAP_DIAGRAM_PATTERN, "mindmap"],
   [SEQUENCE_DIAGRAM_PATTERN, "sequence"],
   [STATE_DIAGRAM_PATTERN, "stateDiagram"],
   [SANKEY_DIAGRAM_PATTERN, "sankey"],
@@ -140,7 +148,14 @@ export function readTextReferenceIds(text: string): string[] {
 }
 
 function detectDiagramType(source: string): DiagramType {
-  return DIAGRAM_TYPE_PATTERNS.find(([pattern]) => pattern.test(source))?.[1] ?? "flowchart";
+  const cleanedSource = source
+    .replace(/^\uFEFF/u, "")
+    .replace(MINDMAP_FRONTMATTER_PATTERN, "")
+    .replace(MINDMAP_DIRECTIVE_PATTERN, "");
+  return cleanedSource
+    .split(/\r?\n/u)
+    .map((line) => DIAGRAM_TYPE_PATTERNS.find(([pattern]) => pattern.test(line))?.[1])
+    .find((type) => type !== undefined) ?? "flowchart";
 }
 
 function createClassDiagramDiagramModel(source: string, context: TourContext): DiagramModel {
@@ -149,6 +164,10 @@ function createClassDiagramDiagramModel(source: string, context: TourContext): D
 
 function createFlowchartDiagramModelAdapter(source: string): DiagramModel {
   return createFlowchartDiagramModel(source);
+}
+
+function createMindmapDiagramModelAdapter(source: string): DiagramModel {
+  return createMindmapDiagramModel(source);
 }
 
 function createSankeyDiagramModelAdapter(source: string): DiagramModel {
@@ -247,6 +266,7 @@ function resolveElement(input: {
 function readUnknownElementTarget(diagramType: DiagramType): string {
   const targets: Partial<Record<DiagramType, string>> = {
     sequence: "participant or message id",
+    mindmap: "mindmap topic key",
     stateDiagram: "state or transition key",
     sankey: "node label",
     zenuml: "ZenUML actor, interaction, or block key"

@@ -324,6 +324,8 @@ Explicit actor declarations and actors inferred from interactions, calls, messag
 
 State diagrams use `stateDiagram-v2` and preserve their full source. Rendered named and implicit states, including standalone state IDs, nested/composite states, and `<<choice>>`, `<<fork>>`, and `<<join>>` pseudostates (or `[[...]]` forms), use `state-<parent-path>-<state-id>` keys. A bare `state Waiting` declaration does not render by itself and has no focus key. Mermaid merges repeated raw state IDs across composite scopes into one rendered state, keyed by its first occurrence; use unique source IDs when separate focus targets are needed. IDs are normalized to lower-case kebab case with camel-case boundaries. State display labels use a quoted alias label, otherwise the first Mermaid `StateId: Visible label` description, otherwise the source ID. Rendered Mermaid `-->` transitions, including self-transitions and transitions using `[*]`, are focusable with `transition-<source-state-key>-to-<destination-state-key>-<event-guard-label>`; unlabeled transitions use `unlabeled`, and collisions receive the next available numeric suffix in source order. Mermaid's default Dagre renderer collapses multiple self-transitions on the same state into the last declared loop, so only that visible loop receives a focus key; earlier loops have no rendered target. Display labels combine the source state, destination state, and transition label. The `[*]` marker, direction declarations, notes, and comments remain context; Mermaid `click` tooltips remain available but are not focus targets. Mermaid-generated SVG IDs are not stable authoring keys. See [`examples/state/review-lifecycle.tour.yaml`](../examples/state/review-lifecycle.tour.yaml).
 
+Mindmaps use the first real Mermaid `mindmap` header and preserve their full source. The header may include its root on the same line or place it on the next line. Every topic is a focus target, including the root, shaped topics, and topics at every depth. A unique shaped node's Mermaid source ID is used exactly as its focus key. A plain text topic uses `mindmap-<parent-path>-<topic>`: each ancestor with an ID contributes that exact ID, while other ancestors and the topic contribute lower-case kebab-case labels with camel-case boundaries separated. Duplicate IDs and derived keys receive the next available numeric suffix in source order. For example, `Interviews` beneath `plan((Release plan))` and `research[Customer research]` uses `mindmap-plan-research-interviews`. Focus keys are stable authoring IDs, not Mermaid-generated SVG node numbers. Quoted, bracketed, and multiline shape labels remain one focus target; quotes and Markdown formatting are removed from the display label. Branch connectors, indentation, and layout are structural context and stay visible when a topic is focused. Separate `::icon(...)` and `:::class` decoration lines are not targets; emoji in a topic remains part of its label. Mermaid Mindmap has no native per-node tooltip syntax, so Mermaid-specific tooltips are not produced. See [`examples/mindmap/release-plan.tour.yaml`](../examples/mindmap/release-plan.tour.yaml).
+
 ## Focus Semantics
 
 The `focus` field is semantic, not a strict UI instruction.
@@ -346,6 +348,7 @@ Supported:
 
 - Mermaid flowcharts
 - Mermaid state diagrams with nested/composite states, transitions, and choice/fork/join focus keys
+- Mermaid mindmaps with root and nested topic focus keys
 - Mermaid sequence diagrams with addressable participants and tagged messages
 - Mermaid ZenUML diagrams with source-derived actor, interaction, and named conditional/loop focus keys
 - Common Mermaid Sankey diagrams with addressable node labels
@@ -364,6 +367,7 @@ Not supported:
 - player-specific viewport instructions in the tour file
 - Independent focus keys for sequence lifelines, activation bars, notes, untagged messages, and sequence frames
 - Independent focus keys for state diagram `[*]` markers, directions, notes, and comments
+- Independent focus keys for mindmap branch connectors, indentation/layout, and icon/class decoration lines
 - Independent focus keys for ZenUML delimiters, anonymous blocks, lifelines, and rendering decorations
 - flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
 - Stable authored Sankey link references

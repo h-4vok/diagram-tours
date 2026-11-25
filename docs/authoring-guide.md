@@ -73,6 +73,12 @@ Every Mermaid `-->` transition rendered by Mermaid is focusable, including self-
 
 The `[*]` start/end marker itself is contextual and has no standalone key; its transition remains focusable. Direction declarations, comments, and notes remain rendered context. Mermaid `click` tooltips remain available and do not create focus keys. Use the state and transition keys in `focus` and `{{key}}` text references, as in [`examples/state/review-lifecycle.tour.yaml`](../examples/state/review-lifecycle.tour.yaml). Mermaid-generated SVG IDs are not authoring keys.
 
+## Mindmap Focus Keys
+
+Mindmaps use Mermaid's indentation-based hierarchy, and preserve the full source for rendering. A root may follow `mindmap` on the next line or on the same line. Every topic is focusable, including the root, shaped nodes, and topics at any depth. A unique Mermaid source ID in a shaped node is used exactly as its focus key, such as `research` in `research[Customer research]`. Plain text topics use `mindmap-<parent-path>-<topic>` keys: an ancestor with a source ID contributes that exact ID; other ancestors and the topic contribute lower-case kebab-case labels, with camel-case boundaries separated. Duplicate IDs and derived keys receive the next available numeric suffix in source order.
+
+For example, `Interviews` nested under `plan((Release plan))` and `research[Customer research]` uses `mindmap-plan-research-interviews`. Quoted and multiline shape labels become one topic, and surrounding quotes/Markdown formatting are removed from the display label. Use focus keys in `focus` and `{{key}}` text references, as in [`examples/mindmap/release-plan.tour.yaml`](../examples/mindmap/release-plan.tour.yaml). Icons and classes attached on separate `::icon(...)` and `:::class` lines are decorations, not separate targets; emoji within a topic remains part of that topic's label. Branch lines and layout remain context, so focusing a topic keeps its hierarchy visible. Mermaid Mindmap has no native per-node tooltip syntax; the player does not invent extra Mermaid tooltips.
+
 ## Keep Tour Text Label-Friendly
 
 Step text can interpolate Mermaid labels with `{{diagram_element_id}}`.
@@ -156,6 +162,9 @@ examples/
   state/
     review-lifecycle.mmd
     review-lifecycle.tour.yaml
+    mindmap/
+      release-plan.mmd
+      release-plan.tour.yaml
   sankey/
     sankey-ops-review.mmd
     sankey-ops-review.tour.yaml
@@ -308,6 +317,7 @@ Use the repository examples as references:
 - `sankey-ops-review` for a small authored Sankey
 - `sequence-order-sequence` for an authored Mermaid sequence diagram
 - `review-lifecycle` for nested states, transitions, and choice/fork/join focus
+- `release-plan` for nested mindmap topics with source IDs and derived parent-path keys
 - `payments-platform-overview` for a large authored demo that stresses minimap, zoom, and pan
 
 For Sankey diagrams, use common Mermaid `sankey-beta` CSV rows. Authored references use raw visible node labels, not generated IDs:

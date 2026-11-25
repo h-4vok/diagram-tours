@@ -1,0 +1,20 @@
+version: 1
+title: Release planning
+diagram: ./release-plan.mmd
+steps:
+  - focus: [plan]
+    text: "{{plan}} is the goal of this release cycle."
+  - focus: [research]
+    text: "Start with {{research}}."
+  - focus: [mindmap-plan-research-interviews]
+    text: "Use {{mindmap-plan-research-interviews}} to learn from customers."
+  - focus: [validation]
+    text: "{{validation}} checks whether demand is real."
+  - focus: [design]
+    text: "Turn the evidence into {{design}}."
+  - focus: [prototype]
+    text: "Make the idea concrete with a {{prototype}}."
+  - focus: [mindmap-plan-measure-adoption]
+    text: "After release, {{mindmap-plan-measure-adoption}}."
+  - focus: [outcomes]
+    text: "Share the results in {{outcomes}}."
