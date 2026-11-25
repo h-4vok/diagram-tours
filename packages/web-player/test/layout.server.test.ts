@@ -30,6 +30,8 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
       "class-diagram/dom-injection-api",
+      "decision-tree/eligibility-flowchart",
+      "decision-tree/eligibility-mindmap",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
@@ -52,6 +54,8 @@ describe("+layout.server", () => {
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
       "Browser Extension Data Pipeline",
+      "Eligibility decision tree",
+      "Eligibility decision tree topics",
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",
