@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadResolvedTour } from "@diagram-tour/parser";
+import { fileURLToPath } from "node:url";
 
 import { startDevServer } from "./dev-server";
+
+const ZENUML_TOUR_PATH = fileURLToPath(new URL("../../../examples/zenuml/checkout-zenuml.tour.yaml", import.meta.url));
 
 test("authored ZenUML diagrams render and navigate semantic focus in both themes", async ({ page }) => {
   await page.addInitScript(() => {
@@ -12,7 +16,8 @@ test("authored ZenUML diagrams render and navigate semantic focus in both themes
     await page.goto(server.baseUrl);
     await expectZenUmlVisible(page);
     await expect(page.getByTestId("theme-root")).toHaveAttribute("data-theme", "dark");
-    await expectFocused(page, "actor-customer");
+    const resolvedTour = await loadResolvedTour(ZENUML_TOUR_PATH);
+    await expectFirstZenUmlFocus(page, resolvedTour.diagram.elements);
     await expect(page.locator('[data-testid="diagram-container"] svg text').first()).toBeVisible();
     const darkActorFill = await readActorFill(page);
 
@@ -39,6 +44,31 @@ test("authored ZenUML diagrams render and navigate semantic focus in both themes
 async function expectFocused(page: Page, id: string): Promise<void> {
   await expect(page.locator(`[data-testid="diagram-container"] [data-node-id="${id}"]`).first())
     .toHaveAttribute("data-focus-state", "focused");
+}
+
+async function expectFirstZenUmlFocus(
+  page: Page,
+  resolvedElements: Awaited<ReturnType<typeof loadResolvedTour>>["diagram"]["elements"]
+): Promise<void> {
+  const svgState = await page.locator('[data-testid="diagram-container"] svg').first().evaluate((svg) => ({
+    role: svg.getAttribute("aria-roledescription"),
+    text: Array.from(svg.querySelectorAll("text, foreignObject"), (element) => ({
+      tag: element.tagName,
+      id: element.getAttribute("id"),
+      class: element.getAttribute("class"),
+      groupClass: element.closest("g")?.getAttribute("class"),
+      value: (element.textContent || "").replace(/\s+/gu, " ").trim()
+    })),
+    targets: Array.from(svg.querySelectorAll("[data-node-id]"), (element) => ({
+      id: element.getAttribute("data-node-id"),
+      label: element.getAttribute("data-node-label")
+    }))
+  }));
+
+  await expect(
+    page.locator('[data-testid="diagram-container"] [data-node-id="actor-customer"]').first(),
+    `Resolved parser elements: ${JSON.stringify(resolvedElements)}; rendered ZenUML SVG: ${JSON.stringify(svgState)}`
+  ).toHaveAttribute("data-focus-state", "focused");
 }
 
 async function expectZenUmlVisible(page: Page): Promise<void> {
