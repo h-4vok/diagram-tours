@@ -25,6 +25,8 @@ api_gateway --> response
 
 Flowchart IDs must match `[A-Za-z][A-Za-z0-9_]*`. Common Mermaid node shapes are addressable when they have an ID, including square, round, diamond, circle, database, subroutine, stadium, trapezoid, parallelogram, and `@{ shape: ..., label: ... }` forms. Bare linked endpoints like `api_gateway --> response` are addressable too, with the ID as their fallback label.
 
+Decision trees can use a `flowchart TD` diagram with focusable nodes and labeled branches, or a Mermaid Mindmap with focusable topics. In a flowchart, labeled links such as `eligibility -->|Yes| approved` or `eligibility -- No --> review` are independent focus targets. Their keys are `transition-<source-id>-to-<target-id>-<label-in-kebab-case>`; repeated keys receive a numeric suffix in source order. The edge path and its visible label focus together. Unlabeled structural links remain context. Mermaid Mindmaps make each topic focusable while their hierarchy remains context. Compare the paired [`flowchart`](../examples/decision-tree/eligibility-flowchart.tour.yaml) and [`Mindmap`](../examples/decision-tree/eligibility-mindmap.tour.yaml) examples.
+
 Prefer:
 
 - lowercase snake_case
@@ -182,7 +184,7 @@ examples/
 
 The runtime will generate an overview step plus one step per addressable Mermaid diagram element until you add an authored tour file.
 
-For flowcharts, that is one step per node. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message, in source order. For ZenUML, generated targets are declared and encountered actors, interactions, and named conditional/loop blocks in source order. For Sankey diagrams, that is one step per node in source order.
+For flowcharts, generated tours keep one step per node; authored tours may also focus labeled transitions. For sequence diagrams, that is one step per explicit participant plus one step per explicitly tagged message, in source order. For ZenUML, generated targets are declared and encountered actors, interactions, and named conditional/loop blocks in source order. For Sankey diagrams, that is one step per node in source order.
 
 Markdown-backed diagrams are also valid:
 

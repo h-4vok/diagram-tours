@@ -37,7 +37,12 @@ export function createGeneratedDiagramTour(input: {
     version: 1,
     title: input.title,
     diagram: createResolvedDiagram(input.diagramPath, diagramModel),
-    steps: createGeneratedSteps(diagramModel.elements, input.title)
+    steps: createGeneratedSteps(
+      diagramModel.type === "flowchart"
+        ? diagramModel.elements.filter((element) => element.kind === "node")
+        : diagramModel.elements,
+      input.title
+    )
   };
 }
 

@@ -289,6 +289,8 @@ queue
 
 Flowchart labels can come from common Mermaid node forms such as `id[Label]`, `id(Label)`, `id{Label}`, `id((Label))`, bracket variants like database or trapezoid nodes, and `id@{ shape: ..., label: "Label" }`. Bare linked endpoints such as `archive` use the ID as the fallback label. If the same ID appears later with a new explicit label, the first source position is kept and the latest explicit label is used.
 
+Labeled flowchart links are focusable transitions in authored tours. Both `decision -->|Yes| approved` and `decision -- No --> review` produce the key `transition-decision-to-approved-yes` and `transition-decision-to-review-no`, respectively. The key uses source and target node IDs plus the link label normalized to lower-case kebab case; punctuation-only labels use `branch`, and repeated keys receive the next available numeric suffix in source order. The displayed element label is `Source → Target: Label`. Focusing a transition focuses its rendered edge and label while leaving endpoint nodes as separate focus targets. Unlabeled links remain structural context. Generated flowchart tours keep their existing overview plus one step per node behavior. The full Mermaid source, including Mermaid `click` tooltips, is preserved; tooltips remain UI affordances rather than focus targets. See [`examples/decision-tree/eligibility-flowchart.tour.yaml`](../examples/decision-tree/eligibility-flowchart.tour.yaml).
+
 Sequence diagrams support two addressable element kinds:
 
 - participants declared with `participant` or `actor`; use their Mermaid source IDs
@@ -369,7 +371,7 @@ Not supported:
 - Independent focus keys for state diagram `[*]` markers, directions, notes, and comments
 - Independent focus keys for mindmap branch connectors, indentation/layout, and icon/class decoration lines
 - Independent focus keys for ZenUML delimiters, anonymous blocks, lifelines, and rendering decorations
-- flowchart edges, edge labels, tooltips, styles, classes, and subgraph boxes as addressable elements
+- unlabeled flowchart links, Mermaid styles/classes, and subgraph boxes as addressable elements; Mermaid `click` tooltips are not focus targets
 - Stable authored Sankey link references
 
 ## Future Directions

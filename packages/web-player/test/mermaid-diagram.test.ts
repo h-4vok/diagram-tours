@@ -12,10 +12,11 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedClassTour, resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { mermaidInitialize, mermaidRegisterExternalDiagrams, mermaidRender } = vi.hoisted(() => ({
-  mermaidInitialize: vi.fn(),
-  mermaidRegisterExternalDiagrams: vi.fn(async () => undefined),
-  mermaidRender: vi.fn(async () => ({
+const { mermaidBindFunctions, mermaidInitialize, mermaidRegisterExternalDiagrams, mermaidRender } = vi.hoisted(() => {
+  const bindFunctions = vi.fn();
+  type RenderResult = { bindFunctions?: typeof bindFunctions; svg: string };
+  const render = vi.fn<() => Promise<RenderResult>>(async () => ({
+    bindFunctions,
     svg: [
       '<svg width="100%" style="max-width: 1440px;" viewBox="0 0 1440 960">',
       '<g class="diagram_tour_node_api_gateway"></g>',
@@ -24,8 +25,15 @@ const { mermaidInitialize, mermaidRegisterExternalDiagrams, mermaidRender } = vi
       '<g class="edgeLabel"><foreignObject><div>Yes</div></foreignObject></g>',
       "</svg>"
     ].join("")
-  }))
-}));
+  }));
+
+  return {
+    mermaidBindFunctions: bindFunctions,
+    mermaidInitialize: vi.fn(),
+    mermaidRegisterExternalDiagrams: vi.fn(async () => undefined),
+    mermaidRender: render
+  };
+});
 
 vi.mock("mermaid", () => ({
   default: {
@@ -40,6 +48,7 @@ vi.mock("@mermaid-js/mermaid-zenuml", () => ({ default: { id: "zenuml-plugin" } 
 describe("mermaid diagram helpers", () => {
   beforeEach(() => {
     mermaidInitialize.mockClear();
+    mermaidBindFunctions.mockClear();
     mermaidRegisterExternalDiagrams.mockClear();
     mermaidRender.mockClear();
     clearThemeTokens();
@@ -144,6 +153,28 @@ describe("mermaid diagram helpers", () => {
     );
   });
 
+  it("resolves paired decision tree tours to focusable branches and Mindmap topics", async () => {
+    const flowchart = await loadResolvedTour(
+      resolve(process.cwd(), "test/fixtures/decision-tree/eligibility-flowchart.tour.yaml")
+    );
+    const mindmap = await loadResolvedTour(
+      resolve(process.cwd(), "test/fixtures/decision-tree/eligibility-mindmap.tour.yaml")
+    );
+
+    expect(flowchart.diagram.elements.filter((element) => element.kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-eligibility-to-approved-yes",
+      "transition-eligibility-to-documents-no",
+      "transition-documents-to-manual_review-yes",
+      "transition-documents-to-rejected-no"
+    ]);
+    expect(mindmap.diagram.elements.map(({ id }) => id)).toHaveLength(11);
+    expect(mindmap.diagram.elements.map(({ id }) => id)).toContain("documents_yes");
+    expect(mindmap.diagram.elements.map(({ id }) => id)).toContain("mindmap-eligibility-eligible-no-documents-complete");
+    expect(flowchart.steps[2]?.text).toContain("Eligible? → Approved: Yes leads to the approval outcome.");
+    expect(mindmap.steps[5]?.text).toContain("Review Documents complete? before deciding the next step.");
+    expect(mindmap.diagram.source).toContain("mindmap");
+  });
+
   it("preserves the authored fixture source for Mermaid rendering", async () => {
     const source = await readFile(resolve(process.cwd(), "test/fixtures/zenuml/checkout-zenuml.mmd"), "utf8");
 
@@ -166,6 +197,7 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(mermaidRegisterExternalDiagrams).toHaveBeenCalledWith([{ id: "zenuml-plugin" }]);
+    expect(mermaidBindFunctions).toHaveBeenCalledWith(container);
     expect(mermaidInitialize).toHaveBeenCalledWith(
       expect.objectContaining({
         startOnLoad: false,
@@ -881,6 +913,234 @@ describe("mermaid diagram helpers", () => {
     expect(container.querySelector('[data-connector-role="flow"]')?.hasAttribute("data-connector-state")).toBe(
       false
     );
+  });
+
+  it("focuses a labeled decision branch independently from its endpoint nodes", async () => {
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "decision", kind: "node" as const, label: "Decision" },
+        { id: "approved", kind: "node" as const, label: "Approved" },
+        {
+          id: "transition-decision-to-approved-yes",
+          kind: "transition" as const,
+          label: "Decision → Approved: Yes",
+          renderId: "L_decision_approved_0",
+          renderSourceId: "decision",
+          renderTargetId: "approved"
+        }
+      ],
+      path: "./eligibility.mmd",
+      source: "flowchart TD\n decision{Eligible?} -->|Yes| approved[Approved]",
+      type: "flowchart" as const
+    };
+
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" style="max-width: 960px;" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_decision"></g>',
+        '<g class="diagram_tour_node_approved"></g>',
+        '<path class="flowchart-link" data-id="L_decision_approved_0"></path>',
+        '<g class="edgeLabel" id="label-wrapper"><foreignObject><div data-id="L_decision_approved_0">Yes</div></foreignObject></g>',
+        '<path class="flowchart-link" data-id="L_decision_review_0"></path>',
+        "</svg>"
+      ].join("")
+    });
+
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({ container, diagram });
+    });
+    applyFocusState({ container, focusGroup: createFocusGroup(["transition-decision-to-approved-yes"]) });
+
+    const branch = readRequiredElement(container, '.flowchart-link[data-id="L_decision_approved_0"]');
+    const branchLabel = readRequiredElement(container, '.edgeLabel[id="label-wrapper"]');
+    expect(branch.getAttribute("data-diagram-element-id")).toBe("transition-decision-to-approved-yes");
+    expect(branch.getAttribute("data-diagram-element-kind")).toBe("transition");
+    expect(branch.getAttribute("data-focus-state")).toBe("focused");
+    expect(branch.getAttribute("data-connector-state")).toBe("active");
+    expect(branchLabel.getAttribute("data-diagram-element-id")).toBe("transition-decision-to-approved-yes");
+    expect(branchLabel.getAttribute("data-focus-state")).toBe("focused");
+    expect(branchLabel.getAttribute("data-connector-state")).toBe("active");
+    expectFocusState(container, "decision", "dimmed");
+    expectFocusState(container, "approved", "dimmed");
+    expect(container.querySelector('.flowchart-link[data-id="L_decision_review_0"]')?.hasAttribute("data-diagram-element-id")).toBe(false);
+  });
+
+  it("skips flowchart transitions without Mermaid render identity", async () => {
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [{ id: "transition-no-render-id", kind: "transition", label: "A → B: Yes" }],
+        path: "./decision.mmd",
+        source: "flowchart TD\n  A -->|Yes| B",
+        type: "flowchart"
+      }
+    });
+
+    expect(container.querySelector('[data-diagram-element-id="transition-no-render-id"]')).toBeNull();
+  });
+
+  it("disambiguates duplicate Mermaid edge IDs by endpoints and label order", async () => {
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "B", kind: "node" as const, label: "B" },
+        { id: "C", kind: "node" as const, label: "C" },
+        { id: "D", kind: "node" as const, label: "D" },
+        {
+          id: "transition-A-to-B-yes",
+          kind: "transition" as const,
+          label: "A → B: Yes",
+          renderId: "L_C_D_0",
+          renderSourceId: "A",
+          renderTargetId: "B"
+        },
+        {
+          id: "transition-C-to-D-no",
+          kind: "transition" as const,
+          label: "C → D: No",
+          renderId: "L_C_D_0",
+          renderSourceId: "C",
+          renderTargetId: "D"
+        }
+      ],
+      path: "./render-id-collision.mmd",
+      source: "flowchart TD\n A L_C_D_0@-->|Yes| B\n C -->|No| D",
+      type: "flowchart" as const
+    };
+
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" viewBox="0 0 960 640">',
+        '<g class="diagram_tour_node_A"></g><g class="diagram_tour_node_B"></g>',
+        '<g class="diagram_tour_node_C"></g><g class="diagram_tour_node_D"></g>',
+        '<path class="flowchart-link LS-A LE-B" data-id="L_C_D_0"></path>',
+        '<path class="flowchart-link LS-C" data-id="L_C_D_0"></path>',
+        '<g class="edgeLabel" id="L_C_D_0"><foreignObject><div>Yes</div></foreignObject></g>',
+        '<g class="edgeLabel" id="L_C_D_0"><foreignObject><div>No</div></foreignObject></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    await withFlowchartBoundsOnly(async () => {
+      await renderMermaidDiagram({ container, diagram });
+    });
+    applyFocusState({ container, focusGroup: createFocusGroup(["transition-A-to-B-yes"]) });
+    const labels = container.querySelectorAll(".edgeLabel");
+
+    expect(readRequiredAttribute(readRequiredElement(container, ".flowchart-link.LS-A.LE-B"), "data-focus-state")).toBe(
+      "focused"
+    );
+    const edgePaths = container.querySelectorAll('.flowchart-link[data-id="L_C_D_0"]');
+    expect(readRequiredAttribute(edgePaths[0]!, "data-connector-source-id")).toBe("A");
+    expect(readRequiredAttribute(edgePaths[0]!, "data-connector-target-id")).toBe("B");
+    expect(readRequiredAttribute(edgePaths[1]!, "data-connector-source-id")).toBe("C");
+    expect(readRequiredAttribute(edgePaths[1]!, "data-connector-target-id")).toBe("D");
+    expect(readRequiredAttribute(edgePaths[1]!, "data-focus-state")).toBe("dimmed");
+    expect(readRequiredAttribute(labels[0]!, "data-focus-state")).toBe("focused");
+    expect(readRequiredAttribute(labels[1]!, "data-focus-state")).toBe("dimmed");
+
+    applyFocusState({ container, focusGroup: createFocusGroup(["transition-C-to-D-no"]) });
+    expect(readRequiredAttribute(edgePaths[0]!, "data-focus-state")).toBe("dimmed");
+    expect(readRequiredAttribute(edgePaths[1]!, "data-focus-state")).toBe("focused");
+    expect(readRequiredAttribute(labels[0]!, "data-focus-state")).toBe("dimmed");
+    expect(readRequiredAttribute(labels[1]!, "data-focus-state")).toBe("focused");
+  });
+
+  it("keeps an unlabeled duplicate-ID connector in diagram context", async () => {
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "B", kind: "node" as const, label: "B" },
+        { id: "C", kind: "node" as const, label: "C" },
+        { id: "D", kind: "node" as const, label: "D" },
+        {
+          id: "transition-A-to-B-yes",
+          kind: "transition" as const,
+          label: "A → B: Yes",
+          renderId: "L_C_D_0",
+          renderSourceId: "A",
+          renderTargetId: "B"
+        }
+      ],
+      path: "./render-id-collision-unlabeled.mmd",
+      source: "flowchart TD\n A L_C_D_0@-->|Yes| B\n C --> D",
+      type: "flowchart" as const
+    };
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" viewBox="0 0 960 640">',
+        ...["A", "B", "C", "D"].map((id) => `<g class="diagram_tour_node_${id}"></g>`),
+        '<path class="flowchart-link" data-id="L_C_D_0"></path>',
+        '<path class="flowchart-link" data-id="L_C_D_0"></path>',
+        '<g class="edgeLabel" id="L_C_D_0"><foreignObject><div>Yes</div></foreignObject></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    await renderMermaidDiagram({ container, diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup(["transition-A-to-B-yes"]) });
+    const paths = container.querySelectorAll('.flowchart-link[data-id="L_C_D_0"]');
+
+    expect(paths).toHaveLength(2);
+    expect(readRequiredAttribute(paths[0]!, "data-diagram-element-id")).toBe("transition-A-to-B-yes");
+    expect(readRequiredAttribute(paths[0]!, "data-connector-source-id")).toBe("A");
+    expect(readRequiredAttribute(paths[0]!, "data-connector-target-id")).toBe("B");
+    expect(paths[1]!.getAttribute("data-diagram-element-id")).toBeNull();
+    expect(paths[1]!.getAttribute("data-focus-state")).toBeNull();
+  });
+
+  it("matches a duplicate render ID to source endpoints when Mermaid omits endpoint classes", async () => {
+    const container = document.createElement("div");
+    const transition = {
+      id: "transition-api_gateway-to-validation_service-yes",
+      kind: "transition" as const,
+      label: "API Gateway → Validation Service: Yes",
+      renderId: "L_payment_service_payment_provider_0",
+      renderSourceId: "api_gateway",
+      renderTargetId: "validation_service"
+    };
+    const diagram = {
+      elements: [
+        { id: "api_gateway", kind: "node" as const, label: "API Gateway" },
+        { id: "validation_service", kind: "node" as const, label: "Validation Service" },
+        { id: "payment_service", kind: "node" as const, label: "Payment Service" },
+        { id: "payment_provider", kind: "node" as const, label: "Payment Provider" },
+        transition
+      ],
+      path: "./render-id-collision.mmd",
+      source: "flowchart TD",
+      type: "flowchart" as const
+    };
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="100%" viewBox="0 0 960 640">',
+        ...["api_gateway", "validation_service", "payment_service", "payment_provider"].map(
+          (id) => `<g class="diagram_tour_node_${id}"></g>`
+        ),
+        '<path class="flowchart-link" data-id="L_payment_service_payment_provider_0" data-test-order="0"></path>',
+        '<path class="flowchart-link" data-id="L_payment_service_payment_provider_0" data-test-order="1"></path>',
+        '<g class="edgeLabel" id="L_payment_service_payment_provider_0"><foreignObject><div>Yes</div></foreignObject></g>',
+        "</svg>"
+      ].join("")
+    });
+
+    await withFlowchartGeometryMocks(async () => {
+      await renderMermaidDiagram({ container, diagram });
+    });
+    applyFocusState({ container, focusGroup: createFocusGroup([transition.id]) });
+    const paths = container.querySelectorAll('.flowchart-link[data-id="L_payment_service_payment_provider_0"]');
+
+    expect(readRequiredAttribute(paths[0]!, "data-diagram-element-id")).toBe(transition.id);
+    expect(readRequiredAttribute(paths[0]!, "data-connector-source-id")).toBe("api_gateway");
+    expect(readRequiredAttribute(paths[0]!, "data-connector-target-id")).toBe("validation_service");
+    expect(paths[1]!.getAttribute("data-diagram-element-id")).toBeNull();
+    expect(readRequiredAttribute(paths[1]!, "data-connector-source-id")).toBe("payment_service");
+    expect(readRequiredAttribute(paths[1]!, "data-connector-target-id")).toBe("payment_provider");
   });
 
   it("annotates untagged flowchart connectors during focus application", async () => {
@@ -1642,8 +1902,9 @@ function installFlowchartGeometryMocks(
     return this.classList.contains("flowchart-link") ? 240 : 0;
   };
   svgGraphicsPrototype.getPointAtLength = function mockGetPointAtLength(distance: number) {
+    const points = this.getAttribute("data-test-order") === "1" ? [540, 790] : [110, 360];
     return {
-      x: distance === 0 ? 180 : 280,
+      x: points[Number(distance > 0)]!,
       y: 100
     } as DOMPoint;
   };

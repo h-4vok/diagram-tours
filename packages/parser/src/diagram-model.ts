@@ -265,6 +265,7 @@ function resolveElement(input: {
 
 function readUnknownElementTarget(diagramType: DiagramType): string {
   const targets: Partial<Record<DiagramType, string>> = {
+    flowchart: "node ID or transition key",
     sequence: "participant or message id",
     mindmap: "mindmap topic key",
     stateDiagram: "state or transition key",
