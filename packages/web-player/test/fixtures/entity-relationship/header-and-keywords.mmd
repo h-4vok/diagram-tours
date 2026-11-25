@@ -1,0 +1,14 @@
+erDiagram A ||--o{ B : "header relation"
+accDescr { inline description } A ||--o{ B : "metadata relation"
+A ||--o{ B : owns A ||..o{ B : owns
+A ||..|{ B : owns
+A ||--o{ B : "**owns**"
+A ||--o{ B : "owns   many"
+A ||--o{ B : "owns<br/>many"
+A {
+  string id } attribute-a-id
+B { string name }
+click
+href
+subgraph
+end

@@ -263,7 +263,7 @@ When a workspace contains invalid authored tours, the player may still load vali
 
 ## Mermaid Requirements
 
-Version 1 supports Mermaid flowcharts, sequence diagrams, state diagrams, ZenUML diagrams, class diagrams, and common Sankey diagrams.
+Version 1 supports Mermaid flowcharts, sequence diagrams, state diagrams, Entity Relationship diagrams, ZenUML diagrams, class diagrams, and common Sankey diagrams.
 
 Flowchart node IDs must match `[A-Za-z][A-Za-z0-9_]*`.
 
@@ -328,6 +328,8 @@ State diagrams use `stateDiagram-v2` and preserve their full source. Rendered na
 
 Mindmaps use the first real Mermaid `mindmap` header and preserve their full source. The header may include its root on the same line or place it on the next line. Every topic is a focus target, including the root, shaped topics, and topics at every depth. A unique shaped node's Mermaid source ID is used exactly as its focus key. A plain text topic uses `mindmap-<parent-path>-<topic>`: each ancestor with an ID contributes that exact ID, while other ancestors and the topic contribute lower-case kebab-case labels with camel-case boundaries separated. Duplicate IDs and derived keys receive the next available numeric suffix in source order. For example, `Interviews` beneath `plan((Release plan))` and `research[Customer research]` uses `mindmap-plan-research-interviews`. Focus keys are stable authoring IDs, not Mermaid-generated SVG node numbers. Quoted, bracketed, and multiline shape labels remain one focus target; quotes and Markdown formatting are removed from the display label. Branch connectors, indentation, and layout are structural context and stay visible when a topic is focused. Separate `::icon(...)` and `:::class` decoration lines are not targets; emoji in a topic remains part of its label. Mermaid Mindmap has no native per-node tooltip syntax, so Mermaid-specific tooltips are not produced. See [`examples/mindmap/release-plan.tour.yaml`](../examples/mindmap/release-plan.tour.yaml).
 
+Entity Relationship diagrams use Mermaid `erDiagram` syntax and preserve their complete source. Entities use their Mermaid source IDs as focus keys; any entity alias changes its display label only. Attributes use `attribute-<entity-slug>-<attribute-slug>`, with duplicate keys disambiguated by a source-order numeric suffix. Each attribute target includes its whole rendered row with type, name, PK/FK/UK markers, and comment; its display label is `Entity.attribute`. Relationships use `relationship-<source-slug>-to-<target-slug>-<role-slug>-<source-cardinality>-<identifying-type>-<target-cardinality>`. Slugs lowercase text, remove accents, and replace punctuation or whitespace with hyphens. Cardinality slugs are `one`, `zero-or-one`, `one-or-more`, `zero-or-more`, and `unknown`; line types are `identifying` or `non-identifying`. Unlabeled relationship roles use `relationship`. For example, `CUSTOMER ||--o{ SALES_ORDER : places` uses `relationship-customer-to-sales-order-places-one-identifying-zero-or-more` and displays `CUSTOMER — places → SALES_ORDER (one, identifying, zero-or-more)`. Mermaid role formatting is resolved to visible text for keys and labels; role text is never used to match the SVG target. The player validates native edge identity, endpoint cardinalities, and solid/dashed line type before annotating a relationship. Focusing a relationship highlights the connector and its label together; its endpoints remain independent entity targets. For self-referencing relationships on one entity, only the latest has an independent focus key because Mermaid 11.13 reuses the same synthetic path and label IDs for earlier loops. Entity titles, style metadata, and separators remain context. Mermaid 11.13's ER syntax has no native click-tooltip directive. See [`examples/entity-relationship/order-fulfillment.tour.yaml`](../examples/entity-relationship/order-fulfillment.tour.yaml).
+
 ## Focus Semantics
 
 The `focus` field is semantic, not a strict UI instruction.
@@ -351,9 +353,11 @@ Supported:
 - Mermaid flowcharts
 - Mermaid state diagrams with nested/composite states, transitions, and choice/fork/join focus keys
 - Mermaid mindmaps with root and nested topic focus keys
+- Mermaid Entity Relationship diagrams with entity, attribute-row, and relationship focus keys
 - Mermaid sequence diagrams with addressable participants and tagged messages
 - Mermaid ZenUML diagrams with source-derived actor, interaction, and named conditional/loop focus keys
 - Common Mermaid Sankey diagrams with addressable node labels
+- Mermaid Requirement diagrams with focusable requirement and element blocks plus typed traceability relations
 - YAML tour files
 - sequential tours
 - element highlighting or other player-defined focus rendering
@@ -373,6 +377,8 @@ Not supported:
 - Independent focus keys for ZenUML delimiters, anonymous blocks, lifelines, and rendering decorations
 - unlabeled flowchart links, Mermaid styles/classes, and subgraph boxes as addressable elements; Mermaid `click` tooltips are not focus targets
 - Stable authored Sankey link references
+- Independent focus keys for Requirement properties, accessibility metadata, classes/styles, comments, or Mermaid-generated SVG identifiers; requirement diagrams have no native click-tooltip syntax
+- Independent focus keys for ER entity titles, row separators, comments, and styles; Mermaid 11.13 ER syntax has no native click-tooltip directive
 
 ## Future Directions
 

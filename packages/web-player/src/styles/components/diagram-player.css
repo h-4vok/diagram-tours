@@ -90,6 +90,12 @@
   background: transparent;
 }
 
+.diagram svg[class~="requirementDiagram"] [class~="edgeLabel"],
+.diagram svg[class~="requirementDiagram"] [class~="edgeLabel"] :is(text, span, p, div, tspan) {
+  color: var(--color-edge-label-text) !important;
+  fill: var(--color-edge-label-text) !important;
+}
+
 .diagram .edgeLabel div {
   background: var(--color-edge-label-bg) !important;
   border: 1px solid var(--color-edge-label-border) !important;
@@ -196,7 +202,8 @@
   stroke: var(--color-node-base-stroke);
 }
 
-[data-focus-state="focused"][data-diagram-element-kind="transition"]:is(path, line, polyline) {
+[data-focus-state="focused"][data-diagram-element-kind="transition"]:is(path, line, polyline),
+[data-focus-state="focused"][data-diagram-element-kind="relationship"]:is(path, line, polyline) {
   stroke: var(--accent-primary);
   stroke-width: 2.5px;
 }
@@ -233,9 +240,27 @@
   opacity: 0.35 !important;
 }
 
+[data-diagram-element-kind="node"]:has([data-diagram-element-kind="attribute"][data-focus-state="focused"]) {
+  opacity: 1 !important;
+}
+
+rect[data-diagram-element-kind="attribute"][data-focus-state="focused"] {
+  opacity: 1 !important;
+}
+
 [data-focus-state="dimmed"]:is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan),
 [data-focus-state="dimmed"] :is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan) {
   opacity: 0.35 !important;
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="attribute"],
+[data-focus-state="focused"][data-diagram-element-kind="attribute"] :is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan) {
+  opacity: 1 !important;
+}
+
+.diagram .node[data-focus-state="focused"] :is(.attribute-type, .attribute-name, .attribute-keys, .attribute-comment),
+.diagram .node[data-focus-state="focused"] :is(.attribute-type, .attribute-name, .attribute-keys, .attribute-comment) :is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan) {
+  opacity: 1 !important;
 }
 
 .diagram .node-labels [data-focus-state="dimmed"] {
@@ -301,6 +326,19 @@
 
 .diagram .edgeLabel foreignObject {
   overflow: visible;
+}
+
+.diagram svg[class~="requirementDiagram"] g.node foreignObject {
+  overflow: hidden !important;
+}
+
+.diagram svg[class~="requirementDiagram"] foreignObject [class~="nodeLabel"] {
+  font-size: 14px;
+}
+
+.diagram svg[class~="requirementDiagram"] g.node[data-requirement-context="true"][data-focus-state="dimmed"],
+.diagram svg[class~="requirementDiagram"] g.node[data-requirement-context="true"][data-focus-state="dimmed"] :is(rect, path, polygon, circle, ellipse, line, text, foreignObject, tspan) {
+  opacity: 1 !important;
 }
 
 .diagram [data-connector-role="label"] {

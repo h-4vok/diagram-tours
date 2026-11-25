@@ -1,0 +1,40 @@
+erDiagram
+  CUSTOMER ||--o{ SALES_ORDER : places
+  SALES_ORDER ||--|{ ORDER_LINE : contains
+  PRODUCT ||--o{ ORDER_LINE : appears_on
+  INVENTORY_ITEM ||--o{ ORDER_LINE : reserves
+  SALES_ORDER ||--|| PAYMENT : settled_by
+
+  CUSTOMER {
+    string customer_id PK "Stable customer key"
+    string email UK "Unique login address"
+    string full_name
+  }
+  SALES_ORDER {
+    string order_id PK
+    string customer_id FK
+    date placed_at
+    string status
+  }
+  ORDER_LINE {
+    string order_id PK, FK
+    int line_number PK
+    string product_id FK
+    int quantity
+  }
+  PRODUCT {
+    string product_id PK
+    string name
+    decimal unit_price
+  }
+  INVENTORY_ITEM {
+    string inventory_id PK
+    string product_id FK
+    int available_quantity
+  }
+  PAYMENT {
+    string payment_id PK
+    string order_id FK
+    decimal amount
+    string status
+  }

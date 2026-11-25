@@ -1,0 +1,43 @@
+version: 1
+title: Order Fulfillment Data Model
+diagram: ./order-fulfillment.mmd
+
+steps:
+  - focus:
+      - CUSTOMER
+    text: >
+      {{CUSTOMER}} is the customer record. Its stable key identifies the person,
+      while the email address must stay unique.
+
+  - focus:
+      - attribute-customer-customer-id
+      - attribute-customer-email
+    text: >
+      These attributes make {{CUSTOMER}} addressable by its primary key and
+      prevent duplicate login addresses.
+
+  - focus:
+      - SALES_ORDER
+      - ORDER_LINE
+    text: >
+      {{SALES_ORDER}} records a purchase. Each {{ORDER_LINE}} stores a product
+      and quantity within that order.
+
+  - focus:
+      - PRODUCT
+      - INVENTORY_ITEM
+    text: >
+      {{PRODUCT}} describes what can be sold, while {{INVENTORY_ITEM}} tracks
+      the stock available for fulfillment.
+
+  - focus:
+      - PAYMENT
+    text: >
+      {{PAYMENT}} stores the settlement result and amount associated with an
+      order.
+
+  - focus:
+      - relationship-sales-order-to-order-line-contains-one-identifying-one-or-more
+    text: >
+      One {{SALES_ORDER}} contains one or more lines; the crow-foot connector
+      preserves that relationship's direction and cardinality.

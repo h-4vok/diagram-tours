@@ -1,0 +1,49 @@
+version: 1
+title: ER Header and Keywords
+diagram: ./header-and-keywords.mmd
+
+steps:
+  - focus:
+      - relationship-a-to-b-header-relation-one-identifying-zero-or-more
+    text: Focus the relationship on the erDiagram header.
+
+  - focus:
+      - relationship-a-to-b-metadata-relation-one-identifying-zero-or-more
+    text: Focus the relationship after inline accessible description.
+
+  - focus:
+      - relationship-a-to-b-owns-one-identifying-zero-or-more
+    text: Focus the first relationship on a shared source line.
+
+  - focus:
+      - relationship-a-to-b-owns-one-non-identifying-zero-or-more
+    text: Focus the second relationship on the same source line.
+
+  - focus:
+      - relationship-a-to-b-owns-one-non-identifying-one-or-more
+    text: Focus the following relationship with one-or-more cardinality.
+
+  - focus:
+      - relationship-a-to-b-owns-one-identifying-zero-or-more-2
+    text: Focus the bold role after Mermaid rendering.
+
+  - focus:
+      - relationship-a-to-b-owns-many-one-identifying-zero-or-more
+    text: Focus the repeated-space role after Mermaid normalization.
+
+  - focus:
+      - relationship-a-to-b-owns-many-one-identifying-zero-or-more-2
+    text: Focus the explicit line-break role after Mermaid rendering.
+
+  - focus:
+      - attribute-b-name
+      - attribute-a-id-2
+      - attribute-a-id
+    text: Focus attributes and the entity following a multiline block.
+
+  - focus:
+      - click
+      - href
+      - subgraph
+      - end
+    text: Focus ER entities with Mermaid reserved words in other diagram types.

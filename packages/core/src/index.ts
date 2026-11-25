@@ -11,9 +11,9 @@ export interface DiagramTour {
   steps: TourStep[];
 }
 
-export type DiagramType = "flowchart" | "sequence" | "sankey" | "classDiagram" | "mindmap" | "stateDiagram" | "zenuml";
+export type DiagramType = "flowchart" | "sequence" | "sankey" | "classDiagram" | "mindmap" | "stateDiagram" | "zenuml" | "erDiagram" | "requirementDiagram";
 
-export type DiagramElementKind = "node" | "participant" | "message" | "group" | "state" | "transition";
+export type DiagramElementKind = "node" | "participant" | "message" | "group" | "state" | "transition" | "attribute" | "relationship";
 
 export interface DiagramElement {
   id: string;
@@ -21,7 +21,11 @@ export interface DiagramElement {
   label: string;
   renderId?: string;
   renderOrder?: number;
+  renderLinkType?: string;
+  renderSourceCardinality?: string;
   renderSourceId?: string;
+  renderLabel?: string;
+  renderTargetCardinality?: string;
   renderTargetId?: string;
 }
 

@@ -32,10 +32,12 @@ describe("+layout.server", () => {
       "class-diagram/dom-injection-api",
       "decision-tree/eligibility-flowchart",
       "decision-tree/eligibility-mindmap",
+      "entity-relationship/order-fulfillment",
       "flowchart/checkout-payment-flow",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
       "mindmap/release-plan",
+      "requirement/payment-security-requirements",
       "sankey/sankey-ops-review",
       "sequence/sequence-order-sequence",
       "state/review-lifecycle",
@@ -56,10 +58,12 @@ describe("+layout.server", () => {
       "Browser Extension Data Pipeline",
       "Eligibility decision tree",
       "Eligibility decision tree topics",
+      "Order Fulfillment Data Model",
       "Payment Flow",
       "Flowchart Addressability",
       "Payments Platform Overview",
       "Release planning",
+      "Payment authorization requirements",
       "Interview Offers Pipeline",
       "Order Sequence",
       "Review Lifecycle",
@@ -97,6 +101,11 @@ describe("+layout.server", () => {
       "mindmap-plan-measure-adoption",
       "outcomes"
     ]);
+  });
+
+  it("loads the authored ER example with entity, attribute, and relationship focus", async () => {
+    const entry = await loadExampleEntry("entity-relationship/order-fulfillment");
+    expectErExample(entry);
   });
 
   it("describes file targets for direct author preview", async () => {
@@ -264,6 +273,25 @@ async function createTempMarkdownTarget(source: string): Promise<string> {
 
 async function loadExampleEntry(slug: string) {
   return (await loadExamplesCollection()).collection.entries.find((item) => item.slug === slug);
+}
+
+function expectErExample(entry: ResolvedDiagramTourCollection["entries"][number] | undefined): void {
+  const tour = readTour(entry);
+  const elements = tour.diagram.elements;
+
+  expect(tour.diagram.type).toBe("erDiagram");
+  expect(readElementIds(elements, "node")).toContain("CUSTOMER");
+  expect(readElementIds(elements, "attribute")).toContain("attribute-customer-customer-id");
+  expect(readElementIds(elements, "relationship")).toContain(
+    "relationship-sales-order-to-order-line-contains-one-identifying-one-or-more"
+  );
+}
+
+function readElementIds(
+  elements: ResolvedDiagramTourCollection["entries"][number]["tour"]["diagram"]["elements"],
+  kind: string
+): string[] {
+  return elements.filter((element) => element.kind === kind).map(({ id }) => id);
 }
 
 function expectPaymentsPlatformExample(

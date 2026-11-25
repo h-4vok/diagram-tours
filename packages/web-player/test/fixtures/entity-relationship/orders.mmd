@@ -1,0 +1,10 @@
+erDiagram
+  CUSTOMER ||--o{ SALES_ORDER : places
+  CUSTOMER {
+    string customer_id PK "Stable key"
+    string email UK
+  }
+  SALES_ORDER {
+    string order_id PK
+    string customer_id FK
+  }

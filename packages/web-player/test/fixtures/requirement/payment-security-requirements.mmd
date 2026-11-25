@@ -1,0 +1,43 @@
+requirementDiagram
+direction LR
+accTitle: Payment authorization requirements
+accDescr {
+Traceability between payment authorization requirements and implementing services.
+}
+
+functionalRequirement REQ_AUTH {
+  id: 101
+  text: Authenticate each account.
+  risk: high
+  verifyMethod: test
+}
+
+requirement REQ_MFA {
+  id: 102
+  text: Require MFA for risk.
+  risk: medium
+  verifyMethod: demonstration
+}
+
+requirement REQ_AUDIT {
+  id: 103
+  text: Keep each decision immutable.
+  risk: low
+  verifyMethod: inspection
+}
+
+element IDENTITY_PROVIDER {
+  type: auth service
+  docref: auth_docs
+}
+
+element PAYMENT_API {
+  type: payment service
+  docref: payment_api_reference
+}
+
+REQ_AUTH - derives -> REQ_MFA
+IDENTITY_PROVIDER - satisfies -> REQ_AUTH
+IDENTITY_PROVIDER - verifies -> REQ_AUTH
+PAYMENT_API - verifies -> REQ_AUTH
+REQ_AUDIT - traces -> PAYMENT_API

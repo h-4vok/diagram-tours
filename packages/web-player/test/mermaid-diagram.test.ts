@@ -12,8 +12,26 @@ import {
 import { createFocusGroup } from "../src/lib/focus-group";
 import { resolvedClassTour, resolvedPaymentFlowTour } from "./fixtures/resolved-tour";
 
-const { mermaidBindFunctions, mermaidInitialize, mermaidRegisterExternalDiagrams, mermaidRender } = vi.hoisted(() => {
+const {
+  mermaidBindFunctions,
+  mermaidInitialize,
+  mermaidParse,
+  mermaidGetDiagramFromText,
+  mermaidRequirementGetData,
+  mermaidRegisterExternalDiagrams,
+  mermaidRender,
+  requirementDatabasePrototype
+} = vi.hoisted(() => {
   const bindFunctions = vi.fn();
+  const requirementDatabasePrototype = {
+    getData: vi.fn(() => ({
+      edges: [
+        { id: "A-B-0" },
+        { id: "A-B-0" },
+        { id: "A-B-0" }
+      ]
+    }))
+  };
   type RenderResult = { bindFunctions?: typeof bindFunctions; svg: string };
   const render = vi.fn<() => Promise<RenderResult>>(async () => ({
     bindFunctions,
@@ -30,14 +48,20 @@ const { mermaidBindFunctions, mermaidInitialize, mermaidRegisterExternalDiagrams
   return {
     mermaidBindFunctions: bindFunctions,
     mermaidInitialize: vi.fn(),
+    mermaidParse: vi.fn(async () => ({ diagramType: "requirement" })),
+    mermaidGetDiagramFromText: vi.fn(async () => ({ db: Object.create(requirementDatabasePrototype) })),
+    mermaidRequirementGetData: requirementDatabasePrototype.getData,
     mermaidRegisterExternalDiagrams: vi.fn(async () => undefined),
-    mermaidRender: render
+    mermaidRender: render,
+    requirementDatabasePrototype
   };
 });
 
 vi.mock("mermaid", () => ({
   default: {
     initialize: mermaidInitialize,
+    parse: mermaidParse,
+    mermaidAPI: { getDiagramFromText: mermaidGetDiagramFromText },
     registerExternalDiagrams: mermaidRegisterExternalDiagrams,
     render: mermaidRender
   }
@@ -48,6 +72,9 @@ vi.mock("@mermaid-js/mermaid-zenuml", () => ({ default: { id: "zenuml-plugin" } 
 describe("mermaid diagram helpers", () => {
   beforeEach(() => {
     mermaidInitialize.mockClear();
+    mermaidParse.mockClear();
+    mermaidGetDiagramFromText.mockClear();
+    mermaidRequirementGetData.mockClear();
     mermaidBindFunctions.mockClear();
     mermaidRegisterExternalDiagrams.mockClear();
     mermaidRender.mockClear();
@@ -228,6 +255,171 @@ describe("mermaid diagram helpers", () => {
     });
   });
 
+  it("assigns unique native IDs to parallel requirement relationships before official rendering", async () => {
+    const source = [
+      "requirementDiagram",
+      "requirement A {",
+      "}",
+      "requirement B {",
+      "}",
+      "A - satisfies -> B",
+      "A - verifies -> B",
+      "A - satisfies -> B"
+    ].join("\n");
+    const elements = [
+      { id: "A", kind: "node" as const, label: "A — Requirement", renderId: "A" },
+      { id: "B", kind: "node" as const, label: "B — Requirement", renderId: "B" },
+      ...["satisfies", "verifies", "satisfies"].map((type, renderOrder) => ({
+        id: `relationship-a-${type}-b${renderOrder === 0 ? "" : `-${renderOrder + 1}`}`,
+        kind: "relationship" as const,
+        label: `A — ${type} → B`,
+        renderId: `diagram-tour-requirement-edge-${renderOrder}`,
+        renderLabel: type,
+        renderOrder,
+        renderSourceId: "A",
+        renderTargetId: "B"
+      }))
+    ];
+    const container = document.createElement("div");
+
+    mermaidRender.mockImplementationOnce(async () => {
+      const edges = requirementDatabasePrototype.getData().edges;
+      return {
+        svg: [
+          '<svg class="requirementDiagram">',
+          '<g class="node" id="A"></g><g class="node" id="B"></g>',
+          '<g class="edgePaths">',
+          ...edges.map(({ id }) => `<path id="${id}"></path>`),
+          '</g><g class="edgeLabels">',
+          ...edges.map(({ id }) => `<g class="edgeLabel"><g class="label" data-id="${id}"></g></g>`),
+          "</g></svg>"
+        ].join("")
+      };
+    });
+
+    await renderMermaidDiagram({
+      container,
+      diagram: { elements, path: "./requirements.mmd", source, type: "requirementDiagram" }
+    });
+
+    expect(mermaidParse).toHaveBeenCalledWith(source);
+    expect(mermaidGetDiagramFromText).toHaveBeenCalledWith(source);
+    expect(mermaidRequirementGetData).toHaveBeenCalledOnce();
+    expect(Array.from(container.querySelectorAll(".edgePaths > path")).map(({ id }) => id)).toEqual([
+      "diagram-tour-requirement-edge-0",
+      "diagram-tour-requirement-edge-1",
+      "diagram-tour-requirement-edge-2"
+    ]);
+    expect(Array.from(container.querySelectorAll<SVGElement>(".edgeLabels .edgeLabel")).map((label) => label.dataset.diagramElementId)).toEqual(
+      elements.filter(({ kind }) => kind === "relationship").map(({ id }) => id)
+    );
+  });
+
+  it("keeps Requirement relationships without a native render ID unannotated", async () => {
+    const relationship = {
+      id: "relationship-a-verifies-b",
+      kind: "relationship" as const,
+      label: "A — verifies → B",
+      renderSourceId: "A",
+      renderTargetId: "B"
+    };
+    mermaidRender.mockResolvedValueOnce({
+      svg: '<svg class="requirementDiagram"><g class="edgePaths"><path id="native-edge"></path></g></svg>'
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [relationship],
+        path: "./requirements.mmd",
+        source: "requirementDiagram\nA - verifies -> B",
+        type: "requirementDiagram"
+      }
+    });
+
+    expect(container.querySelector("#native-edge")?.getAttribute("data-node-id")).toBeNull();
+  });
+
+  it("loads the authored Requirement fixture and focuses its exact native relationship", async () => {
+    const tour = await loadResolvedTour(resolve(process.cwd(), "test/fixtures/requirement/payment-security-requirements.tour.yaml"));
+    const relationshipId = "relationship-identity-provider-satisfies-req-auth";
+    mermaidRender.mockImplementationOnce(async () => {
+      const edges = requirementDatabasePrototype.getData().edges;
+      const nodes = tour.diagram.elements.filter(({ kind }) => kind === "node");
+      return {
+        svg: [
+          '<svg class="requirementDiagram"><g class="nodes">',
+          ...nodes.map(({ id }) => `<g class="node" id="${id}"></g>`),
+          '</g><g class="edgePaths">',
+          ...edges.map(({ id }) => `<path id="${id}"></path>`),
+          '</g><g class="edgeLabels">',
+          ...edges.map(({ id }) => `<g class="edgeLabel"><g class="label" data-id="${id}"></g></g>`),
+          "</g></svg>"
+        ].join("")
+      };
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: tour.diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup([relationshipId]) });
+
+    expect(mermaidInitialize).toHaveBeenCalledWith(expect.objectContaining({
+      fontSize: 14
+    }));
+    expect(tour.diagram.source).toContain("IDENTITY_PROVIDER - satisfies -> REQ_AUTH");
+    expect(tour.steps).toHaveLength(7);
+    expect(container.querySelector('[data-node-id="REQ_AUTH"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="IDENTITY_PROVIDER"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="relationship-identity-provider-satisfies-req-auth"]')?.getAttribute("data-focus-state")).toBe("focused");
+    expect(container.querySelector('#diagram-tour-requirement-edge-1[data-node-id="relationship-identity-provider-satisfies-req-auth"]')).not.toBeNull();
+    expect(container.querySelector('.edgeLabel[data-node-id="relationship-identity-provider-satisfies-req-auth"] .label[data-id="diagram-tour-requirement-edge-1"]')).not.toBeNull();
+    expect(container.querySelector('#IDENTITY_PROVIDER[data-requirement-context="true"]')).not.toBeNull();
+    expect(container.querySelector('#REQ_AUTH[data-requirement-context="true"]')).not.toBeNull();
+    applyFocusState({ container, focusGroup: createFocusGroup([]) });
+    expect(container.querySelector("[data-requirement-context]")).toBeNull();
+  });
+
+  it("focuses all three native segments of the latest Requirement self-link", async () => {
+    const tour = await loadResolvedTour(resolve(process.cwd(), "test/fixtures/requirement/review-regressions.tour.yaml"));
+    const loopKey = "relationship-a-x-verifies-a-x";
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="requirementDiagram"><g class="nodes">',
+        '<g class="node" id="A <- X"></g><g class="node" id="B"></g>',
+        '</g><g class="edgePaths">',
+        '<path id="diagram-tour-requirement-edge-0"></path>',
+        '<path id="diagram-tour-requirement-edge-1"></path>',
+        '<path id="A <- X-cyclic-special-1"></path>',
+        '<path id="A <- X-cyclic-special-mid"></path>',
+        '<path id="A <- X-cyclic-special-2"></path>',
+        '<path id="diagram-tour-requirement-edge-4"></path>',
+        '</g><g class="edgeLabels">',
+        '<g class="edgeLabel"><g class="label" data-id="diagram-tour-requirement-edge-0"></g></g>',
+        '<g class="edgeLabel"><g class="label" data-id="diagram-tour-requirement-edge-1"></g></g>',
+        '<g class="edgeLabel"><g class="label" data-id="A <- X-cyclic-special-mid"></g></g>',
+        '<g class="edgeLabel"><g class="label" data-id="diagram-tour-requirement-edge-4"></g></g>',
+        '</g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: tour.diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup([loopKey]) });
+
+    const loopPaths = Array.from(container.querySelectorAll('.edgePaths > path[data-node-id="relationship-a-x-verifies-a-x"]'));
+    expect(loopPaths.map((path) => path.id).sort()).toEqual([
+      "A <- X-cyclic-special-1",
+      "A <- X-cyclic-special-2",
+      "A <- X-cyclic-special-mid"
+    ].sort());
+    expect(loopPaths.every((path) => path.getAttribute("data-focus-state") === "focused")).toBe(true);
+    expect(container.querySelector('.edgeLabel[data-node-id="relationship-a-x-verifies-a-x"] .label[data-id="A <- X-cyclic-special-mid"]')).not.toBeNull();
+    expect(Array.from(container.querySelectorAll("g.node")).find((node) => node.id === "A <- X")?.getAttribute("data-requirement-context")).toBe("true");
+    expect(container.querySelector('[data-node-id="relationship-a-x-contains-a-x"]')).toBeNull();
+    expect(container.querySelector('#diagram-tour-requirement-edge-4[data-node-id="relationship-a-x-verifies-b-2"]')).not.toBeNull();
+  });
+
   it("binds state diagram theme variables to the active light and dark theme", async () => {
     const tour = await loadResolvedTour(resolve(process.cwd(), "test/fixtures/state/review-lifecycle.tour.yaml"));
 
@@ -374,6 +566,462 @@ describe("mermaid diagram helpers", () => {
     expect(container.querySelector('[data-node-id="Animal.name"]')).not.toBeNull();
     expect(container.querySelector('[data-node-label="Animal"]')).not.toBeNull();
     expect(container.querySelector('[data-node-id="Duck"]')).not.toBeNull();
+  });
+
+  it("tags ER entities, complete attribute rows, relationship connectors, and labels independently", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="erDiagram" viewBox="0 0 640 480">',
+        '<g class="nodes">',
+        '<g class="node diagram_tour_node_api_gateway" id="entity-CUSTOMER-0"><rect></rect><g class="name"><text>CUSTOMER</text></g>',
+        '<g class="attribute-type"><text>string</text></g><g class="attribute-name"><text>customer_id</text></g>',
+        '<g class="attribute-keys"><text>PK</text></g><g class="attribute-comment"><text>stable key</text></g>',
+        '<path class="row-rect-odd"></path><g class="attribute-name"><text>status</text></g></g>',
+        '<g class="node diagram_tour_node_validation_service" id="entity-ORDER-1"><rect></rect><g class="name"><text>ORDER</text></g></g>',
+        '</g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-dashed" id="id_entity-ORDER-1_entity-CUSTOMER-0_1" data-id="id_entity-ORDER-1_entity-CUSTOMER-0_1" marker-start="url(#id_erDiagram-zeroOrOneStart)" marker-end="url(#id_erDiagram-onlyOneEnd)"></path>',
+        '<path class="relationshipLine edge-pattern-solid" id="id_entity-CUSTOMER-0_entity-ORDER-1_0" data-id="id_entity-CUSTOMER-0_entity-ORDER-1_0" marker-start="url(#id_erDiagram-onlyOneStart)" marker-end="url(#id_erDiagram-zeroOrMoreEnd)"></path></g>',
+        '<g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_entity-ORDER-1_entity-CUSTOMER-0_1"><text>returns</text></g><foreignObject><span class="edgeLabel">returns</span></foreignObject></g>',
+        '<g class="edgeLabel"><g class="label" data-id="id_entity-CUSTOMER-0_entity-ORDER-1_0"><text>places</text></g><foreignObject><span class="edgeLabel">places</span></foreignObject></g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "CUSTOMER", kind: "node" as const, label: "CUSTOMER" },
+        { id: "attribute-customer-customer-id", kind: "attribute" as const, label: "string customer_id PK", renderSourceId: "CUSTOMER", renderTargetId: "customer_id" },
+        { id: "attribute-customer-status", kind: "attribute" as const, label: "string status", renderSourceId: "CUSTOMER", renderTargetId: "status" },
+        { id: "ORDER", kind: "node" as const, label: "ORDER" },
+        { id: "GHOST", kind: "node" as const, label: "GHOST" },
+        { id: "relationship-customer-to-order-places-one-identifying-zero-or-more", kind: "relationship" as const, label: "CUSTOMER — places → ORDER (one, identifying, zero-or-more)", renderLinkType: "identifying", renderOrder: 0, renderLabel: "places", renderSourceCardinality: "one", renderSourceId: "CUSTOMER", renderTargetCardinality: "zero-or-more", renderTargetId: "ORDER" },
+        { id: "relationship-order-to-customer-returns-zero-or-one-non-identifying-one", kind: "relationship" as const, label: "ORDER — returns → CUSTOMER (zero-or-one, non-identifying, one)", renderLinkType: "non-identifying", renderOrder: 1, renderLabel: "returns", renderSourceCardinality: "zero-or-one", renderSourceId: "ORDER", renderTargetCardinality: "one", renderTargetId: "CUSTOMER" },
+        { id: "relationship-ghost-to-order-unlabeled-zero-or-one-identifying-one", kind: "relationship" as const, label: "GHOST → ORDER (||--||)", renderOrder: 2, renderSourceId: "GHOST", renderTargetId: "ORDER" }
+      ],
+      path: "./orders.mmd",
+      source: "erDiagram\n  CUSTOMER ||--o{ ORDER : places",
+      type: "erDiagram" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup(["attribute-customer-customer-id"]) });
+
+    expectFocusState(container, "CUSTOMER", "dimmed");
+    expectFocusState(container, "attribute-customer-customer-id", "focused");
+    expectFocusState(container, "attribute-customer-status", "dimmed");
+    expectFocusState(container, "ORDER", "dimmed");
+    expectFocusState(container, "relationship-customer-to-order-places-one-identifying-zero-or-more", "dimmed");
+    expect(container.querySelector('[data-node-id="attribute-customer-customer-id"].attribute-comment')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="attribute-customer-customer-id"].row-rect-odd')).not.toBeNull();
+    expect(container.querySelectorAll('.edgeLabels .label[data-node-id="relationship-customer-to-order-places-one-identifying-zero-or-more"]')).toHaveLength(1);
+    expect(container.querySelector('.relationshipLine[data-node-id="relationship-customer-to-order-places-one-identifying-zero-or-more"]')?.getAttribute("data-connector-source-id")).toBe("CUSTOMER");
+    expect(container.querySelector('.relationshipLine[data-node-id="relationship-customer-to-order-places-one-identifying-zero-or-more"]')?.getAttribute("data-id")).toBe("id_entity-CUSTOMER-0_entity-ORDER-1_0");
+    expect(container.querySelectorAll('.edgeLabels .label[data-node-id="relationship-order-to-customer-returns-zero-or-one-non-identifying-one"]')).toHaveLength(1);
+    expect(mermaidRender).toHaveBeenCalledWith(expect.any(String), diagram.source);
+  });
+
+  it("renders an authored ER fixture after the parser resolves its focus contract", async () => {
+    const tour = await loadResolvedTour(
+      resolve(process.cwd(), "test/fixtures/entity-relationship/orders.tour.yaml")
+    );
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg viewBox="0 0 640 480"><g class="nodes">',
+        '<g class="node" id="entity-CUSTOMER-0"><rect></rect><g class="name"><text>CUSTOMER</text></g>',
+        '<g class="attribute-type"><text>string</text></g><g class="attribute-name"><text>customer_id</text></g>',
+        '<g class="attribute-keys"><text>PK</text></g><g class="attribute-comment"><text>Stable key</text></g>',
+        '<g class="attribute-type"><text>string</text></g><g class="attribute-name"><text>email</text></g>',
+        '<g class="attribute-keys"><text>UK</text></g></g>',
+        '<g class="node" id="entity-SALES_ORDER-1"><rect></rect><g class="name"><text>SALES_ORDER</text></g></g>',
+        '</g><g class="edgePaths"><g class="edgePath"><path class="relationshipLine edge-pattern-solid" id="id_entity-CUSTOMER-0_entity-SALES_ORDER-1_0" data-id="id_entity-CUSTOMER-0_entity-SALES_ORDER-1_0" marker-start="url(#id_erDiagram-onlyOneStart)" marker-end="url(#id_erDiagram-zeroOrMoreEnd)"></path></g></g>',
+        '<g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_entity-CUSTOMER-0_entity-SALES_ORDER-1_0"><text>places</text></g></g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: tour.diagram });
+    applyFocusState({
+      container,
+      focusGroup: createFocusGroup([tour.diagram.elements.find((element) => element.kind === "relationship")!.id])
+    });
+
+    expect(tour.diagram.type).toBe("erDiagram");
+    expect(container.querySelector('[data-node-id="CUSTOMER"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id="attribute-customer-customer-id"]')).not.toBeNull();
+    expect(container.querySelector('[data-node-id^="relationship-customer-to-sales-order"]')?.getAttribute("data-focus-state")).toBe("focused");
+    expect(mermaidRender).toHaveBeenCalledWith(expect.any(String), tour.diagram.source);
+  });
+
+  it("maps ER parallel connectors and self-loop fragments by exact native Mermaid identity", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="erDiagram" viewBox="0 0 640 480"><g class="nodes">',
+        '<g class="node" id="entity-A-0"><text>A</text></g>',
+        '<g class="node" id="entity-B-1"><text>B</text></g></g><g class="edgePaths">',
+        '<path class="relationshipLine" data-id="id_entity-A-0_entity-B-1_1"></path>',
+        '<path class="relationshipLine" data-id="entity-A-0-cyclic-special-2"></path>',
+        '<path class="relationshipLine" data-id="id_entity-A-0_entity-B-1_0"></path>',
+        '<path class="relationshipLine" data-id="entity-A-0-cyclic-special-mid"></path>',
+        '<path class="relationshipLine" data-id="entity-A-0-cyclic-special-1"></path></g>',
+        '<g class="edgeLabels">',
+        '<g class="label" data-id="id_entity-A-0_entity-B-1_1">second</g>',
+        '<g class="label" data-id="entity-A-0-cyclic-special-mid">self</g>',
+        '<g class="label" data-id="id_entity-A-0_entity-B-1_0">first</g>',
+        '</g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "B", kind: "node" as const, label: "B" },
+        { id: "parallel-first", kind: "relationship" as const, label: "first", renderOrder: 0, renderSourceId: "A", renderTargetId: "B" },
+        { id: "parallel-second", kind: "relationship" as const, label: "second", renderOrder: 1, renderSourceId: "A", renderTargetId: "B" },
+        { id: "self-loop", kind: "relationship" as const, label: "self", renderOrder: 2, renderSourceId: "A", renderTargetId: "A" }
+      ],
+      path: "./parallel.mmd",
+      source: "erDiagram",
+      type: "erDiagram" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    expect(container.querySelectorAll('.relationshipLine[data-node-id="parallel-first"]')).toHaveLength(1);
+    expectNativeAttribute(container.querySelector('.relationshipLine[data-node-id="parallel-first"]'), "data-id", "id_entity-A-0_entity-B-1_0");
+    expectNativeAttribute(container.querySelector('.relationshipLine[data-node-id="parallel-second"]'), "data-id", "id_entity-A-0_entity-B-1_1");
+    expect(container.querySelectorAll('.relationshipLine[data-node-id="self-loop"]')).toHaveLength(3);
+    expectNativeAttribute(container.querySelector('.edgeLabels .label[data-node-id="self-loop"]'), "data-id", "entity-A-0-cyclic-special-mid");
+
+    applyFocusState({ container, focusGroup: createFocusGroup(["self-loop"]) });
+    expectFocusState(container, "self-loop", "focused");
+    expect(container.querySelectorAll('.relationshipLine[data-node-id="self-loop"][data-focus-state="focused"]'))
+      .toHaveLength(3);
+    expectNativeAttribute(container.querySelector('.edgeLabels .label[data-node-id="self-loop"]'), "data-focus-state", "focused");
+    expectFocusState(container, "parallel-first", "dimmed");
+
+    applyFocusState({ container, focusGroup: createFocusGroup(["parallel-second"]) });
+    expectFocusState(container, "parallel-second", "focused");
+    expectFocusState(container, "parallel-first", "dimmed");
+    expectFocusState(container, "self-loop", "dimmed");
+  });
+
+  it("uses native ER identity for formatted labels and fails closed on wrong markers", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg><g class="nodes"><g class="node" id="entity-A-0"><text>A</text></g>',
+        '<g class="node" id="entity-B-1"><text>B</text></g></g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-solid" data-id="id_entity-A-0_entity-B-1_0" marker-start="url(#erDiagram-onlyOneStart)" marker-end="url(#erDiagram-zeroOrMoreEnd)"></path>',
+        '</g><g class="edgeLabels"><g class="label" data-id="id_entity-A-0_entity-B-1_0"><text>owns</text></g></g></svg>'
+      ].join("")
+    }).mockResolvedValueOnce({
+      svg: [
+        '<svg><g class="nodes"><g class="node" id="entity-A-0"><text>A</text></g>',
+        '<g class="node" id="entity-B-1"><text>B</text></g></g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-solid" data-id="id_entity-A-0_entity-B-1_0" marker-start="url(#erDiagram-zeroOrOneStart)" marker-end="url(#erDiagram-zeroOrMoreEnd)"></path>',
+        '</g><g class="edgeLabels"><g class="label" data-id="id_entity-A-0_entity-B-1_0"><text>owns</text></g></g></svg>'
+      ].join("")
+    });
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "B", kind: "node" as const, label: "B" },
+        {
+          id: "relationship-a-to-b-owns-one-identifying-zero-or-more",
+          kind: "relationship" as const,
+          label: "A — owns → B (one, identifying, zero-or-more)",
+          renderLinkType: "identifying",
+          renderLabel: "owns",
+          renderOrder: 0,
+          renderSourceCardinality: "one",
+          renderSourceId: "A",
+          renderTargetCardinality: "zero-or-more",
+          renderTargetId: "B"
+        }
+      ],
+      path: "./formatted-role.mmd",
+      source: "erDiagram\\nA ||--o{ B : **owns**",
+      type: "erDiagram" as const
+    };
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram });
+    expect(container.querySelector('.relationshipLine[data-node-id="relationship-a-to-b-owns-one-identifying-zero-or-more"]'))
+      .not.toBeNull();
+    const incorrectMarkers = document.createElement("div");
+    await renderMermaidDiagram({ container: incorrectMarkers, diagram: {
+      ...diagram,
+      elements: diagram.elements.map((element) => element.kind === "relationship"
+        ? { ...element, renderSourceCardinality: "one-or-more" }
+        : element)
+    } });
+    expect(incorrectMarkers.querySelector(".relationshipLine[data-node-id]")).toBeNull();
+  });
+
+  it("focuses available ER self-loop paths without fabricating a missing Mermaid label", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="erDiagram"><g class="nodes"><g class="node" id="entity-A-0"></g></g>',
+        '<g class="edgePaths"><path class="relationshipLine" data-id="entity-A-0-cyclic-special-1"></path>',
+        '<path class="relationshipLine" data-id="entity-A-0-cyclic-special-2"></path></g>',
+        '<g class="edgeLabels"><g class="label" data-id="unrelated-label">unrelated</g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "self-loop", kind: "relationship" as const, label: "self", renderOrder: 0, renderSourceId: "A", renderTargetId: "A" }
+      ],
+      path: "./self-loop.mmd",
+      source: "erDiagram",
+      type: "erDiagram" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    applyFocusState({ container, focusGroup: createFocusGroup(["self-loop"]) });
+
+    expect(container.querySelectorAll('.relationshipLine[data-node-id="self-loop"][data-focus-state="focused"]'))
+      .toHaveLength(2);
+    expect(container.querySelector('.label[data-node-id="self-loop"]')).toBeNull();
+  });
+
+  it("fails closed when native ER markers disagree with the authored cardinality", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="erDiagram"><g class="nodes"><g class="node" id="entity-A-0"></g>',
+        '<g class="node" id="entity-B-1"></g></g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-solid" data-id="id_entity-A-0_entity-B-1_0" marker-start="url(#erDiagram-zeroOrOneStart)" marker-end="url(#erDiagram-zeroOrMoreEnd)"></path></g>',
+        '<g class="edgeLabels"><g class="label" data-id="id_entity-A-0_entity-B-1_0">native role</g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "A", kind: "node", label: "A" },
+          { id: "B", kind: "node", label: "B" },
+          {
+            id: "relationship-a-to-b-authored-role-one-identifying-zero-or-more",
+            kind: "relationship",
+            label: "A — authored role → B (one, identifying, zero-or-more)",
+            renderLinkType: "identifying",
+            renderLabel: "authored role",
+            renderOrder: 0,
+            renderSourceCardinality: "one",
+            renderSourceId: "A",
+            renderTargetCardinality: "zero-or-more",
+            renderTargetId: "B"
+          }
+        ],
+        path: "./mismatched-role.mmd",
+        source: "erDiagram\n  A ||--o{ B : authored role",
+        type: "erDiagram"
+      }
+    });
+
+    expect(container.querySelector(".relationshipLine[data-node-id]")).toBeNull();
+    expect(container.querySelector(".edgeLabels .label[data-node-id]")).toBeNull();
+  });
+
+  it("fails closed when a semantic relationship endpoint has no rendered entity", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: '<svg><g class="nodes"><g class="node" id="entity-B-1"></g></g><g class="edgePaths"></g></svg>'
+    });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [
+          { id: "B", kind: "node", label: "B" },
+          {
+            id: "relationship-a-to-b-owns-one-identifying-zero-or-more",
+            kind: "relationship",
+            label: "A — owns → B (one, identifying, zero-or-more)",
+            renderLinkType: "identifying",
+            renderLabel: "",
+            renderOrder: 0,
+            renderSourceCardinality: "one",
+            renderSourceId: "A",
+            renderTargetCardinality: "zero-or-more",
+            renderTargetId: "B"
+          }
+        ],
+        path: "./missing-entity.mmd",
+        source: "erDiagram",
+        type: "erDiagram"
+      }
+    });
+
+    expect(container.querySelector(".relationshipLine[data-node-id]")).toBeNull();
+  });
+
+  it("fails closed when a native relationship path or self-loop fragment is absent", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: '<svg><g class="nodes"><g class="node" id="entity-A-0"></g><g class="node" id="entity-B-1"></g></g><g class="edgePaths"></g></svg>'
+    }).mockResolvedValueOnce({
+      svg: [
+        '<svg><g class="nodes"><g class="node" id="entity-A-0"></g></g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-solid" data-id="entity-A-0-cyclic-special-1" marker-start="url(#erDiagram-onlyOneStart)"></path>',
+        '</g></svg>'
+      ].join("")
+    });
+    const relationship = {
+      id: "relationship-a-to-b-empty-role-one-identifying-zero-or-more",
+      kind: "relationship" as const,
+      label: "",
+      renderLinkType: "identifying",
+      renderLabel: "",
+      renderOrder: 0,
+      renderSourceCardinality: "one",
+      renderSourceId: "A",
+      renderTargetCardinality: "zero-or-more",
+      renderTargetId: "B"
+    };
+    const edgeContainer = document.createElement("div");
+    await renderMermaidDiagram({
+      container: edgeContainer,
+      diagram: {
+        elements: [{ id: "A", kind: "node", label: "A" }, { id: "B", kind: "node", label: "B" }, relationship],
+        path: "./missing-edge.mmd",
+        source: "erDiagram",
+        type: "erDiagram"
+      }
+    });
+    expect(edgeContainer.querySelector(".relationshipLine[data-node-id]")).toBeNull();
+
+    const loopContainer = document.createElement("div");
+    await renderMermaidDiagram({
+      container: loopContainer,
+      diagram: {
+        elements: [
+          { id: "A", kind: "node", label: "A" },
+          { ...relationship, id: "loop", renderSourceId: "A", renderTargetId: "A" }
+        ],
+        path: "./missing-loop-fragment.mmd",
+        source: "erDiagram",
+        type: "erDiagram"
+      }
+    });
+    expect(loopContainer.querySelector(".relationshipLine[data-node-id]")).toBeNull();
+  });
+
+  it("matches self-loop semantics and accepts absent native markers for unknown cardinality", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg><g class="nodes"><g class="node" id="entity-A-0"></g></g><g class="edgePaths">',
+        '<path class="relationshipLine edge-pattern-solid" data-id="entity-A-0-cyclic-special-1" marker-start="url(#erDiagram-onlyOneStart)"></path>',
+        '<path class="relationshipLine edge-pattern-solid" data-id="entity-A-0-cyclic-special-mid"></path>',
+        '<path class="relationshipLine edge-pattern-solid" data-id="entity-A-0-cyclic-special-2" marker-end="url(#erDiagram-zeroOrMoreEnd)"></path>',
+        '</g><g class="edgeLabels"><g class="label" data-id="entity-A-0-cyclic-special-mid">loops</g></g></svg>'
+      ].join("")
+    }).mockResolvedValueOnce({
+      svg: [
+        '<svg><g class="nodes"><g class="node" id="entity-A-0"></g><g class="node" id="entity-B-1"></g></g>',
+        '<g class="edgePaths"><path class="relationshipLine edge-pattern-solid" data-id="id_entity-A-0_entity-B-1_0" marker-end="url(#erDiagram-zeroOrMoreEnd)"></path></g>',
+        '<g class="edgeLabels"><g class="label" data-id="id_entity-A-0_entity-B-1_0">open</g></g></svg>'
+      ].join("")
+    });
+    const loop = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        {
+          id: "self-loop",
+          kind: "relationship" as const,
+          label: "A — loops → A (one, identifying, zero-or-more)",
+          renderLinkType: "identifying",
+          renderLabel: "loops",
+          renderOrder: 0,
+          renderSourceCardinality: "one",
+          renderSourceId: "A",
+          renderTargetCardinality: "zero-or-more",
+          renderTargetId: "A"
+        }
+      ],
+      path: "./loop.mmd",
+      source: "erDiagram",
+      type: "erDiagram" as const
+    };
+    const loopContainer = document.createElement("div");
+    await renderMermaidDiagram({ container: loopContainer, diagram: loop });
+    expect(loopContainer.querySelectorAll('.relationshipLine[data-node-id="self-loop"]')).toHaveLength(3);
+
+    const unknownCardinality = {
+      ...loop,
+      elements: [
+        loop.elements[0],
+        {
+          ...loop.elements[1]!,
+          id: "open-cardinality",
+          renderLabel: "open",
+          renderSourceCardinality: "unknown",
+          renderSourceId: "A",
+          renderTargetCardinality: "zero-or-more",
+          renderTargetId: "B"
+        },
+        { id: "B", kind: "node" as const, label: "B" }
+      ]
+    };
+    const openContainer = document.createElement("div");
+    await renderMermaidDiagram({ container: openContainer, diagram: unknownCardinality });
+    expect(openContainer.querySelector('.relationshipLine[data-node-id="open-cardinality"]')).not.toBeNull();
+  });
+
+  it("matches native ER labels after Mermaid markdown, whitespace, and line-break rendering", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg class="erDiagram"><g class="nodes"><g class="node" id="entity-A-0"></g>',
+        '<g class="node" id="entity-B-1"></g></g><g class="edgePaths">',
+        '<path class="relationshipLine" data-id="id_entity-A-0_entity-B-1_0"></path>',
+        '<path class="relationshipLine" data-id="id_entity-A-0_entity-B-1_1"></path>',
+        '<path class="relationshipLine" data-id="id_entity-A-0_entity-B-1_2"></path></g>',
+        '<g class="edgeLabels"><g class="label" data-id="id_entity-A-0_entity-B-1_0">owns</g>',
+        '<g class="label" data-id="id_entity-A-0_entity-B-1_1">owns many</g>',
+        '<g class="label" data-id="id_entity-A-0_entity-B-1_2">owns many</g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "A", kind: "node" as const, label: "A" },
+        { id: "B", kind: "node" as const, label: "B" },
+        {
+          id: "relationship-0",
+          kind: "relationship" as const,
+          label: "**owns**",
+          renderLabel: "**owns**",
+          renderOrder: 0,
+          renderSourceId: "A",
+          renderTargetId: "B"
+        },
+        {
+          id: "relationship-1",
+          kind: "relationship" as const,
+          label: "owns many",
+          renderLabel: "owns   many",
+          renderOrder: 1,
+          renderSourceId: "A",
+          renderTargetId: "B"
+        },
+        {
+          id: "relationship-2",
+          kind: "relationship" as const,
+          label: "owns many",
+          renderLabel: "owns<br/>many",
+          renderOrder: 2,
+          renderSourceId: "A",
+          renderTargetId: "B"
+        }
+      ],
+      path: "./formatted-roles.mmd",
+      source: "erDiagram",
+      type: "erDiagram" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+
+    expectNativeErRelationshipTarget(container, 0, "relationship-0");
+    expectNativeErRelationshipTarget(container, 1, "relationship-1");
+    expectNativeErRelationshipTarget(container, 2, "relationship-2");
   });
 
   it("falls back to the class node element when Mermaid omits a label-group wrapper", async () => {
@@ -1899,15 +2547,29 @@ function installFlowchartGeometryMocks(
     return readMockSvgBounds(this);
   };
   svgGraphicsPrototype.getTotalLength = function mockGetTotalLength() {
-    return this.classList.contains("flowchart-link") ? 240 : 0;
+    return this.classList.contains("flowchart-link") || this.classList.contains("relationshipLine") ? 240 : 0;
   };
   svgGraphicsPrototype.getPointAtLength = function mockGetPointAtLength(distance: number) {
-    const points = this.getAttribute("data-test-order") === "1" ? [540, 790] : [110, 360];
+    const points = readMockConnectorPoints(this);
     return {
       x: points[Number(distance > 0)]!,
       y: 100
     } as DOMPoint;
   };
+}
+
+function readMockConnectorPoints(element: SVGElement): number[] {
+  return element.classList.contains("relationshipLine")
+    ? readMockRelationshipPoints(element)
+    : readMockFlowchartPoints(element);
+}
+
+function readMockRelationshipPoints(element: SVGElement): number[] {
+  return element.getAttribute("data-test-order") === "1" ? [360, 110] : [110, 360];
+}
+
+function readMockFlowchartPoints(element: SVGElement): number[] {
+  return element.getAttribute("data-test-order") === "1" ? [540, 790] : [110, 360];
 }
 
 function installFlowchartBoundsOnlyMocks(
@@ -2114,6 +2776,16 @@ async function withZeroLengthFlowchartGeometry(run: () => Promise<void>): Promis
   } finally {
     restoreFlowchartGeometryMocks(svgGraphicsPrototype, original);
   }
+}
+
+function expectNativeAttribute(element: Element | null, attribute: string, value: string): void {
+  expect(element).not.toBeNull();
+  expect(element!.getAttribute(attribute)).toBe(value);
+}
+
+function expectNativeErRelationshipTarget(container: HTMLElement, ordinal: number, id: string): void {
+  const relationship = container.querySelector(`.relationshipLine[data-id$="_${ordinal}"]`);
+  expectNativeAttribute(relationship, "data-node-id", id);
 }
 
 function expectFocusState(container: HTMLElement, id: string, state: string): void {
