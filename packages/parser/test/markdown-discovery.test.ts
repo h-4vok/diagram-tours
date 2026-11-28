@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { loadResolvedTour, loadResolvedTourCollection } from "../src/index.js";
+import { loadGeneratedCollectionEntries } from "../src/generated-tours.js";
 import {
   createTempDiagramDirectory,
   createTempTour,
@@ -97,6 +98,63 @@ describe("@diagram-tour/parser markdown discovery", () => {
       "Overview",
       "Overview (2)"
     ]);
+  });
+
+  it("skips only a colliding Architecture fence and keeps sibling Markdown and raw diagrams", async () => {
+    const markdownRoot = await createTempDiagramDirectory({
+      "mixed.md": [
+        "# Mixed sources",
+        "",
+        "## Flowchart",
+        "```mermaid",
+        "flowchart LR",
+        "  start[Start] --> finish[Finish]",
+        "```",
+        "",
+        "## Architecture",
+        "```mermaid",
+        "architecture-beta",
+        "junction aa-bb",
+        "service aa(server)[A]",
+        "service bb(database)[B]",
+        "aa:R --> L:bb",
+        "```"
+      ].join("\n"),
+      "ok.mmd": [
+        "architecture-beta",
+        "service ok(server)[Okay]"
+      ].join("\n")
+    });
+
+    const collection = await loadResolvedTourCollection(markdownRoot);
+
+    expect(collection.entries.map(({ slug, sourcePath, tour }) => ({ slug, sourcePath, type: tour.diagram.type }))).toEqual([
+      { slug: "mixed/flowchart", sourcePath: "mixed.md#flowchart", type: "flowchart" },
+      { slug: "ok", sourcePath: "ok.mmd", type: "architecture" }
+    ]);
+    expect(collection.skipped).toHaveLength(1);
+    expect(collection.skipped[0]).toMatchObject({
+      sourceId: `${normalizePath(resolve(markdownRoot, "mixed.md"))}#architecture`,
+      sourcePath: "mixed.md#architecture",
+      diagnostics: [{ message: expect.stringContaining("connection IDs collide") }]
+    });
+
+    for (const options of [{}, { allowEmpty: true }]) {
+      const direct = await loadResolvedTourCollection(resolve(markdownRoot, "mixed.md"), options);
+      expect(direct.entries.map(({ slug, sourcePath, tour }) => ({ slug, sourcePath, type: tour.diagram.type }))).toEqual([
+        { slug: "mixed/flowchart", sourcePath: "mixed.md#flowchart", type: "flowchart" }
+      ]);
+      expect(direct.skipped).toHaveLength(1);
+      expect(direct.skipped[0]).toMatchObject({
+        sourceId: `${normalizePath(resolve(markdownRoot, "mixed.md"))}#architecture`,
+        sourcePath: "mixed.md#architecture",
+        diagnostics: [{ message: expect.stringContaining("connection IDs collide") }]
+      });
+    }
+    await expect(loadGeneratedCollectionEntries({
+      absolutePath: resolve(markdownRoot, "mixed.md"),
+      sourceRoot: markdownRoot
+    })).rejects.toThrow("connection IDs collide");
   });
 
   it("falls back to the markdown file title when blocks have no heading", async () => {

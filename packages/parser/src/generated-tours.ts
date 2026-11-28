@@ -3,11 +3,13 @@ import { basename, relative } from "node:path";
 import type { ResolvedDiagramTour } from "@diagram-tour/core";
 
 import { createDiagramModel, createGeneratedSteps, createResolvedDiagram } from "./diagram-model.js";
+import { ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE, hasArchitectureConnectionIdentityCollision } from "./architecture-diagram-model.js";
 import { createDiagramSourceId, readMarkdownBlocks } from "./markdown-blocks.js";
 import {
   MARKDOWN_DIAGRAM_FILE_SUFFIX,
   NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE,
-  type LoadedCollectionEntry
+  type LoadedCollectionEntry,
+  type MarkdownBlock
 } from "./parser-contracts.js";
 import { createGeneratedTitle, createSlug } from "./tour-file-naming.js";
 import { createTourContext, invariant, normalizePath, readTextFile } from "./tour-context.js";
@@ -31,6 +33,7 @@ export function createGeneratedDiagramTour(input: {
     input.diagramSource,
     createTourContext(normalizePath(input.diagramPath))
   );
+  validateGeneratedArchitectureIdentity(diagramModel);
 
   return {
     sourceKind: "generated",
@@ -46,8 +49,15 @@ export function createGeneratedDiagramTour(input: {
   };
 }
 
+function validateGeneratedArchitectureIdentity(model: ReturnType<typeof createDiagramModel>): void {
+  if (model.type === "architecture" && hasArchitectureConnectionIdentityCollision(model.elements)) {
+    throw new Error(ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE);
+  }
+}
+
 export async function loadGeneratedCollectionEntries(input: {
   absolutePath: string;
+  onSkippedMarkdownBlock?: (block: MarkdownBlock, error: Error) => void;
   sourceRoot: string;
 }): Promise<LoadedCollectionEntry[]> {
   return input.absolutePath.endsWith(MARKDOWN_DIAGRAM_FILE_SUFFIX)
@@ -75,6 +85,7 @@ async function createGeneratedRawCollectionEntry(input: {
 
 async function createGeneratedMarkdownCollectionEntries(input: {
   absolutePath: string;
+  onSkippedMarkdownBlock?: (block: MarkdownBlock, error: Error) => void;
   sourceRoot: string;
 }): Promise<LoadedCollectionEntry[]> {
   const source = await readTextFile(input.absolutePath);
@@ -86,15 +97,43 @@ async function createGeneratedMarkdownCollectionEntries(input: {
     `Markdown diagram "${normalizePath(input.absolutePath)}" ${NO_MARKDOWN_MERMAID_BLOCKS_MESSAGE}`
   );
 
-  return blockEntries.map((block) =>
-    createGeneratedMarkdownCollectionEntry({
-      absolutePath: input.absolutePath,
-      block,
-      fileSlug: createSlug(relativePath),
-      relativePath,
-      useBlockSuffix: blockEntries.length > 1
-    })
-  );
+  return blockEntries.flatMap((block) => createGeneratedMarkdownEntryOrSkip({
+    absolutePath: input.absolutePath,
+    block,
+    fileSlug: createSlug(relativePath),
+    onSkippedMarkdownBlock: input.onSkippedMarkdownBlock,
+    relativePath,
+    useBlockSuffix: blockEntries.length > 1
+  }));
+}
+
+function createGeneratedMarkdownEntryOrSkip(input: {
+  absolutePath: string;
+  block: MarkdownBlock;
+  fileSlug: string;
+  onSkippedMarkdownBlock?: (block: MarkdownBlock, error: Error) => void;
+  relativePath: string;
+  useBlockSuffix: boolean;
+}): LoadedCollectionEntry[] {
+  try {
+    return [createGeneratedMarkdownCollectionEntry(input)];
+  } catch (error) {
+    return handleGeneratedMarkdownBlockError(input, error);
+  }
+}
+
+function handleGeneratedMarkdownBlockError(
+  input: { block: MarkdownBlock; onSkippedMarkdownBlock?: (block: MarkdownBlock, error: Error) => void },
+  error: unknown
+): LoadedCollectionEntry[] {
+  if (!isSkippedArchitectureCollision(error)) { throw error; }
+  if (input.onSkippedMarkdownBlock === undefined) { throw error; }
+  input.onSkippedMarkdownBlock(input.block, error);
+  return [];
+}
+
+function isSkippedArchitectureCollision(error: unknown): error is Error {
+  return error instanceof Error && error.message === ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE;
 }
 
 function createGeneratedMarkdownCollectionEntry(input: {

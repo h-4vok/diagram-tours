@@ -33,6 +33,7 @@ const FLOWCHART_METADATA_LABEL_PATTERN =
   /(?:^|,)\s*label\s*:\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`|([^,}]+))/u;
 const FLOWCHART_IGNORED_LINE_PATTERN =
   /^\s*(?:class|classDef|click|direction|end|linkStyle|style|subgraph)\b/u;
+const FLOWCHART_SUBGRAPH_PATTERN = /^\s*subgraph\s+(?:([\p{L}\p{N}_-]+)\s*\[([^\]]+)\]|"([^"]+)"|'([^']+)'|([\p{L}\p{N}_-]+(?:\s+[\p{L}\p{N}_-]+)*))\s*$/u;
 const FLOWCHART_CONNECTOR_SOURCE = String.raw`(?:[ox]?[-=.]{2,}[ox>]*|<[-=.]{2,}[ox>]*)`;
 const FLOWCHART_LINE_START_ID_PATTERN = new RegExp(`^\\s*(${FLOWCHART_ID_SOURCE})\\b`, "u");
 const FLOWCHART_ENDPOINT_SOURCE = `${FLOWCHART_ID_SOURCE}(?:\\s*(?:\\[\\]|\\(\\)|\\{\\}|@\\{[^}\\n]*\\}))?(?:\\s*:::[A-Za-z][A-Za-z0-9_-]*)*`;
@@ -77,6 +78,7 @@ type FlowchartTransitionCreationInput = {
   renderId: string;
   renderOrder: number;
   usedIds: Set<string>;
+  reservedIds: Set<string>;
 };
 type FlowchartTransitionExtractionContext = {
   nodeIndex: Map<string, DiagramElement>;
@@ -84,16 +86,95 @@ type FlowchartTransitionExtractionContext = {
   renderOrder: number;
   usedRenderIds: Set<string>;
   usedIds: Set<string>;
+  reservedIds: Set<string>;
+};
+type FlowchartGroupExtractionContext = {
+  active: DiagramElement[];
+  groups: DiagramElement[];
+  usedIds: Set<string>;
+  parents: string[];
 };
 
 export function createFlowchartDiagramModel(source: string): DiagramModel {
   const nodes = extractFlowchartElements(source);
 
   return {
-    elements: [...nodes, ...extractFlowchartTransitions(source, nodes)],
+    elements: [...nodes, ...extractFlowchartGroups(source), ...extractFlowchartTransitions(source, nodes)],
     renderSource: source,
     type: "flowchart"
   };
+}
+
+function extractFlowchartGroups(source: string): DiagramElement[] {
+  const context: FlowchartGroupExtractionContext = { active: [], groups: [], usedIds: new Set<string>(), parents: [] };
+
+  for (const line of source.split("\n")) {
+    splitFlowchartStatements(line).forEach((statement) => readFlowchartGroup(statement, context));
+  }
+  return context.groups;
+}
+
+function readFlowchartGroup(line: string, context: FlowchartGroupExtractionContext): void {
+  if (/^\s*end\b/u.test(line)) {
+    context.active.pop();
+    context.parents.pop();
+    return;
+  }
+  const match = line.match(FLOWCHART_SUBGRAPH_PATTERN);
+  if (match === null) {
+    readFlowchartStatementElements(line).forEach(({ id }) => {
+      context.active.forEach((active) => {
+        active.renderMemberIds = [...new Set([...(active.renderMemberIds ?? []), id])];
+      });
+    });
+    return;
+  }
+  const group = createFlowchartGroup(match, context);
+  context.groups.push(group);
+  context.active.push(group);
+  context.parents.push(slugFlowchartGroup(group.label));
+}
+
+function createFlowchartGroup(match: RegExpMatchArray, context: FlowchartGroupExtractionContext): DiagramElement {
+  const sourceId = readFlowchartGroupSourceId(match);
+  const label = readFlowchartGroupLabel(match);
+  const baseId = createFlowchartGroupBaseId(sourceId, label, context.parents);
+  const id = createUniqueFlowchartGroupId(baseId, context.usedIds);
+
+  return {
+    id,
+    kind: "group",
+    label,
+    ...(sourceId ? { renderId: sourceId } : {}),
+    renderOrder: context.groups.length
+  };
+}
+
+function readFlowchartGroupSourceId(match: RegExpMatchArray): string {
+  return match[1] || "";
+}
+
+function readFlowchartGroupLabel(match: RegExpMatchArray): string {
+  return match.slice(2, 6).find(Boolean)!.trim();
+}
+
+function createFlowchartGroupBaseId(sourceId: string, label: string, parents: string[]): string {
+  return `group-${sourceId || [...parents, slugFlowchartGroup(label)].join("-")}`;
+}
+
+function createUniqueFlowchartGroupId(baseId: string, usedIds: Set<string>): string {
+  let candidate = baseId;
+  let suffix = 2;
+  while (usedIds.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+  usedIds.add(candidate);
+  return candidate;
+}
+
+function slugFlowchartGroup(value: string): string {
+  return value.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/gu, "") || "group";
 }
 
 function extractFlowchartElements(source: string): DiagramElement[] {
@@ -112,11 +193,13 @@ function extractFlowchartElements(source: string): DiagramElement[] {
 }
 
 function extractFlowchartTransitions(source: string, nodes: DiagramElement[]): DiagramElement[] {
+  const links = source.split("\n").flatMap(readFlowchartLineLinks);
   const context = {
     nodeIndex: new Map(nodes.map((node) => [node.id, node])),
     occurrences: new Map<string, number>(),
     renderOrder: 0,
     usedIds: new Set(nodes.map((node) => node.id)),
+    reservedIds: readReservedFlowchartTransitionIds(links),
     usedRenderIds: new Set<string>()
   };
 
@@ -129,20 +212,29 @@ function readFlowchartLineTransitions(line: string, context: FlowchartTransition
     const renderOrder = context.renderOrder;
     context.renderOrder += 1;
     const renderId = readFlowchartRenderId(input, renderIndex, context.usedRenderIds);
-    if (input.label === null) {
-      return [];
-    }
-
     return [
       createFlowchartTransition({
         input,
         nodeIndex: context.nodeIndex,
         renderId,
         renderOrder,
-        usedIds: context.usedIds
+        usedIds: context.usedIds,
+        reservedIds: context.reservedIds
       })
     ];
   });
+}
+
+function readReservedFlowchartTransitionIds(links: FlowchartLinkDraft[]): Set<string> {
+  const usedIds = new Set<string>();
+  links.filter((link) => link.label !== null).forEach((link) => {
+    const base = createFlowchartTransitionBaseId(link.label!, link.sourceId, link.targetId);
+    let candidate = base;
+    let suffix = 2;
+    while (usedIds.has(candidate)) { candidate = `${base}-${suffix}`; suffix += 1; }
+    usedIds.add(candidate);
+  });
+  return usedIds;
 }
 
 function readFlowchartLineLinks(line: string): FlowchartLinkDraft[] {
@@ -275,7 +367,7 @@ function createFlowchartTransition(
   const { input } = creation;
 
   return {
-    id: makeUniqueFlowchartTransitionId(input, creation.usedIds),
+    id: makeUniqueFlowchartTransitionId(input, creation.usedIds, creation.reservedIds),
     kind: "transition",
     label: createFlowchartTransitionDisplayLabel(input, creation.nodeIndex),
     renderId: creation.renderId,
@@ -285,16 +377,27 @@ function createFlowchartTransition(
   };
 }
 
-function makeUniqueFlowchartTransitionId(input: FlowchartLinkDraft, usedIds: Set<string>): string {
-  const baseId = createFlowchartTransitionBaseId(input.label!, input.sourceId, input.targetId);
+function makeUniqueFlowchartTransitionId(input: FlowchartLinkDraft, usedIds: Set<string>, reservedIds: Set<string>): string {
+  const baseId = input.label === null
+    ? `transition-${input.sourceId}-to-${input.targetId}-unlabeled`
+    : createFlowchartTransitionBaseId(input.label, input.sourceId, input.targetId);
   let candidate = baseId;
   let suffix = 2;
-  while (usedIds.has(candidate)) {
+  while (!isAvailableFlowchartTransitionId({ candidate, input, reservedIds, usedIds })) {
     candidate = `${baseId}-${suffix}`;
     suffix += 1;
   }
   usedIds.add(candidate);
   return candidate;
+}
+
+function isAvailableFlowchartTransitionId(input: {
+  candidate: string;
+  input: FlowchartLinkDraft;
+  reservedIds: Set<string>;
+  usedIds: Set<string>;
+}): boolean {
+  return !input.usedIds.has(input.candidate) && !(input.input.label === null && input.reservedIds.has(input.candidate));
 }
 
 function createFlowchartTransitionBaseId(label: string, sourceId: string, targetId: string): string {
@@ -310,7 +413,8 @@ function createFlowchartTransitionDisplayLabel(
   input: FlowchartLinkDraft,
   nodeIndex: Map<string, DiagramElement>
 ): string {
-  return `${readFlowchartEndpointLabel(nodeIndex, input.sourceId)} → ${readFlowchartEndpointLabel(nodeIndex, input.targetId)}: ${input.label}`;
+  const endpoints = `${readFlowchartEndpointLabel(nodeIndex, input.sourceId)} → ${readFlowchartEndpointLabel(nodeIndex, input.targetId)}`;
+  return input.label === null ? endpoints : `${endpoints}: ${input.label}`;
 }
 
 function readFlowchartEndpointLabel(nodeIndex: Map<string, DiagramElement>, nodeId: string): string {

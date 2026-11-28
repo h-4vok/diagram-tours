@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph platform[Platform]
+    direction TB
+    subgraph services[Services]
+      api[Service]
+      worker[Service]
+    end
+    subgraph "Persistence"
+      database[(Database)]
+      cache[(Cache)]
+      audit[Audit Log]
+    end
+    api -->|dispatches| worker
+    api --> database
+    worker -->|reads| cache
+    cache --> database & api
+    database --> audit --> worker
+  end
+  classDef provider stroke:#6b7280,stroke-width:2px
+  class api,worker provider
+  style Persistence fill:#151a22,stroke:#728096,stroke-width:2px
+  linkStyle 0,1,2 stroke:#8293a5,stroke-width:2px
+  click api "https://example.com/api" "API component details"

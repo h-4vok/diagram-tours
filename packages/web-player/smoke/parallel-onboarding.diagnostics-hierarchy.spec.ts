@@ -36,13 +36,13 @@ test("issues popover presents a readable diagnostics hierarchy", async ({ page }
     await expect(invalidTourGroup.getByTestId("diagnostics-group-count")).toHaveText("2 issues");
     await expect(invalidTourItems).toHaveCount(2);
     await expect(invalidTourItems.nth(0)).toContainText(
-      'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
+      'step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"'
     );
     await expect(invalidTourItems.nth(0)).toContainText(
       "packages/parser/test/fixtures/discovery/invalid-tour/invalid.tour.yaml:6:10"
     );
     await expect(invalidTourItems.nth(1)).toContainText(
-      'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
+      'step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"'
     );
     await expect(invalidTourItems.nth(1)).toContainText(
       "packages/parser/test/fixtures/discovery/invalid-tour/invalid.tour.yaml:7:12"
@@ -51,13 +51,13 @@ test("issues popover presents a readable diagnostics hierarchy", async ({ page }
     await expect(brokenTourGroup.getByTestId("diagnostics-group-count")).toHaveText("2 issues");
     await expect(brokenTourItems).toHaveCount(2);
     await expect(brokenTourItems.nth(0)).toContainText(
-      'step 1 focus references unknown Mermaid node ID or transition key "ghost"'
+      'step 1 focus references unknown Mermaid node ID, group key, or transition key "ghost"'
     );
     await expect(brokenTourItems.nth(0)).toContainText(
       "packages/parser/test/fixtures/invalid-only/broken.tour.yaml:6:10"
     );
     await expect(brokenTourItems.nth(1)).toContainText(
-      'step 1 text references unknown Mermaid node ID or transition key "ghost"'
+      'step 1 text references unknown Mermaid node ID, group key, or transition key "ghost"'
     );
     await expect(brokenTourItems.nth(1)).toContainText(
       "packages/parser/test/fixtures/invalid-only/broken.tour.yaml:7:12"

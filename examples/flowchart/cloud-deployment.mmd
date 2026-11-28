@@ -1,0 +1,29 @@
+flowchart LR
+  subgraph cloud[Azure Cloud]
+    direction TB
+    subgraph region[West Europe Region]
+      direction LR
+      subgraph network[Production VNet]
+        direction TB
+        gateway[Application Gateway]
+        subgraph subnet[Private Subnet]
+          api[API Service]
+          worker[Worker Service]
+          primary[(PostgreSQL Database)]
+          replica[(PostgreSQL Database)]
+        end
+        gateway -->|routes requests| api
+        api -->|queues work| worker
+        worker --> primary
+        primary <--> replica
+      end
+    end
+  end
+  classDef azure fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#172554
+  class gateway,api,worker,primary,replica azure
+  style cloud fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#172554
+  style region fill:#e0f2fe,stroke:#2563eb,stroke-width:2px,color:#172554
+  style network fill:#ecfeff,stroke:#2563eb,stroke-width:2px,color:#172554
+  style subnet fill:#f0fdfa,stroke:#2563eb,stroke-width:2px,color:#172554
+  linkStyle 0,1 stroke:#2563eb,stroke-width:2px
+  click api "https://example.com/azure-api" "Azure API service details"

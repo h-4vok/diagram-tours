@@ -1,0 +1,12 @@
+architecture-beta
+group platform(cloud)[Platform]
+group runtime(server)[Runtime] in platform
+group data(cloud)[Data]
+service app(server)[Application] in runtime
+junction split in runtime
+service database(database)[Database] in data
+service cache(database)[Database] in runtime
+app:R --> L:split
+split:B -- T:cache
+app {group} : R --> L : database {group}
+cache:L <--> R:app

@@ -1,0 +1,21 @@
+version: 1
+title: Shop platform deployment
+diagram: ./platform-context.mmd
+
+steps:
+  - focus: [person-visitor]
+    text: "{{person-visitor}} starts a shopping session."
+  - focus: [system-shop]
+    text: "The {{system-shop}} coordinates the experience."
+  - focus: [system-payments_alt]
+    text: "The second {{system-payments_alt}} alias remains a separate focus target."
+  - focus: [container-storefront]
+    text: "The {{container-storefront}} serves the customer experience."
+  - focus: [component-checkout]
+    text: "The {{component-checkout}} implements checkout."
+  - focus: [deployment-cloud]
+    text: "The {{deployment-cloud}} hosts the storefront."
+  - focus: [boundary-company]
+    text: "The {{boundary-company}} contains the application."
+  - focus: [relationship-2]
+    text: "{{relationship-2}} authorizes card payments."

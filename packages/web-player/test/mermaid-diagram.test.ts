@@ -162,6 +162,7 @@ describe("mermaid diagram helpers", () => {
     );
 
     expect(flowchart.diagram.elements.filter((element) => element.kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-request-to-eligibility-unlabeled",
       "transition-eligibility-to-approved-yes",
       "transition-eligibility-to-documents-no",
       "transition-documents-to-manual_review-yes",
@@ -226,6 +227,413 @@ describe("mermaid diagram helpers", () => {
       maxWidth: "",
       width: "1440"
     });
+  });
+
+  it("tags architecture focus keys on the rendered Mermaid groups and shapes", async () => {
+    const tour = await loadResolvedTour(resolve(process.cwd(), "test/fixtures/architecture/platform-topology.tour.yaml"));
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        '<svg width="300" height="200" viewBox="0 0 300 200">',
+        '<g class="architecture-edges"><g><path class="edge" id="L_app_split_0"></path><polygon class="arrow"></polygon></g>',
+        '<g><path class="edge" id="L_split_cache_0"></path></g><g><path class="edge" id="L_app_database_0"></path><polygon class="arrow"></polygon></g>',
+        '<g><path class="edge" id="L_cache_app_0"></path><polygon class="arrow"></polygon></g></g>',
+        '<g class="architecture-services"><g id="service-app" class="architecture-service"><path></path><text>Application</text></g>',
+        '<g class="architecture-junction"><g><rect id="node-split"></rect></g></g></g>',
+        '<g class="architecture-groups"><rect id="group-platform" class="node-bkg"></rect>',
+        '<g class="group-label"><text>Platform</text></g></g></svg>'
+      ].join("")
+    });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: tour.diagram });
+
+    expect(readNodeId(container, "#service-app.architecture-service")).toBe("service-app");
+    expect(readNodeId(container, "#node-split")).toBe("junction-split");
+    expect(readNodeId(container, "#group-platform.node-bkg")).toBe("group-platform");
+    expect(readNodeId(container, ".group-label")).toBe("group-platform");
+    const edge = container.querySelector('.architecture-edges > g[data-node-id="connection-3"]')!;
+    expect(readEdgeId(edge)).toBe("L_app_database_0");
+    expect(hasArrow(edge)).toBe(true);
+    expect(mermaidInitialize).toHaveBeenCalledWith(expect.objectContaining({
+      themeVariables: expect.objectContaining({
+        archEdgeColor: "var(--color-node-base-stroke, #30363d)",
+        archEdgeArrowColor: "var(--color-node-base-stroke, #30363d)",
+        archGroupBorderColor: "var(--color-node-base-stroke, #30363d)"
+      })
+    }));
+
+    applyFocusState({ container, focusGroup: createFocusGroup(["connection-3"]) });
+    expect(edge.getAttribute("data-focus-state")).toBe("focused");
+    expect(container.querySelector('[data-node-id="connection-1"]')?.getAttribute("data-focus-state")).toBe("dimmed");
+  });
+
+  it("maps colliding native Architecture IDs to separate source-order paths", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="architecture-edges"><g><path id="L_a_b_c_0"></path></g><g><path id="L_a_b_c_0"></path></g></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "connection-1", kind: "transition", label: "a_b:R → c:L", renderId: "L_a_b_c_0", renderOrder: 1 },
+        { id: "connection-2", kind: "transition", label: "a:R → b_c:L", renderId: "L_a_b_c_0", renderOrder: 2 }
+      ], path: "./collision.mmd", source: "architecture-beta", type: "architecture"
+    } });
+
+    expect(readNodeId(container, '.architecture-edges > g:nth-child(1)')).toBe("connection-1");
+    expect(readNodeId(container, '.architecture-edges > g:nth-child(2)')).toBe("connection-2");
+  });
+
+  it("skips missing architecture targets and groups without a rendered label", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: '<svg><g class="architecture-groups"><rect id="group-empty" class="node-bkg"></rect></g><g class="architecture-edges"></g><svg class="architecture-edges"><path id="edge-no-group"></path></svg></svg>'
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "group-empty", kind: "group" as const, label: "Empty" },
+        { id: "service-missing", kind: "node" as const, label: "Missing" },
+        { id: "connection-4", kind: "transition" as const, label: "Missing edge", renderId: "not-rendered", renderOrder: 4 },
+        { id: "connection-no-id", kind: "transition" as const, label: "No render id" },
+        { id: "connection-no-group", kind: "transition" as const, label: "No SVG group", renderId: "edge-no-group" }
+      ],
+      path: "./missing-architecture-targets.mmd",
+      source: "architecture-beta",
+      type: "architecture" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+
+    expect(readNodeId(container, "#group-empty")).toBe("group-empty");
+    expect(container.querySelector('[data-node-id="service-missing"]')).toBeNull();
+    expect(container.querySelector('[data-node-id="connection-4"]')).toBeNull();
+  });
+
+  it("annotates C4 boundaries, people, relationship connectors and matching labels", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg: [
+        "<svg>",
+        '<g class="boundary" id="company"><rect></rect><text>Acme</text></g>',
+        '<g class="person-man" id="visitor"><text>Shopper</text></g><g class="person-man" id="visitor-alt"><text>Shopper</text></g>',
+        '<g><line marker-end="url(#arrow)"></line><text>1: Browses and buys</text><text>[HTTPS]</text></g>',
+        '<g><path marker-start="url(#arrow)"></path><text>Refunds order</text></g>',
+        "</svg>"
+      ].join("")
+    });
+    const container = document.createElement("div");
+    const diagram = {
+      elements: [
+        { id: "boundary-company", kind: "group" as const, label: "Acme", renderId: "company" },
+        { id: "person-visitor", kind: "node" as const, label: "Shopper", renderId: "visitor" },
+        { id: "person-visitor-alt", kind: "node" as const, label: "Shopper", renderId: "visitor-alt" },
+        { id: "missing-person", kind: "node" as const, label: "Unrendered person" },
+        { id: "missing-boundary", kind: "group" as const, label: "Unrendered boundary" },
+        { id: "relationship-1", kind: "relationship" as const, label: "visitor → shop: Browses and buys [HTTPS]", renderTechnology: "HTTPS" },
+        { id: "relationship-2", kind: "relationship" as const, label: "shop → store: Refunds order", renderOrder: 2 },
+        { id: "relationship-3", kind: "relationship" as const, label: "No label", renderOrder: 3 },
+        { id: "relationship-4", kind: "relationship" as const, label: "missing → target: Uses [HTTPS]", renderOrder: 4 }
+      ],
+      path: "./platform-context.mmd",
+      source: "C4Deployment",
+      type: "c4" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+
+    expect(readNodeId(container, ".boundary")).toBe("boundary-company");
+    const people = Array.from(container.querySelectorAll(".person-man"));
+    expect((people[0] as HTMLElement).dataset.nodeId).toBe("person-visitor");
+    expect((people[1] as HTMLElement).dataset.nodeId).toBe("person-visitor-alt");
+    expect(readNodeId(container, "line[marker-end]")).toBe("relationship-1");
+    expect(readNodeId(container, "path[marker-start]")).toBe("relationship-2");
+    const relationshipLabels = Array.from(container.querySelectorAll("text"))
+      .filter((label) => label.getAttribute("data-node-id") === "relationship-1");
+    expect(relationshipLabels.map((label) => label.textContent)).toEqual(["1: Browses and buys", "[HTTPS]"]);
+    const secondRelationshipLabel = Array.from(container.querySelectorAll("text"))
+      .find((label) => label.textContent === "Refunds order");
+    expect(secondRelationshipLabel?.getAttribute("data-node-id")).toBe("relationship-2");
+    expect(container.querySelector('[data-node-id="missing-person"]')).toBeNull();
+    expect(container.querySelector('[data-node-id="missing-boundary"]')).toBeNull();
+    expect(container.querySelector('[data-node-id="relationship-3"]')).toBeNull();
+  });
+
+  it("matches C4 source IDs inside labels and falls back to exact rendered labels", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="boundary"><rect></rect><text>Acme</text></g>',
+      '<g class="person-man"><text>visitor</text></g>',
+      '<g class="person-man"><text>Direct label</text></g>',
+      '<g class="person-man"><text>Unrelated</text></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-company", kind: "group", label: "Acme", renderId: "company" },
+        { id: "person-visitor", kind: "node", label: "Visitor", renderId: "visitor" },
+        { id: "person-unmatched", kind: "node", label: "Not present", renderId: "missing" },
+        { id: "person-direct", kind: "node", label: "Direct label" }
+      ],
+      path: "./context.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, ".boundary")).toBe("boundary-company");
+    expect(readNodeId(container, ".person-man")).toBe("person-visitor");
+    expect(Array.from(container.querySelectorAll(".person-man"))[1]?.getAttribute("data-node-id")).toBe("person-direct");
+    expect(container.querySelector('[data-node-id="person-unmatched"]')).toBeNull();
+  });
+
+  it("matches nested same-title C4 boundaries in outer-to-inner source order", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="boundary"><rect></rect><text>Same</text><g class="boundary"><rect></rect><text>Same</text></g></g><g class="person-man"><rect></rect><text>App</text><text>Server</text></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-outer", kind: "group", label: "Same", renderId: "outer" },
+        { id: "boundary-inner", kind: "group", label: "Same", renderId: "inner" },
+        { id: "system-app", kind: "node", label: "App<br/>Server", renderId: "app" }
+      ], path: "./nested.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, ".boundary")).toBe("boundary-outer");
+    expect(readNodeId(container, ".boundary .boundary")).toBe("boundary-inner");
+    expect(readNodeId(container, ".person-man")).toBe("system-app");
+  });
+
+  it("matches same-title C4 sibling boundaries by render order and systems by full identity", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="boundary" id="first"><rect></rect><text>Same</text></g>',
+      '<g class="boundary" id="second"><rect></rect><text>Same</text></g>',
+      '<g class="person-man" id="outside"><text>Same</text><text>Outside</text></g>',
+      '<g class="person-man" id="inside"><text>Same</text><text>Inside</text></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-one", kind: "group", label: "Same", renderId: "one" },
+        { id: "boundary-two", kind: "group", label: "Same", renderId: "two" },
+        { id: "system-a", kind: "node", label: "Same", renderId: "a", renderIdentity: "Same Inside" },
+        { id: "system-b", kind: "node", label: "Same", renderId: "b", renderIdentity: "Same Outside" }
+      ], path: "./siblings.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, "#first")).toBe("boundary-one");
+    expect(readNodeId(container, "#second")).toBe("boundary-two");
+    expect(readNodeId(container, "#inside")).toBe("system-a");
+    expect(readNodeId(container, "#outside")).toBe("system-b");
+  });
+
+  it("maps identical C4 shapes to their source boundary and leaves root identities outside it", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="boundary" id="scope"><rect></rect><text>Scope</text></g>',
+      '<g class="person-man" id="inside"><rect></rect><text>Same</text><text>Description</text></g>',
+      '<g class="person-man" id="outside"><rect></rect><text>Same</text><text>Description</text></g>',
+      '<g class="person-man" id="external"><rect></rect><text>Same</text><text>Description</text></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+    const boundsSpy = vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(function (this: SVGElement) {
+      const bounds = readDuplicateC4Bounds(this);
+      return new DOMRect(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!);
+    });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-scope", kind: "group", label: "Scope", renderId: "scope" },
+        { id: "system-inside", kind: "node", label: "Same", renderIdentity: "Same Description", renderParentId: "scope" },
+        { id: "system-outside", kind: "node", label: "Same", renderIdentity: "Same Description" },
+        { id: "system-external", kind: "node", label: "Same", renderIdentity: "Same Description" },
+        { id: "system-missing-parent", kind: "node", label: "Same", renderIdentity: "Same Description", renderParentId: "missing" }
+      ], path: "./duplicate-identity.mmd", source: "C4Context", type: "c4"
+    } });
+    boundsSpy.mockRestore();
+
+    expect(readNodeId(container, "#inside")).toBe("system-inside");
+    expect(readNodeId(container, "#outside")).toBe("system-outside");
+    expect(readNodeId(container, "#external")).toBe("system-external");
+    expect(container.querySelector('[data-node-id="system-missing-parent"]')).toBeNull();
+  });
+
+  it("maps identical C4 shapes inside deployment nodes separately from root shapes", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="boundary" id="cloud"><rect></rect></g>',
+      '<g class="person-man" id="inside"><rect></rect><text>Same</text><text>Description</text></g>',
+      '<g class="person-man" id="outside"><rect></rect><text>Same</text><text>Description</text></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+    const boundsSpy = vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(function (this: SVGElement) {
+      const bounds = readDuplicateC4Bounds(this);
+      return new DOMRect(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!);
+    });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "deployment-cloud", kind: "group", label: "Cloud", renderId: "cloud" },
+        { id: "container-a", kind: "node", label: "Same", renderIdentity: "Same Description", renderParentId: "cloud" },
+        { id: "container-b", kind: "node", label: "Same", renderIdentity: "Same Description" }
+      ], path: "./deployment-identity.mmd", source: "C4Deployment", type: "c4"
+    } });
+    boundsSpy.mockRestore();
+
+    expect(readNodeId(container, "#cloud")).toBe("deployment-cloud");
+    expect(readNodeId(container, "#inside")).toBe("container-a");
+    expect(readNodeId(container, "#outside")).toBe("container-b");
+  });
+
+  it("skips C4 candidates outside the SVG when resolving a scoped target", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<div class="person-man" id="outside"><text>Outside</text></div><svg><g class="boundary" id="scope"><rect></rect></g><g class="person-man" id="inside"><text>Inside</text></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-scope", kind: "group", label: "Scope", renderId: "scope" },
+        { id: "system-outside", kind: "node", label: "Outside" },
+        { id: "system-inside", kind: "node", label: "Inside", renderParentId: "scope" }
+      ], path: "./outside-svg.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, "#outside")).toBe("system-outside");
+    expect(container.querySelector('[data-node-id="system-inside"]')).toBeNull();
+  });
+
+  it("skips a scoped C4 shape when Mermaid renders no shape candidates", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: "<svg></svg>" });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "system-app", kind: "node", label: "App", renderIdentity: "App Service", renderParentId: "scope" }
+      ], path: "./missing-c4-parent.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(container.querySelector('[data-node-id="system-app"]')).toBeNull();
+  });
+
+  it("matches a C4 system's full identity exactly when another identity extends it", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="person-man" id="longer"><text>&lt;&lt;system&gt;&gt;</text><text>Same</text><text>Inside External</text></g>',
+      '<g class="person-man" id="exact"><text>&lt;&lt;system&gt;&gt;</text><text>Same</text><text>Inside</text></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "system-a", kind: "node", label: "Same", renderId: "a", renderIdentity: "Same Inside" },
+        { id: "system-b", kind: "node", label: "Same", renderId: "b", renderIdentity: "Same Inside External" }
+      ], path: "./identity-prefix.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, "#exact")).toBe("system-a");
+    expect(readNodeId(container, "#longer")).toBe("system-b");
+  });
+
+  it("does not fall back to a shared C4 label when a full identity is available", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="person-man" id="candidate"><text>Same</text><text>Other</text></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "system-a", kind: "node", label: "Same", renderIdentity: "Same Missing" }],
+      path: "./identity-missing.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, "#candidate")).toBeUndefined();
+  });
+
+  it("uses exact C4 source ID text after full identity does not match", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="person-man"><text>a</text></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "system-a", kind: "node", label: "Same", renderId: "a", renderIdentity: "Same" }],
+      path: "./identity-source.mmd", source: "C4Context", type: "c4"
+    } });
+
+    expect(readNodeId(container, ".person-man")).toBe("system-a");
+  });
+
+  it("orders same-title C4 boundaries by containment when Mermaid renders nested groups first", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="boundary" id="outer"><rect></rect><text>Same</text></g><g class="boundary" id="inner"><rect></rect><text>Same</text></g></svg>' });
+    const container = document.createElement("div");
+    const boundsSpy = vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(function (this: SVGElement) {
+      const bounds = this.parentElement?.id === "outer" ? [0, 0, 500, 500] : [100, 100, 100, 100];
+      return new DOMRect(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!);
+    });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-outer", kind: "group", label: "Same", renderId: "outer" },
+        { id: "boundary-inner", kind: "group", label: "Same", renderId: "inner", renderParentId: "outer" }
+      ], path: "./nested-order.mmd", source: "C4Context", type: "c4"
+    } });
+    boundsSpy.mockRestore();
+
+    expect(readNodeId(container, "#outer")).toBe("boundary-outer");
+    expect(readNodeId(container, "#inner")).toBe("boundary-inner");
+  });
+
+  it("orders same-title C4 boundaries when the outer renderer group appears first", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="boundary" id="inner"><rect></rect><text>Same</text></g><g class="boundary" id="outer"><rect></rect><text>Same</text></g></svg>' });
+    const container = document.createElement("div");
+    const boundsSpy = vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(function (this: SVGElement) {
+      const bounds = this.parentElement?.id === "outer" ? [0, 0, 500, 500] : [100, 100, 100, 100];
+      return new DOMRect(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!);
+    });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "boundary-outer", kind: "group", label: "Same", renderId: "outer" },
+        { id: "boundary-inner", kind: "group", label: "Same", renderId: "inner", renderParentId: "outer" }
+      ], path: "./nested-order.mmd", source: "C4Context", type: "c4"
+    } });
+    boundsSpy.mockRestore();
+
+    expect(readNodeId(container, "#outer")).toBe("boundary-outer");
+    expect(readNodeId(container, "#inner")).toBe("boundary-inner");
+  });
+
+  it("reads relationship labels after the final SVG connector sibling", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><line marker-end="url(#arrow)"></line><text>Last relation</text></svg>' });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "relationship-1", kind: "relationship", label: "source → target: Last relation" }],
+      path: "./relations.mmd", source: "C4Dynamic", type: "c4"
+    } });
+
+    expect(readNodeId(container, "line[marker-end]")).toBe("relationship-1");
+    expect(readNodeId(container, "text")).toBe("relationship-1");
+  });
+
+  it("keeps C4 relationship labels inside the connector's sibling range", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><line marker-end="url(#first)"></line><text>First relation</text>',
+      '<path marker-start="url(#second)"></path><text>Second relation</text></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "relationship-1", kind: "relationship", label: "a → b: First relation" },
+        { id: "relationship-2", kind: "relationship", label: "b → c: Second relation", renderOrder: 2 }
+      ],
+      path: "./relations.mmd", source: "C4Dynamic", type: "c4"
+    } });
+
+    expect(readNodeId(container, "text:nth-of-type(1)")).toBe("relationship-1");
+    expect(readNodeId(container, "text:nth-of-type(2)")).toBe("relationship-2");
+  });
+
+  it("maps every C4 line-break label fragment only within its relationship group", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g><line marker-end="url(#first)"></line><text>Uses</text><text>Database</text><text>[TLS]</text></g><text>Unrelated node label</text></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "relationship-1", kind: "relationship", label: "source → target: Uses<br/>Database [TLS]", renderTechnology: "TLS" }],
+      path: "./line-break.mmd", source: "C4Dynamic", type: "c4"
+    } });
+
+    expect(Array.from(container.querySelectorAll("text[data-node-id='relationship-1']")).map(({ textContent }) => textContent)).toEqual([
+      "Uses", "Database", "[TLS]"
+    ]);
+    expect(container.querySelector("svg > text")?.getAttribute("data-node-id")).toBeNull();
+  });
+
+  it("keeps bracketed display text distinct from Mermaid relationship technology", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g><line marker-end="a"></line><text>Reads [cache]</text></g><g><line marker-end="b"></line><text>Reads</text><text>[HTTP]</text></g></svg>' });
+    const container = document.createElement("div");
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "relationship-1", kind: "relationship", label: "a → b: Reads [cache]" },
+        { id: "relationship-2", kind: "relationship", label: "a → b: Reads [HTTP]", renderOrder: 2, renderTechnology: "HTTP" }
+      ], path: "./relationship-technology.mmd", source: "C4Dynamic", type: "c4"
+    } });
+
+    expect(Array.from(container.querySelectorAll("text[data-node-id='relationship-1']"), ({ textContent }) => textContent)).toEqual(["Reads [cache]"]);
+    expect(Array.from(container.querySelectorAll("text[data-node-id='relationship-2']"), ({ textContent }) => textContent)).toEqual(["Reads", "[HTTP]"]);
   });
 
   it("binds state diagram theme variables to the active light and dark theme", async () => {
@@ -966,6 +1374,143 @@ describe("mermaid diagram helpers", () => {
     expect(container.querySelector('.flowchart-link[data-id="L_decision_review_0"]')?.hasAttribute("data-diagram-element-id")).toBe(false);
   });
 
+  it("annotates nested flowchart subgraph boundaries without consuming child targets", async () => {
+    const container = document.createElement("div");
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="cluster" id="platform">',
+      '<rect class="outer-boundary"></rect><g class="cluster-label"><text>Platform</text></g>',
+      '<g class="cluster" id="services"><rect class="inner-boundary"></rect>',
+      '<g class="cluster-label"><text>Services</text></g></g></g>',
+      '<g class="cluster" id="duplicate-one"><rect class="duplicate-one"></rect><g class="cluster-label"><text>Shared</text></g></g>',
+      '<g class="cluster" id="duplicate-two"><rect class="duplicate-two"></rect><g class="cluster-label"><text>Shared</text></g></g>',
+      '<g class="diagram_tour_node_api"></g>',
+      '<path class="flowchart-link" data-id="L_api_worker_0"></path></svg>'
+    ].join("") });
+    const diagram = {
+      elements: [
+        { id: "api", kind: "node" as const, label: "API" },
+        { id: "group-platform", kind: "group" as const, label: "Platform", renderId: "platform", renderOrder: 0 },
+        { id: "group-platform-services", kind: "group" as const, label: "Services", renderId: "services", renderOrder: 1 },
+        { id: "group-unrendered-title", kind: "group" as const, label: "Not rendered", renderOrder: 2 },
+        { id: "group-unrendered-explicit", kind: "group" as const, label: "Missing", renderId: "missing", renderOrder: 3 },
+        { id: "group-shared", kind: "group" as const, label: "Shared", renderOrder: 4 },
+        { id: "group-shared-2", kind: "group" as const, label: "Shared", renderOrder: 5 },
+        { id: "transition-api-to-worker-unlabeled", kind: "transition" as const, label: "API → Worker", renderId: "L_api_worker_0", renderOrder: 0, renderSourceId: "api", renderTargetId: "worker" }
+      ],
+      path: "./components.mmd",
+      source: "flowchart TB\nsubgraph platform[Platform]\nsubgraph services[Services]\napi --> worker\nend\nend",
+      type: "flowchart" as const
+    };
+
+    await renderMermaidDiagram({ container, diagram });
+    expect(container.querySelector(".outer-boundary")!.getAttribute("data-node-id")).toBe("group-platform");
+    expect(container.querySelector(".inner-boundary")!.getAttribute("data-node-id")).toBe("group-platform-services");
+    expect(container.querySelector(".duplicate-one")!.getAttribute("data-node-id")).toBe("group-shared");
+    expect(container.querySelector(".duplicate-two")!.getAttribute("data-node-id")).toBe("group-shared-2");
+    expect(container.querySelector(".diagram_tour_node_api")!.getAttribute("data-node-id")).toBe("api");
+
+    applyFocusState({ container, focusGroup: createFocusGroup(["transition-api-to-worker-unlabeled"]) });
+    expect(container.querySelector(".flowchart-link")!.getAttribute("data-node-id")).toBe("transition-api-to-worker-unlabeled");
+    expect(container.querySelector(".flowchart-link")!.getAttribute("data-focus-state")).toBe("focused");
+  });
+
+  it("maps explicit Unicode Flowchart groups by their members when Mermaid prefixes the native ID", async () => {
+    const container = document.createElement("div");
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="cluster" id="flowchart-géo-0"><rect></rect><g class="cluster-label"><text>Area</text></g>',
+      '<g class="node"><title>A</title></g><g class="node"><title>B</title></g></g></svg>'
+    ].join("") });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "A", kind: "node", label: "Node A" }, { id: "B", kind: "node", label: "Node B" },
+        { id: "group-géo", kind: "group", label: "Area", renderId: "géo", renderMemberIds: ["A", "B"] }
+      ], path: "./unicode.mmd", source: "flowchart LR", type: "flowchart"
+    } });
+    applyFocusState({ container, focusGroup: createFocusGroup(["group-géo"]) });
+
+    expect(readNodeId(container, ".cluster > rect")).toBe("group-géo");
+    expectFocusState(container, "group-géo", "focused");
+  });
+
+  it("matches an explicit Flowchart title when the native ID differs and membership is empty", async () => {
+    const container = document.createElement("div");
+    mermaidRender.mockResolvedValueOnce({ svg: '<svg><g class="cluster" id="prefixed"><rect></rect><g class="cluster-label"><text>Empty</text></g></g></svg>' });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "group-empty", kind: "group", label: "Empty", renderId: "empty" }],
+      path: "./empty-group.mmd", source: "flowchart LR", type: "flowchart"
+    } });
+
+    expect(readNodeId(container, ".cluster > rect")).toBe("group-empty");
+  });
+
+  it("maps repeated title-only groups by their exact contained member IDs when SVG order reverses", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="cluster" id="source-second"><rect class="second-boundary"></rect><g class="cluster-label"><text>Shared</text></g><g class="node"><text>second</text></g></g>',
+      '<g class="cluster" id="source-first"><rect class="first-boundary"></rect><g class="cluster-label"><text>Shared</text></g><g class="node"><title>first</title></g></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "first", kind: "node", label: "First" },
+        { id: "second", kind: "node", label: "Second" },
+        { id: "group-shared", kind: "group", label: "Shared", renderMemberIds: ["first"] },
+        { id: "group-shared-2", kind: "group", label: "Shared", renderMemberIds: ["second"] }
+      ],
+      path: "./groups.mmd", source: "flowchart TB", type: "flowchart"
+    } });
+
+    expect(container.querySelector(".first-boundary")?.getAttribute("data-node-id")).toBe("group-shared");
+    expect(container.querySelector(".second-boundary")?.getAttribute("data-node-id")).toBe("group-shared-2");
+  });
+
+  it("maps title-only groups by source classes when Mermaid removes node titles", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="cluster" id="Persistence"><rect class="persistence-boundary"></rect>',
+      '<g class="cluster-label"><text>Persistence</text></g><g class="node diagram_tour_node_database"></g></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [{ id: "database", kind: "node", label: "Database" },
+        { id: "group-platform-persistence", kind: "group", label: "Persistence", renderMemberIds: ["database"] }],
+      path: "./groups.mmd", source: "flowchart TB", type: "flowchart"
+    } });
+
+    expect(container.querySelector(".persistence-boundary")?.getAttribute("data-node-id")).toBe("group-platform-persistence");
+    expect(container.querySelector(".cluster-label")?.getAttribute("data-node-id")).toBe("group-platform-persistence");
+  });
+
+  it("matches title-only groups by exact member centers when Mermaid omits nested nodes", async () => {
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><g class="cluster"><rect id="geometry-boundary"></rect><g class="cluster-label"><text>Persistence</text></g></g>',
+      '<g class="cluster"><rect id="outside-boundary"></rect><g class="cluster-label"><text>Outside</text></g></g>',
+      '<g class="cluster"><g class="cluster-label"><text>No boundary</text></g></g>',
+      '<g class="node diagram_tour_node_database" id="database"></g><g class="node diagram_tour_node_outside" id="outside"></g></svg>'
+    ].join("") });
+    const container = document.createElement("div");
+    const inside = { left: 20, top: 20, right: 40, bottom: 40, width: 20, height: 20 } as DOMRect;
+    const outside = { left: 150, top: 150, right: 170, bottom: 170, width: 20, height: 20 } as DOMRect;
+    const bounds = { left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100 } as DOMRect;
+    const boundsById = new Map([["geometry-boundary", bounds], ["outside-boundary", bounds], ["database", inside]]);
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      return boundsById.get(this.id) ?? outside;
+    });
+    await renderMermaidDiagram({ container, diagram: {
+      elements: [
+        { id: "database", kind: "node", label: "Database" },
+        { id: "outside", kind: "node", label: "Outside node" },
+        { id: "group-persistence", kind: "group", label: "Persistence", renderMemberIds: ["database"] },
+        { id: "group-outside", kind: "group", label: "Outside", renderMemberIds: ["outside"] },
+        { id: "group-no-boundary", kind: "group", label: "No boundary", renderMemberIds: ["ghost"] }
+      ],
+      path: "./groups.mmd", source: "flowchart TB", type: "flowchart"
+    } });
+
+    expect(container.querySelector("#geometry-boundary")?.getAttribute("data-node-id")).toBe("group-persistence");
+    expect(container.querySelector("#outside-boundary")?.hasAttribute("data-node-id")).toBe(false);
+  });
+
   it("skips flowchart transitions without Mermaid render identity", async () => {
     const container = document.createElement("div");
 
@@ -980,6 +1525,27 @@ describe("mermaid diagram helpers", () => {
     });
 
     expect(container.querySelector('[data-diagram-element-id="transition-no-render-id"]')).toBeNull();
+  });
+
+  it("does not focus Mermaid edge-label wrappers when an unlabeled link has no visible label", async () => {
+    const container = document.createElement("div");
+    mermaidRender.mockResolvedValueOnce({ svg: [
+      '<svg><path class="flowchart-link" data-id="L_A_B_0"></path>',
+      '<g class="edgeLabel"><g data-id="L_A_B_0"></g></g>',
+      '<span class="edgeLabel"></span></svg>'
+    ].join("") });
+    await renderMermaidDiagram({
+      container,
+      diagram: {
+        elements: [{ id: "transition-A-to-B-unlabeled", kind: "transition", label: "A → B", renderId: "L_A_B_0", renderOrder: 0, renderSourceId: "A", renderTargetId: "B" }],
+        path: "./components.mmd",
+        source: "flowchart LR\n  A --> B",
+        type: "flowchart"
+      }
+    });
+
+    expect(container.querySelector(".flowchart-link")?.getAttribute("data-node-id")).toBe("transition-A-to-B-unlabeled");
+    expect(container.querySelector(".edgeLabel")?.hasAttribute("data-node-id")).toBe(false);
   });
 
   it("disambiguates duplicate Mermaid edge IDs by endpoints and label order", async () => {
@@ -1772,6 +2338,28 @@ function readFocusState(container: HTMLElement, nodeId: string): string | null {
   return container
     .querySelector(`[data-node-id="${nodeId}"]`)
     ?.getAttribute("data-focus-state") ?? null;
+}
+
+function readNodeId(container: HTMLElement, selector: string): string | undefined {
+  const target = container.querySelector(selector)!;
+  return (target as HTMLElement).dataset.nodeId;
+}
+
+function readDuplicateC4Bounds(element: SVGElement): number[] {
+  const key = element.id || element.parentElement!.id;
+  return DUPLICATE_C4_BOUNDS[key]!;
+}
+
+const DUPLICATE_C4_BOUNDS: Record<string, number[]> = {
+  cloud: [0, 0, 200, 200], external: [400, 0, 40, 40], inside: [10, 10, 40, 40], outside: [300, 0, 40, 40], scope: [0, 0, 200, 200]
+};
+
+function readEdgeId(edge: Element): string {
+  return edge.querySelector("path.edge")!.id;
+}
+
+function hasArrow(edge: Element): boolean {
+  return edge.querySelector("polygon.arrow") !== null;
 }
 
 function hasFocusState(container: HTMLElement, nodeId: string): boolean {

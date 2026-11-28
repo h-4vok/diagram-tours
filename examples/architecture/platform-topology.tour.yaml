@@ -1,0 +1,19 @@
+version: 1
+title: Platform topology
+diagram: ./platform-topology.mmd
+
+steps:
+  - focus: [group-platform]
+    text: "{{group-platform}} contains the runtime group."
+  - focus: [service-app]
+    text: "{{service-app}} handles incoming work."
+  - focus: [junction-split]
+    text: "{{junction-split}} routes work to the cache."
+  - focus: [connection-1]
+    text: "{{connection-1}} carries application traffic to the junction."
+  - focus: [connection-2]
+    text: "{{connection-2}} carries work between the junction and cache."
+  - focus: [connection-3]
+    text: "{{connection-3}} crosses the runtime and data group boundaries."
+  - focus: [connection-4]
+    text: "{{connection-4}} shows the bidirectional cache route back to the application."

@@ -4,11 +4,15 @@ import { dirname, relative, resolve } from "node:path";
 import type { ResolvedDiagramTourCollection, ResolvedDiagramTourCollectionEntry, SkippedResolvedDiagramTour } from "@diagram-tour/core";
 
 import { loadAuthoredTourDocument } from "./authored-tour-loader.js";
+import { ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE } from "./architecture-diagram-model.js";
 import { loadGeneratedCollectionEntries } from "./generated-tours.js";
+import { createDiagramSourceId } from "./markdown-blocks.js";
 import {
   NO_VALID_TOURS_MESSAGE,
+  MARKDOWN_DIAGRAM_FILE_SUFFIX,
   TOUR_FILE_SUFFIX,
-  type LoadedCollectionEntry
+  type LoadedCollectionEntry,
+  type MarkdownBlock
 } from "./parser-contracts.js";
 import { createSkippedTourEntry } from "./skipped-tour.js";
 import { collectSourcePaths } from "./source-path-discovery.js";
@@ -73,14 +77,38 @@ export async function readDiscoveredTourCollection(
 async function createSingleEntryCollection(
   absolutePath: string
 ): Promise<ResolvedDiagramTourCollection> {
-  const entries = await createCollectionEntries({
-    absolutePath,
-    sourceRoot: dirname(absolutePath)
-  });
+  const sourceRoot = dirname(absolutePath);
+  if (absolutePath.endsWith(MARKDOWN_DIAGRAM_FILE_SUFFIX)) {
+    return createSingleMarkdownCollection(absolutePath, sourceRoot);
+  }
+
+  const entries = await createCollectionEntries({ absolutePath, sourceRoot });
 
   return {
     entries: entries.map((item) => item.entry),
     skipped: []
+  };
+}
+
+async function createSingleMarkdownCollection(
+  absolutePath: string,
+  sourceRoot: string
+): Promise<ResolvedDiagramTourCollection> {
+  const skipped: SkippedResolvedDiagramTour[] = [];
+  const entries = await loadGeneratedCollectionEntries({
+    absolutePath,
+    onSkippedMarkdownBlock: (block, error) => skipped.push(createSkippedMarkdownBlockEntry({
+      absolutePath,
+      block,
+      error,
+      sourceRoot
+    })),
+    sourceRoot
+  });
+
+  return {
+    entries: entries.map((item) => item.entry),
+    skipped
   };
 }
 
@@ -164,6 +192,7 @@ async function appendGeneratedDiscoveryResults(input: {
   for (const absoluteDiagramPath of input.diagramPaths) {
     const loadedEntries = await tryLoadGeneratedDiscoveryEntries({
       absoluteDiagramPath,
+      result: input.result,
       sourceRoot: input.sourceRoot
     });
 
@@ -181,20 +210,55 @@ async function appendGeneratedDiscoveryResults(input: {
 
 async function tryLoadGeneratedDiscoveryEntries(input: {
   absoluteDiagramPath: string;
+  result: {
+    entries: ResolvedDiagramTourCollectionEntry[];
+    skipped: SkippedResolvedDiagramTour[];
+  };
   sourceRoot: string;
 }): Promise<LoadedCollectionEntry[] | null> {
   try {
     return await loadGeneratedCollectionEntries({
       absolutePath: input.absoluteDiagramPath,
+      onSkippedMarkdownBlock: (block, error) => input.result.skipped.push(createSkippedMarkdownBlockEntry({
+        absolutePath: input.absoluteDiagramPath,
+        block,
+        error,
+        sourceRoot: input.sourceRoot
+      })),
       sourceRoot: input.sourceRoot
     });
   } catch (error) {
-    if (shouldIgnoreGeneratedDiscoveryError(input.absoluteDiagramPath, error)) {
-      return null;
-    }
-
+    if (handleGeneratedDiscoveryError(input, error)) { return null; }
     throw error;
   }
+}
+
+function createSkippedMarkdownBlockEntry(input: {
+  absolutePath: string;
+  block: MarkdownBlock;
+  error: Error;
+  sourceRoot: string;
+}): SkippedResolvedDiagramTour {
+  const skipped = createSkippedTourEntry(input.absolutePath, input.sourceRoot, input.error);
+  return {
+    ...skipped,
+    sourceId: createDiagramSourceId(input.absolutePath, input.block.id),
+    sourcePath: `${skipped.sourcePath}#${input.block.id}`
+  };
+}
+
+function handleGeneratedDiscoveryError(
+  input: { absoluteDiagramPath: string; result: { skipped: SkippedResolvedDiagramTour[] }; sourceRoot: string },
+  error: unknown
+): boolean {
+  if (shouldIgnoreGeneratedDiscoveryError(input.absoluteDiagramPath, error)) { return true; }
+  if (!isSkippedArchitectureCollision(error)) { return false; }
+  input.result.skipped.push(createSkippedTourEntry(input.absoluteDiagramPath, input.sourceRoot, error));
+  return true;
+}
+
+function isSkippedArchitectureCollision(error: unknown): boolean {
+  return error instanceof Error && error.message === ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE;
 }
 
 async function appendDiscoveredTourResult(input: {

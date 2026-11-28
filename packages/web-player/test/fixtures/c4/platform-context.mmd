@@ -1,0 +1,16 @@
+C4Deployment
+title Shop platform deployment
+Person(visitor, "Shopper", "Uses the storefront")
+System(shop, "Shop platform", "Online sales")
+System_Ext(payments, "Payment provider", "External service")
+System_Ext(payments_alt, "Payment provider", "Alternate route")
+SystemDb_Ext(records, "Order records", "PostgreSQL")
+Enterprise_Boundary(company, "Acme") {
+  Deployment_Node(cloud, "Cloud region", "Cloud provider", "UK region") {
+    Container(storefront, "Storefront", "Svelte", "Customer experience")
+    Component(checkout, "Checkout", "TypeScript", "Order workflow")
+  }
+}
+Rel(visitor, shop, "Browses and buys", "HTTPS")
+Rel(shop, payments, "Authorizes payment", "HTTPS")
+Rel(shop, records, "Stores orders", "SQL")

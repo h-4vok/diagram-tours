@@ -9,6 +9,7 @@ import {
   readNodeLocation,
   type TourContext
 } from "./tour-context.js";
+import { ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE, hasArchitectureConnectionIdentityCollision } from "./architecture-diagram-model.js";
 
 export function validateResolvedTourDraft(input: {
   context: TourContext;
@@ -19,6 +20,8 @@ export function validateResolvedTourDraft(input: {
   const collector = createTourValidationCollector();
   const elementIndex = createElementIndex(input.diagramModel.elements, input.diagramModel.type);
   const lineCounter = createSourceLineCounter(input.source);
+
+  validateArchitectureConnectionIdentity({ collector, context: input.context, diagramModel: input.diagramModel, diagramNode: input.draft.diagramNode, lineCounter });
 
   input.draft.steps.forEach((step, index) =>
     validateResolvedDraftStep({
@@ -33,6 +36,22 @@ export function validateResolvedTourDraft(input: {
   );
 
   return collector.diagnostics;
+}
+
+function validateArchitectureConnectionIdentity(input: {
+  collector: ReturnType<typeof createTourValidationCollector>;
+  context: TourContext;
+  diagramModel: DiagramModel;
+  diagramNode: StepValueNode;
+  lineCounter: ReturnType<typeof createSourceLineCounter>;
+}): void {
+  if (input.diagramModel.type !== "architecture") { return; }
+  if (hasArchitectureConnectionIdentityCollision(input.diagramModel.elements)) {
+    appendDiagnostic(input.collector, {
+      location: readNodeLocation(input.diagramNode, input.lineCounter),
+      message: ARCHITECTURE_CONNECTION_IDENTITY_MESSAGE
+    });
+  }
 }
 
 function validateResolvedDraftStep(input: {

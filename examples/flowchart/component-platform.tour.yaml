@@ -1,0 +1,24 @@
+version: 1
+title: Component platform
+diagram: ./component-platform.mmd
+steps:
+  - focus: [group-platform]
+    text: The platform groups services and persistence into one system boundary.
+  - focus: [group-services]
+    text: The services group contains two components with the same visible label.
+  - focus: [group-platform-persistence]
+    text: The title-only Persistence subgroup uses a key derived from its parent and title.
+  - focus: [api]
+    text: The first Service handles incoming component work.
+  - focus: [transition-api-to-worker-dispatches]
+    text: The API dispatches work to the worker over a labeled relationship.
+  - focus: [transition-api-to-database-unlabeled]
+    text: The API also connects directly to the database without a label.
+  - focus: [transition-worker-to-cache-reads]
+    text: The worker reads from the cache through a labeled relationship.
+  - focus: [transition-cache-to-database-unlabeled]
+    text: The cache also links to the database and API through one multi-target statement.
+  - focus: [transition-cache-to-api-unlabeled]
+    text: The second edge in the multi-target statement links the cache to the API.
+  - focus: [transition-database-to-audit-unlabeled, transition-audit-to-worker-unlabeled]
+    text: A chained statement expands into two independently focusable links.

@@ -24,7 +24,9 @@ test("build output works on a generic static host", async ({ page }) => {
 
   try {
     await page.goto(`${server.baseUrl}/#/docs/authoring-guide/example-fixtures`);
-    await expect(page.getByText("Example Fixtures").first()).toBeVisible();
+    const fixtureStep = page.getByTestId("step-text");
+    await expect(fixtureStep).toContainText("Overview of Example Fixtures.");
+    await expect(fixtureStep).toBeVisible();
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Step 2 of 5")).toBeVisible();
     await page.getByRole("button", { name: /Search tours/ }).click();

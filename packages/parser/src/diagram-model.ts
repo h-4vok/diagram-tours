@@ -8,6 +8,8 @@ import type {
 
 import type { DiagramModel } from "./parser-contracts.js";
 import { createClassDiagramModel } from "./class-diagram-model.js";
+import { createC4DiagramModel } from "./c4-diagram-model.js";
+import { createArchitectureDiagramModel } from "./architecture-diagram-model.js";
 import { createFlowchartDiagramModel } from "./flowchart-diagram-model.js";
 import { createMindmapDiagramModel } from "./mindmap-diagram-model.js";
 import { createSankeyDiagramModel } from "./sankey-diagram-model.js";
@@ -29,9 +31,13 @@ const CLASS_DIAGRAM_PATTERN = /^[ \t]*classDiagram\b/u;
 const SANKEY_DIAGRAM_PATTERN = /^[ \t]*sankey-beta\b/u;
 const ZENUML_DIAGRAM_PATTERN = /^[ \t]*zenuml\b/u;
 const FLOWCHART_DIAGRAM_PATTERN = /^[ \t]*(?:flowchart|graph)\b/u;
+const C4_DIAGRAM_PATTERN = /^[ \t]*C4(?:Context|Container|Component|Dynamic|Deployment)\b/u;
+const ARCHITECTURE_DIAGRAM_PATTERN = /^[ \t]*architecture-beta\b/u;
 const MINDMAP_FRONTMATTER_PATTERN = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/u;
 const MINDMAP_DIRECTIVE_PATTERN = /%%\{[\s\S]*?\}%%/gu;
 const DIAGRAM_MODEL_FACTORIES = {
+  architecture: createArchitectureDiagramModelAdapter,
+  c4: createC4DiagramModelAdapter,
   classDiagram: createClassDiagramDiagramModel,
   flowchart: createFlowchartDiagramModelAdapter,
   mindmap: createMindmapDiagramModelAdapter,
@@ -41,6 +47,8 @@ const DIAGRAM_MODEL_FACTORIES = {
   zenuml: createZenUmlDiagramModel
 } satisfies Record<DiagramType, (source: string, context: TourContext) => DiagramModel>;
 const DIAGRAM_TYPE_PATTERNS = [
+  [ARCHITECTURE_DIAGRAM_PATTERN, "architecture"],
+  [C4_DIAGRAM_PATTERN, "c4"],
   [FLOWCHART_DIAGRAM_PATTERN, "flowchart"],
   [CLASS_DIAGRAM_PATTERN, "classDiagram"],
   [MINDMAP_DIAGRAM_PATTERN, "mindmap"],
@@ -162,6 +170,14 @@ function createClassDiagramDiagramModel(source: string, context: TourContext): D
   return createClassDiagramModel(source, context);
 }
 
+function createC4DiagramModelAdapter(source: string): DiagramModel {
+  return createC4DiagramModel(source);
+}
+
+function createArchitectureDiagramModelAdapter(source: string): DiagramModel {
+  return createArchitectureDiagramModel(source);
+}
+
 function createFlowchartDiagramModelAdapter(source: string): DiagramModel {
   return createFlowchartDiagramModel(source);
 }
@@ -265,7 +281,9 @@ function resolveElement(input: {
 
 function readUnknownElementTarget(diagramType: DiagramType): string {
   const targets: Partial<Record<DiagramType, string>> = {
-    flowchart: "node ID or transition key",
+    architecture: "architecture service, group, junction, or connection key",
+    c4: "C4 person, system, container, component, deployment, boundary, or relationship key",
+    flowchart: "node ID, group key, or transition key",
     sequence: "participant or message id",
     mindmap: "mindmap topic key",
     stateDiagram: "state or transition key",

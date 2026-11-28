@@ -1,0 +1,14 @@
+architecture-beta
+group cloud(cloud)[AWS Cloud]
+group region(cloud)[Europe West 2] in cloud
+group vpc(cloud)[Production VPC] in region
+service api(server)[API Gateway] in vpc
+service app(server)[Application] in vpc
+service database_primary(database)[Database] in vpc
+service database_replica(database)[Database] in vpc
+junction split in vpc
+api:R --> L:app
+app:R --> L:split
+split:B -- T:database_primary
+app:B --> T:database_replica
+database_primary:L <--> R:database_replica

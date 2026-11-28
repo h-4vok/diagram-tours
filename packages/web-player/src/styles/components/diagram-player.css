@@ -172,6 +172,12 @@
     filter 180ms ease;
 }
 
+[data-diagram-element-kind="relationship"]:is(text, tspan),
+[data-diagram-element-kind="relationship"] :is(text, tspan) {
+  stroke: none;
+  stroke-width: 0;
+}
+
 [data-diagram-element-kind="message"]:is(line, polyline),
 [data-diagram-element-kind="message"] :is(line, polyline) {
   fill: none;
@@ -197,8 +203,31 @@
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="transition"]:is(path, line, polyline) {
-  stroke: var(--accent-primary);
+  stroke: var(--color-node-focus-text);
   stroke-width: 2.5px;
+  filter: drop-shadow(0 0 2px var(--color-node-focus-text)) drop-shadow(0 0 2px var(--color-node-base-fill));
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="transition"] :is(path.edge, polygon.arrow) {
+  fill: var(--color-node-focus-text);
+  stroke: var(--color-node-focus-text);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 2px var(--color-node-focus-text)) drop-shadow(0 0 2px var(--color-node-base-fill));
+}
+
+[data-focus-state="focused"][data-diagram-element-kind="relationship"]:is(path, line),
+[data-focus-state="focused"][data-diagram-element-kind="relationship"] :is(path, line) {
+  stroke: var(--architecture-focus-stroke, var(--accent-primary)) !important;
+  stroke-width: 2.5px !important;
+}
+
+.architecture-edges [data-focus-state="focused"][data-diagram-element-kind="transition"] .edge {
+  stroke: var(--architecture-focus-stroke, var(--accent-primary)) !important;
+  stroke-width: 2.5px !important;
+}
+
+.architecture-edges [data-focus-state="focused"][data-diagram-element-kind="transition"] .arrow {
+  fill: var(--architecture-focus-stroke, var(--accent-primary)) !important;
 }
 
 [data-step-target="true"] {
@@ -259,8 +288,21 @@
   stroke-width: 3px !important;
 }
 
-[data-focus-state="focused"] rect.label-container {
-  fill: var(--node-active-fill) !important;
+.person-man[data-diagram-element-id^="container-"][data-focus-state="focused"] rect {
+  fill: var(--color-node-focus-fill-strong) !important;
+  stroke: var(--color-node-focus-text) !important;
+}
+
+[data-diagram-element-id^="deployment-"][data-focus-state="focused"] :is(text, tspan) {
+  fill: var(--color-node-focus-text) !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+.person-man[data-focus-state="focused"] :is(text, tspan) {
+  fill: var(--color-node-focus-text) !important;
+  stroke: var(--color-node-focus-text) !important;
+  stroke-width: 0 !important;
 }
 
 [data-focus-state="focused"][data-diagram-element-kind="message"]:is(line, polyline),
@@ -326,16 +368,34 @@
 .diagram [data-connector-state="active"][data-connector-role="flow"] :is(path, line, polyline) {
   fill: none !important;
   opacity: 1;
-  stroke: var(--accent-primary) !important;
+  stroke: var(--color-node-focus-text) !important;
   stroke-width: 2.5px !important;
+  filter:
+    drop-shadow(1px 0 0 #0b1220)
+    drop-shadow(-1px 0 0 #0b1220)
+    drop-shadow(0 1px 0 #0b1220)
+    drop-shadow(0 -1px 0 #0b1220)
+    drop-shadow(2px 0 0 #fff)
+    drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff)
+    drop-shadow(0 -2px 0 #fff);
 }
 
 .diagram [data-connector-state="active"][data-connector-role="flow-marker"],
 .diagram [data-connector-state="active"][data-connector-role="flow-marker"] :is(path, polygon) {
-  fill: var(--accent-primary) !important;
+  fill: var(--color-node-focus-text) !important;
   opacity: 1;
-  stroke: var(--accent-primary) !important;
+  stroke: var(--color-node-focus-text) !important;
   stroke-width: 2.5px !important;
+  filter:
+    drop-shadow(1px 0 0 #0b1220)
+    drop-shadow(-1px 0 0 #0b1220)
+    drop-shadow(0 1px 0 #0b1220)
+    drop-shadow(0 -1px 0 #0b1220)
+    drop-shadow(2px 0 0 #fff)
+    drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff)
+    drop-shadow(0 -2px 0 #fff);
 }
 
 .teleprompter {

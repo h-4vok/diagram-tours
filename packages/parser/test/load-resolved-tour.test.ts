@@ -28,7 +28,12 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
           { id: "validation_service", kind: "node", label: "Validation Service" },
           { id: "payment_service", kind: "node", label: "Payment Service" },
           { id: "payment_provider", kind: "node", label: "Payment Provider" },
-          { id: "response", kind: "node", label: "Response" }
+          { id: "response", kind: "node", label: "Response" },
+          { id: "transition-client-to-api_gateway-unlabeled", kind: "transition", label: "Client → API Gateway", renderId: "L_client_api_gateway_0", renderOrder: 0, renderSourceId: "client", renderTargetId: "api_gateway" },
+          { id: "transition-api_gateway-to-validation_service-unlabeled", kind: "transition", label: "API Gateway → Validation Service", renderId: "L_api_gateway_validation_service_0", renderOrder: 1, renderSourceId: "api_gateway", renderTargetId: "validation_service" },
+          { id: "transition-validation_service-to-payment_service-unlabeled", kind: "transition", label: "Validation Service → Payment Service", renderId: "L_validation_service_payment_service_0", renderOrder: 2, renderSourceId: "validation_service", renderTargetId: "payment_service" },
+          { id: "transition-payment_service-to-payment_provider-unlabeled", kind: "transition", label: "Payment Service → Payment Provider", renderId: "L_payment_service_payment_provider_0", renderOrder: 3, renderSourceId: "payment_service", renderTargetId: "payment_provider" },
+          { id: "transition-payment_provider-to-response-unlabeled", kind: "transition", label: "Payment Provider → Response", renderId: "L_payment_provider_response_0", renderOrder: 4, renderSourceId: "payment_provider", renderTargetId: "response" }
         ],
         path: "./payment-flow.mmd",
         source: [
@@ -137,7 +142,9 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
           { id: "start", kind: "node", label: "Start" },
           { id: "decision", kind: "node", label: "Decision" },
           { id: "archive", kind: "node", label: "archive" },
-          { id: "metadata", kind: "node", label: "Metadata Node" }
+          { id: "metadata", kind: "node", label: "Metadata Node" },
+          { id: "transition-start-to-decision-unlabeled", kind: "transition", label: "Start → Decision", renderId: "L_start_decision_0", renderOrder: 0, renderSourceId: "start", renderTargetId: "decision" },
+          { id: "transition-decision-to-archive-unlabeled", kind: "transition", label: "Decision → archive", renderId: "L_decision_archive_0", renderOrder: 1, renderSourceId: "decision", renderTargetId: "archive" }
         ]
       },
       steps: [
@@ -326,7 +333,7 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node ID or transition key "missing_node"`
+      `Tour "${normalizePath(tourPath)}": step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"`
     );
   });
 
@@ -347,7 +354,7 @@ describe("@diagram-tour/parser loadResolvedTour", () => {
     });
 
     await expect(loadResolvedTour(tourPath)).rejects.toThrow(
-      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node ID or transition key "missing_node"`
+      `Tour "${normalizePath(tourPath)}": step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"`
     );
   });
 
