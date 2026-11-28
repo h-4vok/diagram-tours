@@ -1,0 +1,21 @@
+version: 1
+title: Cloud deployment with architecture-beta
+diagram: ./cloud-deployment.mmd
+
+steps:
+  - focus: [group-cloud]
+    text: "{{group-cloud}} contains a region and its private network."
+  - focus: [group-region]
+    text: "{{group-region}} is nested inside the cloud boundary."
+  - focus: [group-vpc]
+    text: "{{group-vpc}} contains compute and data resources."
+  - focus: [service-api]
+    text: "{{service-api}} accepts traffic and forwards it to the application."
+  - focus: [service-database_primary]
+    text: "The primary {{service-database_primary}} has a separate source ID from its replica."
+  - focus: [service-database_replica]
+    text: "The replica {{service-database_replica}} shares its visible label with the primary."
+  - focus: [connection-1]
+    text: "{{connection-1}} routes gateway traffic to the application."
+  - focus: [connection-5]
+    text: "{{connection-5}} is bidirectional between the two database services."

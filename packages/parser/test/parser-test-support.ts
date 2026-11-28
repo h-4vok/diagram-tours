@@ -25,6 +25,14 @@ export const ZENUML_FIXTURE_TOUR_PATH = resolve(
   TEST_DIR,
   "../../web-player/test/fixtures/zenuml/checkout-zenuml.tour.yaml"
 );
+export const C4_FIXTURE_TOUR_PATH = resolve(
+  TEST_DIR,
+  "../../web-player/test/fixtures/c4/platform-context.tour.yaml"
+);
+export const ARCHITECTURE_FIXTURE_TOUR_PATH = resolve(
+  TEST_DIR,
+  "./fixtures/architecture/platform-topology.tour.yaml"
+);
 
 export function restoreParserTestState(): void {
   vi.restoreAllMocks();

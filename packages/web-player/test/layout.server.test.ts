@@ -29,10 +29,15 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.slug)).toEqual([
+      "architecture/cloud-deployment",
+      "architecture/platform-topology",
+      "c4/platform-context",
       "class-diagram/dom-injection-api",
       "decision-tree/eligibility-flowchart",
       "decision-tree/eligibility-mindmap",
       "flowchart/checkout-payment-flow",
+      "flowchart/cloud-deployment",
+      "flowchart/component-platform",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
       "mindmap/release-plan",
@@ -53,10 +58,15 @@ describe("+layout.server", () => {
     const result = await loadExamplesCollection();
 
     expect(result.collection.entries.map((entry) => entry.title)).toEqual([
+      "Cloud deployment with architecture-beta",
+      "Platform topology",
+      "Platform context",
       "Browser Extension Data Pipeline",
       "Eligibility decision tree",
       "Eligibility decision tree topics",
       "Payment Flow",
+      "Cloud deployment with styled Flowchart",
+      "Component platform",
       "Flowchart Addressability",
       "Payments Platform Overview",
       "Release planning",

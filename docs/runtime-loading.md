@@ -115,6 +115,8 @@ Single-file behavior by shape:
 
 For Markdown files with multiple Mermaid fenced blocks, single-file preview still returns one generated entry per block.
 
+If an Architecture block cannot render because its Mermaid 11.13.0 renderer IDs collide, single-file preview keeps the valid sibling entries and exposes a skipped diagnostic scoped to that block's heading fragment. `allowEmpty` does not collapse this partial result into a file-level diagnostic; I/O and other load failures retain their existing fail-closed behavior.
+
 This mode is useful while authoring a specific tour or previewing one diagram because it removes unrelated content from the UI.
 
 ## Slug Generation

@@ -36,7 +36,7 @@ describe("@diagram-tour/parser validation targets", () => {
       diagnostic: {
         code: null,
         location: { column: 10, line: 6 },
-        message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
+        message: 'step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"'
       },
       sourcePath: "invalid-tour/invalid.tour.yaml"
     });
@@ -44,7 +44,7 @@ describe("@diagram-tour/parser validation targets", () => {
       diagnostic: {
         code: null,
         location: { column: 12, line: 7 },
-        message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
+        message: 'step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"'
       },
       sourcePath: "invalid-tour/invalid.tour.yaml"
     });
@@ -122,7 +122,7 @@ describe("@diagram-tour/parser validation targets", () => {
       diagnostic: {
         code: null,
         location: { column: 10, line: 6 },
-        message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
+        message: 'step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"'
       },
       sourceId: normalizePath(invalidFilePath),
       sourcePath: "invalid.tour.yaml"
@@ -131,7 +131,7 @@ describe("@diagram-tour/parser validation targets", () => {
       diagnostic: {
         code: null,
         location: { column: 12, line: 7 },
-        message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
+        message: 'step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"'
       },
       sourceId: normalizePath(invalidFilePath),
       sourcePath: "invalid.tour.yaml"

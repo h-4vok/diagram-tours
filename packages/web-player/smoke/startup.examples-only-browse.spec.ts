@@ -15,7 +15,7 @@ test("explicit examples directory keeps browse scoped to shipped examples", asyn
     await expect(page.getByTestId("diagnostics-trigger")).toBeVisible();
     await expect(page.getByTestId("diagnostics-count")).toHaveText("0");
     await expectBrowseSearchEmpty(page, "alpha");
-    await expectBrowseSearchEmpty(page, "beta");
+    await expectBrowseSearchEmpty(page, "no-such-tour-should-match-nothing");
     await expectBrowseSearchMatch(page, "platform", "Payments Platform Overview");
     await expectBrowseSearchMatch(page, "sequence", "Order Sequence");
   } finally {

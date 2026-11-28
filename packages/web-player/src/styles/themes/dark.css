@@ -6,13 +6,13 @@
   --text-secondary: #8b949e;
   --border-subtle: rgb(255 255 255 / 10%);
   --accent-primary: #3b82f6;
+  --architecture-focus-stroke: #93c5fd;
   --accent-warning: #f59e0b;
   --text-error: #fda4af;
   --border-error: rgb(244 63 94 / 40%);
   --bg-error-muted: rgb(244 63 94 / 10%);
   --text-warning: #fcd34d;
   --bg-warning-muted: rgb(245 158 11 / 10%);
-  --node-active-fill: #60a5fa;
   --node-warning-fill: #b45309;
   --node-warning-text: #fef3c7;
   --color-accent: var(--accent-primary);

@@ -19,6 +19,22 @@ import {
 afterEach(restoreParserTestState);
 
 describe("@diagram-tour/parser tour collection", () => {
+  it("skips colliding Architecture sources while keeping valid sources and empty groups", async () => {
+    const sourceRoot = await createTempDiagramDirectory({
+      "a-valid.mmd": ["architecture-beta", "group aa-bb(cloud)[Empty]", "service aa(server)[A]", "service cc(database)[C]", "aa:R --> L:cc"].join("\n"),
+      "z-invalid.mmd": ["architecture-beta", "service aa(server)[A]", "service bb(database)[B]", "aa:R --> L:bb", "aa:B --> T:bb"].join("\n")
+    });
+    const collection = await loadResolvedTourCollection(sourceRoot);
+
+    expect(collection.entries.map(({ slug }) => slug)).toEqual(["a-valid"]);
+    expect(collection.entries[0]?.tour.diagram.elements).toContainEqual({ id: "group-aa-bb", kind: "group", label: "Empty" });
+    expect(collection.skipped).toHaveLength(1);
+    expect(collection.skipped[0]).toMatchObject({
+      sourcePath: "z-invalid.mmd",
+      diagnostics: [{ message: expect.stringContaining("connection IDs collide") }]
+    });
+  });
+
   it("builds a one-tour collection from a single file target", async () => {
     const collection = await loadResolvedTourCollection(FIXTURE_TOUR_PATH);
 
@@ -278,12 +294,12 @@ describe("@diagram-tour/parser tour collection", () => {
         {
           code: null,
           location: { column: 10, line: 6 },
-          message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
+          message: 'step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"'
         },
         {
           code: null,
           location: { column: 12, line: 7 },
-          message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
+          message: 'step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"'
         }
       ],
       sourceId: normalizePath(resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml")),
@@ -437,10 +453,10 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(result.invalid[0]).toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          message: 'step 1 focus references unknown Mermaid node ID or transition key "missing_node"'
+          message: 'step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"'
         }),
         expect.objectContaining({
-          message: 'step 1 text references unknown Mermaid node ID or transition key "missing_node"'
+          message: 'step 1 text references unknown Mermaid node ID, group key, or transition key "missing_node"'
         })
       ],
       sourcePath: "invalid-tour/invalid.tour.yaml"
@@ -455,10 +471,10 @@ describe("@diagram-tour/parser tour collection", () => {
     expect(result.invalid[0]).toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          message: 'step 1 focus references unknown Mermaid node ID or transition key "ghost"'
+          message: 'step 1 focus references unknown Mermaid node ID, group key, or transition key "ghost"'
         }),
         expect.objectContaining({
-          message: 'step 1 text references unknown Mermaid node ID or transition key "ghost"'
+          message: 'step 1 text references unknown Mermaid node ID, group key, or transition key "ghost"'
         })
       ],
       sourcePath: "broken.tour.yaml"
@@ -499,7 +515,7 @@ describe("@diagram-tour/parser tour collection", () => {
     const invalidFilePath = resolve(DISCOVERY_FIXTURE_ROOT, "./invalid-tour/invalid.tour.yaml");
 
     await expect(loadResolvedTourCollection(invalidFilePath)).rejects.toThrow(
-      `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node ID or transition key "missing_node"`
+      `Tour "${normalizePath(invalidFilePath)}": step 1 focus references unknown Mermaid node ID, group key, or transition key "missing_node"`
     );
   });
 
@@ -529,10 +545,15 @@ describe("@diagram-tour/parser tour collection", () => {
     const collection = await loadResolvedTourCollection(EXAMPLES_ROOT);
 
     expect(collection.entries.map((entry) => entry.slug)).toEqual([
+      "architecture/cloud-deployment",
+      "architecture/platform-topology",
+      "c4/platform-context",
       "class-diagram/dom-injection-api",
       "decision-tree/eligibility-flowchart",
       "decision-tree/eligibility-mindmap",
       "flowchart/checkout-payment-flow",
+      "flowchart/cloud-deployment",
+      "flowchart/component-platform",
       "flowchart/flowchart-addressability",
       "flowchart/payments-platform-overview",
       "mindmap/release-plan",

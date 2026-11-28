@@ -32,6 +32,8 @@ const FLOWCHART_MARKER_ATTRIBUTES = ["marker-start", "marker-end"] as const;
 const FLOWCHART_CONNECTOR_SELECTOR = ".edgePath path, .flowchart-link";
 const STATE_GROUP_SELECTOR = "g.statediagram-state, g.statediagram-cluster, g.stateGroup";
 const DIAGRAM_ANNOTATORS = {
+  architecture: annotateArchitectureElements,
+  c4: annotateC4Elements,
   classDiagram: annotateClassElements,
   flowchart: annotateFlowchartElements,
   mindmap: annotateMindmapElements,
@@ -91,6 +93,17 @@ const STATE_DIAGRAM_THEME_VARIABLES = {
   stateLabelColor: "var(--color-node-base-text, #e6edf3)",
   transitionColor: "var(--color-node-base-stroke, #30363d)"
 } satisfies MermaidThemeVariables;
+const ARCHITECTURE_THEME_VARIABLES = {
+  archEdgeArrowColor: "var(--color-node-base-stroke, #30363d)",
+  archEdgeColor: "var(--color-node-base-stroke, #30363d)",
+  archGroupBorderColor: "var(--color-node-base-stroke, #30363d)",
+  archGroupBorderWidth: "1.4px"
+} satisfies MermaidThemeVariables;
+const DIAGRAM_THEME_VARIABLES: Partial<Record<ResolvedDiagram["type"], MermaidThemeVariables>> = {
+  architecture: ARCHITECTURE_THEME_VARIABLES,
+  sequence: SEQUENCE_THEME_VARIABLES,
+  stateDiagram: STATE_DIAGRAM_THEME_VARIABLES
+};
 const ZENUML_THEME_RULES = [
   [".frame-border-outer, .frame-header-line, .participant-box, .lifeline, .occurrence, .fragment-border, .group-outline", "stroke", "var(--color-node-base-stroke)"],
   [".frame-border-inner, .frame-header-bg, .participant-box, .occurrence, .fragment-header, .group-title-bg", "fill", "var(--color-node-base-fill)"],
@@ -204,13 +217,7 @@ function readMermaidThemeVariables(container: HTMLElement, diagram: ResolvedDiag
     fontFamily: MERMAID_FONT_STACK
   };
 
-  if (diagram.type === "sequence") {
-    return { ...themeVariables, ...SEQUENCE_THEME_VARIABLES };
-  }
-
-  return diagram.type === "stateDiagram"
-    ? { ...themeVariables, ...STATE_DIAGRAM_THEME_VARIABLES }
-    : themeVariables;
+  return { ...themeVariables, ...DIAGRAM_THEME_VARIABLES[diagram.type] };
 }
 
 function readPrimaryThemeVariables(styles: CSSStyleDeclaration): MermaidThemeVariables {
@@ -285,6 +292,62 @@ function annotateRenderedElements(container: HTMLElement, diagram: ResolvedDiagr
   DIAGRAM_ANNOTATORS[diagram.type](container, diagram.elements);
 }
 
+function annotateArchitectureElements(container: HTMLElement, elements: DiagramElement[]): void {
+  elements.forEach((element) => annotateArchitectureElement(container, element, elements));
+}
+
+function annotateArchitectureElement(container: HTMLElement, element: DiagramElement, elements: DiagramElement[]): void {
+  readArchitectureTargets(container, element, elements).forEach((target) => {
+    setDiagramElementDataset(target, element);
+  });
+}
+
+function readArchitectureTargets(container: HTMLElement, element: DiagramElement, elements: DiagramElement[]): RenderedDiagramElement[] {
+  return element.kind === "transition"
+    ? readArchitectureConnectionTargets(container, element, elements)
+    : readArchitectureNodeTargets(container, element);
+}
+
+function readArchitectureConnectionTargets(container: HTMLElement, element: DiagramElement, elements: DiagramElement[]): RenderedDiagramElement[] {
+  if (element.renderId === undefined) { return []; }
+  const duplicateIndex = elements.filter((candidate) => isPriorArchitectureEdge(candidate, element)).length;
+  const renderedEdge = container.querySelectorAll<RenderedDiagramElement>(`.architecture-edges [id="${element.renderId}"]`)[duplicateIndex] ?? null;
+  return readArchitectureEdgeGroup(renderedEdge);
+}
+
+function isPriorArchitectureEdge(candidate: DiagramElement, element: DiagramElement): boolean {
+  if (candidate.kind !== "transition") { return false; }
+  if (candidate.renderId !== element.renderId) { return false; }
+  return Number(candidate.renderOrder) < Number(element.renderOrder);
+}
+
+function readArchitectureEdgeGroup(renderedEdge: RenderedDiagramElement | null): RenderedDiagramElement[] {
+  if (renderedEdge === null) { return []; }
+  const target = renderedEdge.closest("g");
+  return target === null ? [] : [target as RenderedDiagramElement];
+}
+
+function readArchitectureNodeTargets(container: HTMLElement, element: DiagramElement): RenderedDiagramElement[] {
+  const target = readArchitectureNodeTarget(container, element);
+  if (target === null) { return []; }
+  return element.kind === "group" ? readArchitectureGroupTargets(target) : [target];
+}
+
+function readArchitectureGroupTargets(target: RenderedDiagramElement): RenderedDiagramElement[] {
+  const label = target.nextElementSibling;
+  return label === null ? [target] : [target, label as RenderedDiagramElement];
+}
+
+function readArchitectureNodeTarget(container: HTMLElement, element: DiagramElement): RenderedDiagramElement | null {
+  const id = readArchitectureRenderedId(element);
+  return container.querySelector<RenderedDiagramElement>(`[id="${id}"]`);
+}
+
+function readArchitectureRenderedId(element: DiagramElement): string {
+  const ids = { group: `group-${element.id.slice(6)}`, junction: `node-${element.id.slice(9)}`, node: `service-${element.id.slice(8)}` };
+  return ids[element.kind as "group" | "junction" | "node"];
+}
+
 function applyZenUmlTheme(container: HTMLElement): void {
   const svg = container.querySelector<SVGSVGElement>('svg[aria-roledescription="zenuml"]');
 
@@ -297,6 +360,16 @@ function applyZenUmlTheme(container: HTMLElement): void {
 }
 
 function annotateFlowchartElements(container: HTMLElement, elements: DiagramElement[]): void {
+  const clusters = container.querySelectorAll<RenderedDiagramElement>("g.cluster");
+  const groups = elements.filter((element) => element.kind === "group");
+  groups.forEach((element) => {
+    const cluster = readFlowchartCluster(clusters, element, groups);
+    if (cluster === null) {return;}
+    Array.from(cluster.children)
+      .filter((target): target is RenderedDiagramElement => target.matches("rect, .cluster-label"))
+      .forEach((target) => setDiagramElementDataset(target, element));
+  });
+
   elements.filter((element) => element.kind === "node").forEach((element) => {
     const renderedElement = container.querySelector<RenderedDiagramElement>(`.${createNodeClass(element.id)}`);
 
@@ -311,6 +384,100 @@ function annotateFlowchartElements(container: HTMLElement, elements: DiagramElem
   transitions.forEach((transition) => {
     annotateFlowchartTransition(container, transition, transitions);
   });
+}
+
+function readFlowchartCluster(
+  clusters: NodeListOf<RenderedDiagramElement>,
+  group: DiagramElement,
+  groups: DiagramElement[]
+): RenderedDiagramElement | null {
+  if (group.renderId !== undefined) {
+    return readExplicitFlowchartCluster(clusters, group.renderId, group);
+  }
+  return readTitleOnlyFlowchartCluster(clusters, group, groups);
+}
+
+function readExplicitFlowchartCluster(
+  clusters: NodeListOf<RenderedDiagramElement>,
+  sourceId: string,
+  group: DiagramElement
+): RenderedDiagramElement | null {
+  const candidates = Array.from(clusters);
+  return candidates.find((cluster) => cluster.getAttribute("id") === sourceId) ??
+    candidates.find((cluster) => matchesFlowchartClusterTitle(cluster, group.label) &&
+      matchesFlowchartClusterMembers(cluster, group.renderMemberIds ?? [])) ?? null;
+}
+
+function readTitleOnlyFlowchartCluster(
+  clusters: NodeListOf<RenderedDiagramElement>,
+  group: DiagramElement,
+  groups: DiagramElement[]
+): RenderedDiagramElement | null {
+  const matching = Array.from(clusters).filter((cluster) => matchesFlowchartClusterTitle(cluster, group.label));
+  const members = group.renderMemberIds ?? [];
+  return members.length === 0
+    ? readFlowchartClusterBySourceOrder(matching, groups, group)
+    : readFlowchartClusterByMembers(matching, members);
+}
+
+function readFlowchartClusterByMembers(clusters: RenderedDiagramElement[], memberIds: string[]): RenderedDiagramElement | null {
+  return clusters.find((cluster) => matchesFlowchartClusterMembers(cluster, memberIds)) ?? null;
+}
+
+function readFlowchartClusterBySourceOrder(
+  matching: RenderedDiagramElement[],
+  groups: DiagramElement[],
+  group: DiagramElement
+): RenderedDiagramElement | null {
+  return matching[countPriorTitleOnlyGroups(groups, group)] ?? null;
+}
+
+function matchesFlowchartClusterMembers(cluster: Element, memberIds: string[]): boolean {
+  const renderedIds = readContainedFlowchartMemberIds(cluster);
+  return renderedIds.length === 0
+    ? matchesFlowchartClusterGeometry(cluster, memberIds)
+    : hasSameMemberIds(renderedIds, memberIds);
+}
+
+function readContainedFlowchartMemberIds(cluster: Element): string[] {
+  return Array.from(cluster.querySelectorAll("g.node"), readFlowchartMemberId).filter(Boolean);
+}
+
+function readFlowchartMemberId(node: Element): string {
+  const sourceClass = Array.from(node.classList).find((name) => name.startsWith(APP_NODE_CLASS_PREFIX));
+  if (sourceClass !== undefined) { return sourceClass.slice(APP_NODE_CLASS_PREFIX.length); }
+  return normalizeTextContent(node.querySelector(":scope > title") ?? node);
+}
+
+function matchesFlowchartClusterGeometry(cluster: Element, memberIds: string[]): boolean {
+  const svg = cluster.closest("svg");
+  const boundary = cluster.querySelector(":scope > rect");
+  if (svg === null || boundary === null) { return false; }
+  const bounds = boundary.getBoundingClientRect();
+  const renderedIds = Array.from(svg.querySelectorAll("g.node"))
+    .filter((node) => isNodeCenterInside(node.getBoundingClientRect(), bounds))
+    .map(readFlowchartMemberId).filter(Boolean);
+  return hasSameMemberIds(renderedIds, memberIds);
+}
+
+function isNodeCenterInside(node: DOMRect, bounds: DOMRect): boolean {
+  const centerX = node.left + node.width / 2;
+  const centerY = node.top + node.height / 2;
+  return Math.min(centerX - bounds.left, bounds.right - centerX, centerY - bounds.top, bounds.bottom - centerY) >= 0;
+}
+
+function hasSameMemberIds(first: string[], second: string[]): boolean {
+  const firstSet = new Set(first);
+  return firstSet.size === second.length && second.every((memberId) => firstSet.has(memberId));
+}
+
+function matchesFlowchartClusterTitle(cluster: Element, title: string): boolean {
+  const label = cluster.querySelector(".cluster-label");
+  return label !== null && normalizeTextContent(label).toLowerCase() === title.replace(/\s+/gu, " ").trim().toLowerCase();
+}
+
+function countPriorTitleOnlyGroups(groups: DiagramElement[], group: DiagramElement): number {
+  return groups.slice(0, groups.indexOf(group)).filter(({ label, renderId }) => renderId === undefined && label === group.label).length;
 }
 
 function annotateFlowchartTransition(
@@ -400,7 +567,8 @@ function readFlowchartTransitionLabels(
   input: { duplicateIndex: number; renderId: string; sameIdTransitions: DiagramElement[] }
 ): RenderedDiagramElement[] {
   const matching = labels.filter(
-    (element) => hasFlowchartRenderId(element, input.renderId) || hasFlowchartLabelRenderId(element, input.renderId)
+    (element) => normalizeTextContent(element).length > 0 &&
+      (hasFlowchartRenderId(element, input.renderId) || hasFlowchartLabelRenderId(element, input.renderId))
   );
   return input.sameIdTransitions.length < 2 ? matching : readOrdinalFlowchartTargets(matching, input.duplicateIndex);
 }
@@ -466,6 +634,254 @@ function annotateClassElements(container: HTMLElement, elements: DiagramElement[
     setDiagramElementDataset(renderedClassNode, classElement);
     annotateClassNodeMembers(renderedClassNode, memberElementGroups.get(classElement.id) ?? []);
   });
+}
+
+function annotateC4Elements(container: HTMLElement, elements: DiagramElement[]): void {
+  const context = {
+    boundaries: Array.from(container.querySelectorAll<RenderedDiagramElement>("g"))
+      .filter((group) => group.querySelector("rect") !== null),
+    labels: Array.from(container.querySelectorAll<RenderedDiagramElement>("svg text")),
+    matched: new Set<RenderedDiagramElement>(),
+    relations: Array.from(container.querySelectorAll<RenderedDiagramElement>("svg [marker-end], svg [marker-start]")),
+    shapes: Array.from(container.querySelectorAll<RenderedDiagramElement>(".person-man"))
+  };
+  elements.forEach((element) => annotateC4Element(element, context));
+}
+
+function annotateC4Element(element: DiagramElement, context: {
+  boundaries: RenderedDiagramElement[];
+  labels: RenderedDiagramElement[];
+  matched: Set<RenderedDiagramElement>;
+  relations: RenderedDiagramElement[];
+  shapes: RenderedDiagramElement[];
+}): void {
+  if (element.kind === "relationship") {
+    return annotateC4Relationship(element, context);
+  }
+  annotateC4Shape(element, context);
+}
+
+function annotateC4Shape(element: DiagramElement, context: {
+  boundaries: RenderedDiagramElement[];
+  matched: Set<RenderedDiagramElement>;
+  shapes: RenderedDiagramElement[];
+}): void {
+  const candidates = element.kind === "group" ? context.boundaries : context.shapes;
+  const target = readC4Target(candidates, element, context.matched);
+  if (target === undefined) {
+    return;
+  }
+  context.matched.add(target);
+  setDiagramElementDataset(target, element);
+}
+
+function readC4Target(candidates: RenderedDiagramElement[], element: DiagramElement, matched: Set<RenderedDiagramElement>): RenderedDiagramElement | undefined {
+  const orderedCandidates = readC4ScopeCandidates(readC4Candidates(candidates, element), element);
+  return readC4IdentityTarget(orderedCandidates, element, matched) ?? readC4SourceTarget(orderedCandidates, element, matched) ??
+    readC4LabelTarget(orderedCandidates, element, matched);
+}
+
+function readC4ScopeCandidates(candidates: RenderedDiagramElement[], element: DiagramElement): RenderedDiagramElement[] {
+  return element.renderParentId === undefined
+    ? candidates.filter((candidate) => !isInsideMappedC4Boundary(candidate))
+    : readC4ParentCandidates(candidates, element.renderParentId);
+}
+
+function readC4ParentCandidates(candidates: RenderedDiagramElement[], parentId: string): RenderedDiagramElement[] {
+  const boundary = readC4ParentBoundary(candidates, parentId);
+  return candidates.filter((candidate) => isInC4ParentBoundary(boundary, candidate));
+}
+
+function readC4ParentBoundary(candidates: RenderedDiagramElement[], parentId: string): Element | null {
+  if (candidates.length === 0) { return null; }
+  const svg = candidates[0]!.closest("svg");
+  return svg === null ? null : svg.querySelector(`[data-node-id="boundary-${parentId}"], [data-node-id="deployment-${parentId}"]`);
+}
+
+function isInC4ParentBoundary(boundary: Element | null, candidate: RenderedDiagramElement): boolean {
+  return boundary !== null && containsC4Element(boundary, candidate);
+}
+
+function isInsideMappedC4Boundary(candidate: Element): boolean {
+  return Array.from(candidate.closest("svg")?.querySelectorAll("[data-node-id^='boundary-'], [data-node-id^='deployment-']") ?? [])
+    .some((boundary) => containsC4Element(boundary, candidate));
+}
+
+function containsC4Element(boundary: Element, candidate: Element): boolean {
+  const rect = boundary.querySelector("rect")!;
+  if (!hasC4BoundaryBounds(rect)) { return false; }
+  return isInsideC4Boundary(rect, candidate);
+}
+
+function hasC4BoundaryBounds(rect: Element): boolean {
+  const bounds = rect.getBoundingClientRect();
+  return bounds.width > 0 && bounds.height > 0;
+}
+
+function isInsideC4Boundary(rect: Element, candidate: Element): boolean {
+  const bounds = rect.getBoundingClientRect();
+  const target = candidate.getBoundingClientRect();
+  return isInsideC4HorizontalBoundary(bounds, target) && isInsideC4VerticalBoundary(bounds, target);
+}
+
+function isInsideC4HorizontalBoundary(bounds: DOMRect, target: DOMRect): boolean {
+  return bounds.left <= target.left && bounds.right >= target.right;
+}
+
+function isInsideC4VerticalBoundary(bounds: DOMRect, target: DOMRect): boolean {
+  return bounds.top <= target.top && bounds.bottom >= target.bottom;
+}
+
+function readC4Candidates(candidates: RenderedDiagramElement[], element: DiagramElement): RenderedDiagramElement[] {
+  return element.kind === "group" ? readC4BoundaryOrder(candidates) : candidates;
+}
+
+function readC4IdentityTarget(candidates: RenderedDiagramElement[], element: DiagramElement, matched: Set<RenderedDiagramElement>): RenderedDiagramElement | undefined {
+  return candidates.find((candidate) => !matched.has(candidate) && matchesC4FullIdentity(candidate, element));
+}
+
+function readC4SourceTarget(candidates: RenderedDiagramElement[], element: DiagramElement, matched: Set<RenderedDiagramElement>): RenderedDiagramElement | undefined {
+  return candidates.find((candidate) => !matched.has(candidate) && matchesC4SourceIdentity(candidate, element));
+}
+
+function readC4LabelTarget(candidates: RenderedDiagramElement[], element: DiagramElement, matched: Set<RenderedDiagramElement>): RenderedDiagramElement | undefined {
+  if (element.renderIdentity !== undefined) { return undefined; }
+  return candidates.find((candidate) => !matched.has(candidate) && normalizeC4IdentityText(matchesC4IdentityText(candidate)) === normalizeC4IdentityText(element.label));
+}
+
+function readC4BoundaryOrder(candidates: RenderedDiagramElement[]): RenderedDiagramElement[] {
+  return candidates.slice().sort((left, right) => compareC4BoundaryStructure(left, right, candidates));
+}
+
+function compareC4BoundaryStructure(left: Element, right: Element, candidates: Element[]): number {
+  const leftRect = left.querySelector("rect")!.getBoundingClientRect();
+  const rightRect = right.querySelector("rect")!.getBoundingClientRect();
+  if (containsC4Boundary(leftRect, rightRect)) { return -1; }
+  if (containsC4Boundary(rightRect, leftRect)) { return 1; }
+  return candidates.indexOf(left as RenderedDiagramElement) - candidates.indexOf(right as RenderedDiagramElement);
+}
+
+function containsC4Boundary(outer: DOMRect, inner: DOMRect): boolean {
+  return hasC4BoundaryGeometry(outer, inner) && containsC4HorizontalBoundary(outer, inner) && containsC4VerticalBoundary(outer, inner);
+}
+
+function hasC4BoundaryGeometry(outer: DOMRect, inner: DOMRect): boolean {
+  return outer.width > 0 && outer.height > 0 && Math.abs(outer.width - inner.width) + Math.abs(outer.height - inner.height) > 0;
+}
+
+function containsC4HorizontalBoundary(outer: DOMRect, inner: DOMRect): boolean {
+  return outer.left <= inner.left && outer.right >= inner.right;
+}
+
+function containsC4VerticalBoundary(outer: DOMRect, inner: DOMRect): boolean {
+  return outer.top <= inner.top && outer.bottom >= inner.bottom;
+}
+
+function matchesC4FullIdentity(candidate: Element, element: DiagramElement): boolean {
+  const identity = element.renderIdentity;
+  return identity !== undefined && readC4RenderedIdentity(candidate) === normalizeC4IdentityText(identity);
+}
+
+function matchesC4SourceIdentity(candidate: Element, element: DiagramElement): boolean {
+  const sourceId = element.renderId;
+  return sourceId !== undefined && (candidate.getAttribute("id") === sourceId ||
+    hasExactC4Text(candidate, sourceId, readC4SourceLabel(element, sourceId)));
+}
+
+function readC4SourceLabel(element: DiagramElement, sourceId: string): string {
+  return element.renderIdentity === undefined ? element.label : sourceId;
+}
+
+function readC4RenderedIdentity(candidate: Element): string {
+  return Array.from(candidate.querySelectorAll("text"), (item) => normalizeC4IdentityText(normalizeTextContent(item)))
+    .filter((text) => !/^<<[^<>]+>>$/u.test(text)).join("");
+}
+
+function hasExactC4Text(candidate: Element, sourceId: string, label: string): boolean {
+  const labels = [candidate, ...Array.from(candidate.querySelectorAll("title, text"))];
+  return labels.some((item) => matchesC4Label(item, sourceId, label)) ||
+    normalizeC4IdentityText(matchesC4IdentityText(candidate)) === normalizeC4IdentityText(label) || matchesC4LabelFragments(candidate, label);
+}
+
+function matchesC4LabelFragments(candidate: Element, label: string): boolean {
+  const expected = label.split(/<br\s*\/?>/iu).map(normalizeC4IdentityText);
+  const rendered = Array.from(candidate.querySelectorAll("title, text"), (item) => normalizeC4IdentityText(normalizeTextContent(item)));
+  return rendered.some((_item, index) => expected.every((fragment, offset) => rendered[index + offset] === fragment));
+}
+
+function matchesC4Label(label: Element, sourceId: string, expectedLabel: string): boolean {
+  const text = normalizeC4IdentityText(normalizeTextContent(label));
+  return text === normalizeC4IdentityText(sourceId) || text === normalizeC4IdentityText(expectedLabel);
+}
+
+function matchesC4IdentityText(candidate: Element): string {
+  return normalizeTextContent(candidate);
+}
+
+function normalizeC4IdentityText(value: string): string {
+  return value.replace(/<br\s*\/?>/giu, " ").replaceAll("[", "").replaceAll("]", "").replace(/\s+/gu, "").toLowerCase();
+}
+
+function annotateC4Relationship(element: DiagramElement, context: {
+  relations: RenderedDiagramElement[];
+}): void {
+  const index = (element.renderOrder ?? 1) - 1;
+  const connector = context.relations.at(index);
+  setC4RelationshipTarget(connector, element);
+  readC4RelationshipLabels(element.label, element.renderTechnology).forEach((label) => annotateC4RelationshipLabel(connector, element, label));
+}
+
+function annotateC4RelationshipLabel(connector: RenderedDiagramElement | undefined, element: DiagramElement, label: string): void {
+  const target = readC4RelationshipLabelTarget(connector, label);
+  if (target !== null) { setDiagramElementDataset(target, element); }
+}
+
+function readC4RelationshipLabelTarget(connector: RenderedDiagramElement | undefined, label: string): RenderedDiagramElement | null {
+  return readC4RelationshipFollowingSiblings(connector)
+    .find((candidate) => candidate.matches("text") && matchesC4RelationshipLabel(candidate, label)) as RenderedDiagramElement | undefined ?? null;
+}
+
+function matchesC4RelationshipLabel(candidate: Element, label: string): boolean {
+  const renderedLabel = normalizeTextContent(candidate);
+  return renderedLabel === label || renderedLabel.replace(/^\d+:\s*/u, "") === label;
+}
+
+function readC4RelationshipFollowingSiblings(connector: RenderedDiagramElement | undefined): Element[] {
+  const parent = readC4ConnectorParent(connector);
+  if (parent === null) { return []; }
+  const siblings = Array.from(parent.children);
+  const following = siblings.slice(siblings.indexOf(connector!) + 1);
+  const nextConnector = following.findIndex(isC4RelationshipConnector);
+  return nextConnector < 0 ? following : following.slice(0, nextConnector);
+}
+
+function readC4ConnectorParent(connector: RenderedDiagramElement | undefined): Element | null {
+  return connector === undefined ? null : connector.parentElement;
+}
+
+function isC4RelationshipConnector(element: Element): boolean {
+  return element.hasAttribute("marker-end") || element.hasAttribute("marker-start");
+}
+
+function readC4RelationshipLabels(label: string, technology = ""): string[] {
+  return [...readC4RelationText(label, technology).split(/<br\s*\/?>/iu), technology && `[${technology}]`].filter(Boolean);
+}
+
+function readC4RelationText(label: string, technology: string): string {
+  const separator = label.indexOf(": ");
+  if (separator < 0) { return ""; }
+  return stripC4Technology(label.slice(separator + 2), technology);
+}
+
+function stripC4Technology(relation: string, technology: string): string {
+  const suffix = ` [${technology}]`;
+  return technology && relation.endsWith(suffix) ? relation.slice(0, -suffix.length) : relation;
+}
+
+function setC4RelationshipTarget(target: RenderedDiagramElement | undefined, element: DiagramElement): void {
+  if (target !== undefined) {
+    setDiagramElementDataset(target, element);
+  }
 }
 
 function annotateClassNodeMembers(

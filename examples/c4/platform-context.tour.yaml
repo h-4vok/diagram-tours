@@ -1,0 +1,23 @@
+version: 1
+title: Platform context
+diagram: ./platform-context.mmd
+
+steps:
+  - focus: [person-visitor]
+    text: "{{person-visitor}} starts a shopping session."
+  - focus: [system-shop]
+    text: "The {{system-shop}} coordinates the experience."
+  - focus: [system-payments]
+    text: "The {{system-payments}} authorizes transactions."
+  - focus: [system-records]
+    text: "The {{system-records}} database stores orders."
+  - focus: [container-storefront]
+    text: "The {{container-storefront}} serves the customer experience."
+  - focus: [component-checkout]
+    text: "The {{component-checkout}} implements the order workflow."
+  - focus: [deployment-cloud]
+    text: "The {{deployment-cloud}} hosts the application."
+  - focus: [boundary-company]
+    text: "The {{boundary-company}} boundary groups internal services."
+  - focus: [relationship-2]
+    text: "{{relationship-2}} connects the platform to its payment provider."

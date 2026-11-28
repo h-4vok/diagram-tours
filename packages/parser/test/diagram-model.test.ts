@@ -24,14 +24,13 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model).toMatchObject({
-      type: "flowchart",
-      elements: [
+    expect(model.type).toBe("flowchart");
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
         { id: "api_gateway", kind: "node", label: "API Gateway" },
         { id: "payment_service", kind: "node", label: "Payment Service" },
         { id: "response", kind: "node", label: "Response" }
-      ]
-    });
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition")).toHaveLength(2);
   });
 
   it("extracts flowchart nodes from common shapes and metadata syntax", () => {
@@ -51,9 +50,8 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model).toMatchObject({
-      type: "flowchart",
-      elements: [
+    expect(model.type).toBe("flowchart");
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
         { id: "start", kind: "node", label: "Start" },
         { id: "decision", kind: "node", label: "Decision" },
         { id: "cache", kind: "node", label: "Cache" },
@@ -64,8 +62,8 @@ describe("@diagram-tour/parser diagram model", () => {
         { id: "trapezoid", kind: "node", label: "Trapezoid" },
         { id: "parallelogram", kind: "node", label: "Parallelogram" },
         { id: "metadata", kind: "node", label: "Metadata Node" }
-      ]
-    });
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition")).toHaveLength(8);
     expect(model.renderSource).toContain("metadata@{ shape: rect, label: Metadata Node }");
   });
 
@@ -84,32 +82,22 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model.elements).toEqual([
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
       { id: "intake", kind: "node", label: "Inbound Intake" },
       { id: "decision", kind: "node", label: "Decision" },
       { id: "archive", kind: "node", label: "archive" },
       { id: "manual_review", kind: "node", label: "Manual Review" },
       { id: "queue", kind: "node", label: "Review Queue" },
       { id: "worker", kind: "node", label: "Worker" },
-      { id: "done", kind: "node", label: "Done" },
-      {
-        id: "transition-decision-to-archive-approved",
-        kind: "transition",
-        label: "Decision → archive: Approved",
-        renderId: "L_decision_archive_0",
-        renderOrder: 1,
-        renderSourceId: "decision",
-        renderTargetId: "archive"
-      },
-      {
-        id: "transition-decision-to-manual_review-review",
-        kind: "transition",
-        label: "Decision → Manual Review: Review",
-        renderId: "L_decision_manual_review_0",
-        renderOrder: 2,
-        renderSourceId: "decision",
-        renderTargetId: "manual_review"
-      }
+      { id: "done", kind: "node", label: "Done" }
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-intake-to-decision-unlabeled",
+      "transition-decision-to-archive-approved",
+      "transition-decision-to-manual_review-review",
+      "transition-manual_review-to-queue-unlabeled",
+      "transition-queue-to-worker-unlabeled",
+      "transition-worker-to-done-unlabeled"
     ]);
   });
 
@@ -119,20 +107,96 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model.elements).toEqual([
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
       { id: "source", kind: "node", label: "source" },
       { id: "target", kind: "node", label: "target" },
-      { id: "archive", kind: "node", label: "archive" },
-      {
-        id: "transition-target-to-archive-approved",
-        kind: "transition",
-        label: "target → archive: Approved",
-        renderId: "L_target_archive_0",
-        renderOrder: 1,
-        renderSourceId: "target",
-        renderTargetId: "archive"
-      }
+      { id: "archive", kind: "node", label: "archive" }
     ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition")).toMatchObject([
+      { id: "transition-source-to-target-unlabeled", label: "source → target", renderOrder: 0 },
+      { id: "transition-target-to-archive-approved", label: "target → archive: Approved", renderOrder: 1 }
+    ]);
+  });
+
+  it("extracts nested source-ID and derived flowchart group keys", () => {
+    const model = createDiagramModel([
+      "flowchart TB",
+      "  subgraph platform[Platform]",
+      "    subgraph \"Shared Services\"",
+      "      api[Service] --> database[(Database)]",
+      "    end",
+      "    subgraph \"Shared Services\"",
+      "      worker[Service]",
+      "    end",
+      "  end"
+    ].join("\n"), createTourContext("/tmp/component.mmd"));
+
+    expect(model.elements.filter(({ kind }) => kind === "group")).toEqual([
+      { id: "group-platform", kind: "group", label: "Platform", renderId: "platform", renderOrder: 0, renderMemberIds: ["api", "database", "worker"] },
+      { id: "group-platform-shared-services", kind: "group", label: "Shared Services", renderOrder: 1, renderMemberIds: ["api", "database"] },
+      { id: "group-platform-shared-services-2", kind: "group", label: "Shared Services", renderOrder: 2, renderMemberIds: ["worker"] }
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "node").map(({ id }) => id)).toEqual([
+      "api", "database", "worker"
+    ]);
+  });
+
+  it("uses a stable fallback key when a title contains no letters or numbers", () => {
+    const model = createDiagramModel('flowchart TB\n  subgraph "!!!"\n  end', createTourContext("/tmp/component.mmd"));
+
+    expect(model.elements.find(({ kind }) => kind === "group")).toMatchObject({
+      id: "group-group",
+      kind: "group",
+      label: "!!!"
+    });
+  });
+
+  it("makes every expanded unlabeled connector focusable with stable collision suffixes", () => {
+    const model = createDiagramModel([
+      "flowchart LR",
+      "  a --> b & c",
+      "  a --> b"
+    ].join("\n"), createTourContext("/tmp/component.mmd"));
+
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id, renderOrder, renderSourceId, renderTargetId }) => ({
+      id, renderOrder, renderSourceId, renderTargetId
+    }))).toEqual([
+      { id: "transition-a-to-b-unlabeled", renderOrder: 0, renderSourceId: "a", renderTargetId: "b" },
+      { id: "transition-a-to-c-unlabeled", renderOrder: 1, renderSourceId: "a", renderTargetId: "c" },
+      { id: "transition-a-to-b-unlabeled-2", renderOrder: 2, renderSourceId: "a", renderTargetId: "b" }
+    ]);
+  });
+
+  it("preserves labeled transition keys when an earlier unlabeled link has the same base", () => {
+    const model = createDiagramModel([
+      "flowchart LR",
+      "  a --> b",
+      "  a -->|Unlabeled| b"
+    ].join("\n"), createTourContext("/tmp/component.mmd"));
+
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-a-to-b-unlabeled-2", "transition-a-to-b-unlabeled"
+    ]);
+  });
+
+  it("parses title-only and underscore titles with inline semicolon statements and unique keys", () => {
+    const model = createDiagramModel([
+      "flowchart LR",
+      "subgraph Region One; A --> B; end",
+      "subgraph under_score; B --> C; end",
+      "subgraph Region One-2",
+      "end",
+      "subgraph Region One",
+      "end"
+    ].join("\n"), createTourContext("/tmp/component.mmd"));
+
+    expect(model.elements.filter(({ kind }) => kind === "group").map(({ id, label, renderId }) => [id, label, renderId])).toEqual([
+      ["group-region-one", "Region One", undefined],
+      ["group-under-score", "under_score", undefined],
+      ["group-region-one-2", "Region One-2", undefined],
+      ["group-region-one-3", "Region One", undefined]
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition")).toHaveLength(2);
   });
 
   it("extracts labeled flowchart decision branches from both Mermaid label syntaxes", () => {
@@ -148,7 +212,7 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/decision-tree.mmd")
     );
 
-    expect(model.elements.filter((element) => element.kind === "transition")).toEqual([
+    expect(model.elements.filter((element) => element.kind === "transition")).toMatchObject([
       {
         id: "transition-decision-to-success-yes",
         kind: "transition",
@@ -184,7 +248,8 @@ describe("@diagram-tour/parser diagram model", () => {
         renderOrder: 3,
         renderSourceId: "review",
         renderTargetId: "rejected"
-      }
+      },
+      { id: "transition-decision-to-unlabelled-unlabeled", renderOrder: 4 }
     ]);
     expect(model.renderSource).toContain("decision --> unlabelled");
   });
@@ -268,7 +333,43 @@ describe("@diagram-tour/parser diagram model", () => {
       "transition-beta-to-gamma-yes",
       "transition-beta-to-delta-yes"
     ]);
-    expect(repeated.elements.find((element) => element.kind === "transition")?.renderId).toBe("L_A_B_2");
+    expect(repeated.elements.find((element) => element.id === "transition-A-to-B-yes")?.renderId).toBe("L_A_B_2");
+  });
+
+  it("reserves suffixed labeled transition keys before unlabeled links", () => {
+    const model = createDiagramModel([
+      "flowchart LR", "A --> B", "A -->|Unlabeled| B", "A -->|Unlabeled| B"
+    ].join("\n"), createTourContext("/tmp/flowchart.mmd"));
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-A-to-B-unlabeled-3", "transition-A-to-B-unlabeled", "transition-A-to-B-unlabeled-2"
+    ]);
+  });
+
+  it("reserves cross-family numeric candidates used by later labeled links", () => {
+    const model = createDiagramModel([
+      "flowchart LR", "A -->|Unlabeled 2| B", "A --> B", "A -->|Unlabeled| B", "A -->|Unlabeled| B"
+    ].join("\n"), createTourContext("/tmp/flowchart.mmd"));
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-A-to-B-unlabeled-2", "transition-A-to-B-unlabeled-4", "transition-A-to-B-unlabeled", "transition-A-to-B-unlabeled-3"
+    ]);
+  });
+
+  it("accepts explicit Unicode subgraph IDs", () => {
+    const model = createDiagramModel("flowchart LR\nsubgraph géo [Area]\nA --> B\nend", createTourContext("/tmp/flowchart.mmd"));
+    expect(model.elements.find(({ kind }) => kind === "group")).toMatchObject({
+      id: "group-géo", label: "Area", renderId: "géo", renderMemberIds: ["A", "B"]
+    });
+  });
+
+  it("accepts explicit subgraph IDs starting with an underscore or digit", () => {
+    const model = createDiagramModel([
+      "flowchart LR", "subgraph _region[Region]", "subgraph 123[Numeric]", "A --> B", "end", "end"
+    ].join("\n"), createTourContext("/tmp/flowchart.mmd"));
+
+    expect(model.elements.filter(({ kind }) => kind === "group")).toEqual([
+      { id: "group-_region", kind: "group", label: "Region", renderId: "_region", renderOrder: 0, renderMemberIds: ["A", "B"] },
+      { id: "group-123", kind: "group", label: "Numeric", renderId: "123", renderOrder: 1, renderMemberIds: ["A", "B"] }
+    ]);
   });
 
   it("matches Mermaid grouped and repeated custom edge render IDs", () => {
@@ -303,19 +404,19 @@ describe("@diagram-tour/parser diagram model", () => {
       "branch",
       "L_B_D_0"
     ]);
-    expect(repeated.elements.filter((element) => element.kind === "transition")).toMatchObject([
+    expect(repeated.elements.filter((element) => element.id === "transition-A-to-C-yes")).toMatchObject([
       { renderId: "L_A_C_0", renderSourceId: "A", renderTargetId: "C" }
     ]);
-    expect(colliding.elements.filter((element) => element.kind === "transition")).toMatchObject([
+    expect(colliding.elements.filter((element) => element.id === "transition-A-to-C-yes")).toMatchObject([
       { renderId: "L_A_C_0", renderSourceId: "A", renderTargetId: "C" }
     ]);
-    expect(collidingGenerated.elements.filter((element) => element.kind === "transition")).toMatchObject([
+    expect(collidingGenerated.elements.filter((element) => element.id === "transition-A-to-B-yes")).toMatchObject([
       { renderId: "L_A_B_2", renderSourceId: "A", renderTargetId: "B" }
     ]);
-    expect(collidingInitialId.elements.filter((element) => element.kind === "transition")).toMatchObject([
+    expect(collidingInitialId.elements.filter((element) => element.id === "transition-C-to-D-yes")).toMatchObject([
       { renderId: "L_C_D_0", renderSourceId: "C", renderTargetId: "D" }
     ]);
-    expect(generatedIdCollision.elements.filter((element) => element.kind === "transition").map(({ renderId }) => renderId)).toEqual([
+    expect(generatedIdCollision.elements.filter(({ id }) => id === "transition-A-to-B-yes" || id === "transition-C-to-D-no").map(({ renderId }) => renderId)).toEqual([
       "L_C_D_0",
       "L_C_D_0"
     ]);
@@ -343,7 +444,7 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/decision-tree.mmd")
     );
 
-    expect(model.elements.filter((element) => element.kind === "transition").map(({ id, label }) => [id, label])).toEqual([
+    expect(model.elements.filter((element) => element.kind === "transition" && element.label.includes(": ")).map(({ id, label }) => [id, label])).toEqual([
       ["transition-A-to-B-not-approved", "A → B: Not (approved)"],
       ["transition-M-to-N-no-retry", "M → N: No (retry)"],
       ["transition-C-to-D-normal-size", "C → D: Normal-size"],
@@ -374,6 +475,9 @@ describe("@diagram-tour/parser diagram model", () => {
 
     expect(model.elements.filter((element) => element.kind === "transition")).toMatchObject([
       { id: "transition-A-to-B-yes", renderId: "L_A_B_0", renderSourceId: "A", renderTargetId: "B" }
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "group")).toMatchObject([
+      { id: "group-inner", label: "Inner", renderMemberIds: ["A", "B"] }
     ]);
   });
 
@@ -429,10 +533,13 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model.elements).toEqual([
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
       { id: "source", kind: "node", label: "source" },
       { id: "target", kind: "node", label: "Latest Target" },
       { id: "done", kind: "node", label: "Done" }
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "transition").map(({ id }) => id)).toEqual([
+      "transition-source-to-target-unlabeled", "transition-target-to-done-unlabeled"
     ]);
   });
 
@@ -470,9 +577,22 @@ describe("@diagram-tour/parser diagram model", () => {
       createTourContext("/tmp/diagram.mmd")
     );
 
-    expect(model.elements).toEqual([
+    expect(model.elements.filter(({ kind }) => kind === "node")).toEqual([
       { id: "start", kind: "node", label: "Start" },
       { id: "finish", kind: "node", label: "Finish" }
+    ]);
+    expect(model.elements.filter(({ kind }) => kind === "group")).toEqual([
+      { id: "group-cluster", kind: "group", label: "cluster", renderOrder: 0 }
+    ]);
+  });
+
+  it("keeps multword and Unicode subgraph titles with complete nested membership", () => {
+    const model = createDiagramModel([
+      "flowchart LR", "subgraph Region One", "subgraph Géographie", "A --> B", "end", "end"
+    ].join("\n"), createTourContext("/tmp/flowchart.mmd"));
+    expect(model.elements.filter(({ kind }) => kind === "group")).toMatchObject([
+      { id: "group-region-one", label: "Region One", renderMemberIds: ["A", "B"] },
+      { id: "group-region-one-géographie", label: "Géographie", renderMemberIds: ["A", "B"] }
     ]);
   });
 
@@ -911,7 +1031,7 @@ describe("@diagram-tour/parser diagram model", () => {
     ).toThrow('references unknown Mermaid state or transition key "Draft"');
   });
 
-  it("explains that flowchart focus references may use node IDs or transition keys", () => {
+  it("explains that flowchart focus references may use node, group, or transition keys", () => {
     expect(() =>
       resolveLoadedTour({
         context: createTourContext("/tmp/decision-tree.tour.yaml"),
@@ -924,7 +1044,7 @@ describe("@diagram-tour/parser diagram model", () => {
           steps: [{ focus: ["missing"], text: "Unknown target." }]
         }
       })
-    ).toThrow('references unknown Mermaid node ID or transition key "missing"');
+    ).toThrow('references unknown Mermaid node ID, group key, or transition key "missing"');
   });
 
   it("detects sankey diagrams and extracts unique nodes in first-seen source order", () => {

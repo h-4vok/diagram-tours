@@ -1,0 +1,19 @@
+version: 1
+title: Cloud deployment with styled Flowchart
+diagram: ./cloud-deployment.mmd
+
+steps:
+  - focus: [group-cloud]
+    text: "{{group-cloud}} contains the region and network boundaries."
+  - focus: [group-region]
+    text: "{{group-region}} represents the deployment region."
+  - focus: [group-network]
+    text: "{{group-network}} represents the virtual network."
+  - focus: [group-subnet]
+    text: "{{group-subnet}} contains the private services and databases."
+  - focus: [api]
+    text: "{{api}} handles requests routed by the gateway."
+  - focus: [transition-gateway-to-api-routes-requests]
+    text: "{{transition-gateway-to-api-routes-requests}} is a labeled, one-way connector."
+  - focus: [transition-primary-to-replica-unlabeled]
+    text: "{{transition-primary-to-replica-unlabeled}} has arrowheads at both ends."
