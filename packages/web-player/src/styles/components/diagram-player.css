@@ -288,7 +288,7 @@
   stroke-width: 3px !important;
 }
 
-.person-man[data-diagram-element-id^="container-"][data-focus-state="focused"] rect {
+.person-man[data-focus-state="focused"] > :is(rect, path:not([fill="none"])) {
   fill: var(--color-node-focus-fill-strong) !important;
   stroke: var(--color-node-focus-text) !important;
 }

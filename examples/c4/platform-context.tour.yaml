@@ -9,6 +9,8 @@ steps:
     text: "The {{system-shop}} coordinates the experience."
   - focus: [system-payments]
     text: "The {{system-payments}} authorizes transactions."
+  - focus: [system-records]
+    text: "The {{system-records}} database stores orders."
   - focus: [container-storefront]
     text: "The {{container-storefront}} serves the customer experience."
   - focus: [component-checkout]
