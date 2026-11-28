@@ -203,13 +203,12 @@ async function captureFocus(page: Page, input: {
     scale: "device"
   }));
   measurement.rasterFocus = raster;
-  measurement.figureContrast = raster.contrast;
-  measurement.focusContrast = raster.contrast;
   input.measurements.push(measurement);
   await writeFile(resolve(input.artifactPath, "flowchart-component-computed-styles.json"), JSON.stringify(input.measurements, null, 2));
   assertTextContrast(measurement.textContrast);
-  expect(measurement.figureContrast).toBeGreaterThanOrEqual(3);
-  expect(measurement.focusContrast).toBeGreaterThanOrEqual(3);
+  expect(measurement.figureContrast, `${input.semantic} figure contrast in ${input.theme}`).toBeGreaterThanOrEqual(3);
+  expect(measurement.focusContrast, `${input.semantic} focus contrast in ${input.theme}`).toBeGreaterThanOrEqual(3);
+  expect(raster.contrast, `${input.semantic} raster focus contrast in ${input.theme}`).toBeGreaterThan(1.5);
   expect(measurement.focusVisible).toBe(true);
   expect(measurement.effectiveOpacity).toBe(1);
   await page.screenshot({ path: resolve(input.artifactPath, `flowchart-component-${input.semantic}-${input.theme}.png`), fullPage: true });
